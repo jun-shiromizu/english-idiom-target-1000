@@ -5,7 +5,7 @@ description: 'E2Eテスト仕様（YAML）からPlaywrightテストコード（.
 
 # E2Eテストコード生成
 
-`specs/` 配下の YAML 仕様から、Playwright テストコード (`tests/*.spec.ts`) を生成する。
+`specs/` 配下の YAML 仕様から、Playwright テストコード (`tests/e2e/*.spec.ts`) を生成する。
 
 ## When to Use This Skill
 
@@ -13,21 +13,17 @@ description: 'E2Eテスト仕様（YAML）からPlaywrightテストコード（.
 - 「テストコードを生成して」「spec から実装して」と依頼されたとき
 - テスト仕様が変更され、コードを再生成する必要があるとき
 
-## 設計ガイド
-
-パスマッピング・ロケータ方針・証跡タイミング等の詳細な設計方針は `.e2e-test-auto/02_e2e-codegen.md` を参照すること。
-
 ## 入出力
 
-specs のフォルダ構造をそのまま tests にミラーする。
+specs のフォルダ構造をそのまま tests/e2e にミラーする。
 
 - **入力**: `specs/<画面>/<アクション>.yaml`
-- **出力**: `tests/<画面>/<アクション>.spec.ts`
+- **出力**: `tests/e2e/<画面>/<アクション>.spec.ts`
 
 ```
-specs/login/login-success.yaml  →  tests/login/login-success.spec.ts
-specs/login/login-error.yaml    →  tests/login/login-error.spec.ts
-specs/inventory/add-to-cart.yaml → tests/inventory/add-to-cart.spec.ts
+specs/home/settings-form.yaml    →  tests/e2e/home/settings-form.spec.ts
+specs/quiz/question-display.yaml →  tests/e2e/quiz/question-display.spec.ts
+specs/result/summary.yaml        →  tests/e2e/result/summary.spec.ts
 ```
 
 ## コード生成ルール
@@ -45,39 +41,101 @@ DOM セレクタではなく、Playwright のセマンティックロケータ�
 
 ```typescript
 // ✅ 良い例
-await page.getByRole('button', { name: 'Login' }).click();
-await page.getByPlaceholder('Username').fill('standard_user');
+await page.getByRole('button', { name: '開始' }).click();
+await page.getByLabel('開始番号').fill('1');
 
 // ❌ 悪い例
-await page.locator('#login-button').click();
-await page.locator('input[data-test="username"]').fill('standard_user');
+await page.locator('.v-btn').click();
+await page.locator('input:nth-child(1)').fill('1');
 ```
 
-### 2. fixture を活用する
+### 2. precondition の扱い
 
-- YAML の `precondition` に対応する fixture を `fixtures/_preconditions.yaml`（precondition カタログ）から特定する
-- テストデータは `fixtures/test-data.ts` から import する
-
-**precondition → fixture のマッピング:**
-
-コード生成時は必ず `fixtures/_preconditions.yaml` を参照し、precondition の key に対応する fixture 名を使う。
-
-```yaml
-# _preconditions.yaml の例
-- key: "未ログイン状態"
-  fixture: page
-- key: "standard_userでログイン済み"
-  fixture: loggedInPage
-```
+このプロジェクトは認証なし。precondition に応じて localStorage をセットアップする。
 
 ```typescript
-// precondition: "未ログイン状態" → page（標準）
-import { test, expect } from '@playwright/test';
+// precondition: localStorage がクリアな状態
+test.beforeEach(async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.clear())
+})
 
-// precondition: "standard_userでログイン済み" → loggedInPage
-import { test, expect } from '../../fixtures/base';
-test('...', async ({ loggedInPage: page }) => { ... });
+// precondition: 不正解履歴が存在する状態
+test.beforeEach(async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => {
+    localStorage.setItem('idiom-app-history', JSON.stringify({ '0001': false, '0002': false }))
+  })
+})
+
+// precondition: 中断セッションが存在する状態
+test.beforeEach(async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => {
+    localStorage.setItem('idiom-app-session', JSON.stringify({ /* ... */ }))
+  })
+})
 ```
+
+### 3. テスト構造のテンプレート
+
+```typescript
+import { test, expect } from '@playwright/test'
+
+test.describe('<feature> - <action>', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await page.evaluate(() => localStorage.clear())
+  })
+
+  test('<シナリオID>: <シナリオ名>', async ({ page }) => {
+    // Arrange
+
+    // Act
+
+    // Assert
+  })
+})
+```
+
+**例:**
+```typescript
+test.describe('トップページ - 出題設定', () => {
+  test('HOME-001: 設定を入力して開始ボタンを押すと出題画面に遷移する', async ({ page }) => {
+    await page.getByLabel('開始番号').fill('1')
+    await page.getByLabel('終了番号').fill('10')
+    await page.getByRole('button', { name: '開始' }).click()
+    await expect(page).toHaveURL(/#\/quiz/)
+  })
+})
+```
+
+### 4. アサーションの書き方
+
+| YAML の expect | Playwright アサーション |
+|---|---|
+| 「〜」と表示される | `await expect(page.getByText('〜')).toBeVisible()` |
+| 〜画面に遷移する | `await expect(page).toHaveURL(/#\/quiz/)` |
+| ボタンが存在する | `await expect(page.getByRole('button', { name: '〜' })).toBeVisible()` |
+| ローカルストレージに保存される | `const val = await page.evaluate(() => localStorage.getItem('key')); expect(val).toBe('...')` |
+
+### 5. 待機処理
+
+- 明示的な `waitForTimeout()` は使わない（自動待機を信頼する）
+- GitHub API 取得完了を待つ場合は `waitForResponse()` を使う
+- ページ遷移待ちは `waitForURL(pattern)` を使う
+
+```typescript
+// GitHub API レスポンス待ち
+await page.waitForResponse(resp => resp.url().includes('api.github.com') && resp.status() === 200)
+```
+
+## 生成後のチェックリスト
+
+- [ ] セマンティックロケータを使っているか
+- [ ] `waitForTimeout()` を使っていないか
+- [ ] テスト同士が独立しているか（localStorage は beforeEach でリセット）
+- [ ] シナリオ ID がテスト名に含まれているか
 
 - カタログに対応する precondition がない場合はコード生成を中断し、fixture の追加を促す
 - テストデータは `fixtures/test-data.ts` から import する

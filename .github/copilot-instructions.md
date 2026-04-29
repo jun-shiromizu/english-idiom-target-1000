@@ -1,30 +1,96 @@
-# Copilot Code Review Instructions
+# GitHub Copilot カスタムインストラクション
 
-## E2Eテスト仕様とテストコードの同期チェック
+## プロジェクト概要
 
-Pull Request をレビューする際、以下の観点を必ず確認すること。
+高校生向けの英熟語暗記アプリ（旺文社・英熟語ターゲット1000）。
+Vue 3 + Vuetify + GitHub Pages 構成。認証なし・localStorage でデータ管理。
+
+詳細は `docs/spec.md`、実装計画は `docs/plan.md` を参照すること。
+
+---
+
+## 実装ガイドライン
+
+実装作業を行う際は `vue-dev` スキルを参照すること。主要な規約を以下に示す。
+
+### 技術スタック
+
+- **フレームワーク**: Vue 3 + TypeScript + Vite
+- **UI**: Vuetify（主軸）。Tailwind CSS は使用しない
+- **ルーター**: Vue Router（`createWebHashHistory` 使用）
+- **状態管理**: composables + localStorage（Pinia は使用しない）
+- **ホスティング**: GitHub Pages（`base: '/english-idiom-target-1000/'`）
+
+### データアクセス
+
+- ファイル一覧: GitHub Contents API
+- ファイル内容: GitHub Raw URL（毎回取得、キャッシュなし）
+- 設定値は `src/config.ts` に集約する
+
+### localStorage キー
+
+| キー | 用途 |
+|---|---|
+| `idiom-app-history` | 正解/不正解履歴 |
+| `idiom-app-session` | 中断セッション |
+
+---
+
+## 開発フロー
+
+自律的に開発を進める際の標準フロー:
+
+```
+実装（vue-dev スキル）
+  ↓
+ユニットテスト作成（unit-test-codegen スキル）
+  ↓
+ユニットテスト実行（unit-test-runner スキル）
+  ↓
+E2Eテスト仕様作成（e2e-spec-writer スキル）
+  ↓
+E2Eテストコード生成（e2e-codegen スキル）
+  ↓
+E2Eテスト実行（e2e-runner スキル）
+  ↓
+デプロイ（deploy スキル）※ push 前にユーザー確認
+  ↓
+本番テスト（e2e-runner スキル、BASE_URL=本番URL）
+```
+
+### push・デプロイの確認
+
+`git push` および GitHub Actions のトリガーはユーザーの確認を得てから実行する。
+
+---
+
+## コードレビューチェックリスト
+
+Pull Request をレビューする際、以下の観点を確認すること。
 
 ### 1. specs と tests の同期
 
-- `specs/` 配下の YAML ファイルが追加・変更されている場合、対応する `tests/` 配下の `.spec.ts` ファイルも追加・変更されていることを確認する
-- ミラー構成: `specs/<画面>/<アクション>.yaml` → `tests/<画面>/<アクション>.spec.ts`
-- 仕様のみ変更されてテストコードに反映されていない場合は、指摘する
+- `specs/` 配下の YAML が追加・変更されている場合、対応する `tests/e2e/` の `.spec.ts` も変更されていること
+- ミラー構成: `specs/<画面>/<アクション>.yaml` → `tests/e2e/<画面>/<アクション>.spec.ts`
 
-### 2. テストコードのみの変更
+### 2. シナリオ ID の整合性
 
-- `tests/` 配下の `.spec.ts` が変更されている場合、その変更が `specs/` の YAML と整合しているか確認する
-- テストコードだけが独自に変更され、仕様と乖離していないか確認する
+- `test()` のタイトルに含まれるシナリオID（例: `HOME-001`）が YAML のシナリオID と一致していること
 
-### 3. シナリオ ID の整合性
+### 3. status フィールドの整合性
 
-- テストコードの `test()` のタイトルに含まれるシナリオID（例: `LOGIN-001`）が、対応する YAML のシナリオ ID と一致しているか確認する
+- YAML の `status: done` のシナリオに対応するテストコードが存在すること
 
-### 4. status フィールドの整合性
+### 4. セマンティックロケータの使用
 
-- YAML の `status` が `done` のシナリオには、対応するテストコードが存在するべき
-- 新規追加された YAML シナリオの `status` が `done` なのにテストコードが PR に含まれていない場合は指摘する
+- DOM セレクタ（`#id`, `.class`, `nth-child` 等）を使っていないこと
+- `waitForTimeout()` を使っていないこと
 
-### 5. セマンティックロケータの使用
+### 5. ユニットテストのカバレッジ
 
-- テストコードで DOM セレクタ（`#id`, `.class`, `nth-child` 等）が使われていたら、セマンティックロケータ（`getByRole`, `getByLabel`, `getByText` 等）への置き換えを提案する
-- `waitForTimeout()` が使われていたら、代替手段を提案する
+- composables の変更には対応するユニットテストが含まれていること
+
+### 6. セキュリティ
+
+- localStorage に機密情報を保存していないこと
+- GitHub API トークンをクライアントコードに埋め込んでいないこと（public リポジトリ前提なのでトークン不要だが、誤って混入しないよう注意）

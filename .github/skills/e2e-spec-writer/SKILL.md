@@ -14,9 +14,135 @@ description: 'E2Eテスト仕様書（YAML）を作成・更新する。Use when
 - テスト対象の機能が追加・変更されたとき
 - 「テスト仕様を書いて」「テストケースを作って」と依頼されたとき
 
-## 設計ガイド
+## フォルダ構成
 
-フォルダ構成・命名規則・シナリオID等の詳細な設計方針は `.e2e-test-auto/01_e2e-spec-write.md` を参照すること。
+画面（ページ）別にサブディレクトリを分け、その中にアクション別の YAML を配置する。
+
+```
+specs/
+├── home/
+│   ├── settings-form.yaml       … 出題設定フォーム
+│   └── history-clear.yaml       … 不正解履歴クリア
+├── quiz/
+│   ├── question-display.yaml    … 問題表示
+│   ├── answer-display.yaml      … 回答表示
+│   └── correct-incorrect.yaml   … 正解/不正解判定
+└── result/
+    └── summary.yaml             … 結果サマリー
+```
+
+## YAML フォーマット
+
+```yaml
+feature: <機能名（日本語可）>
+action: <アクション名>
+page: <対象ページのパス（ハッシュルーターなので # 以降を記載）>
+
+scenarios:
+  - id: <画面略称>-<連番3桁>
+    category: normal | error | boundary | regression
+    status: done | pending | blocked | skipped
+    scenario: <シナリオ名（日本語、1行で概要）>
+    precondition: <前提条件>
+    steps:
+      - <操作手順1>
+      - <操作手順2>
+    expect:
+      - <期待結果1>
+      - <期待結果2>
+```
+
+### 必須フィールド
+
+| フィールド | 説明 |
+|---|---|
+| `feature` | 機能名。日本語可 |
+| `action` | このファイルが対象とするアクション |
+| `page` | 対象ページのハッシュパス（例: `#/`, `#/quiz`, `#/result`） |
+| `scenarios` | シナリオの配列 |
+| `scenarios[].id` | シナリオID。`<画面略称>-<連番3桁>` 形式 |
+| `scenarios[].category` | `normal` / `error` / `boundary` / `regression` |
+| `scenarios[].status` | `done`（テストコード生成済み）/ `pending`（未着手）/ `blocked` / `skipped` |
+| `scenarios[].scenario` | シナリオ名（1行で概要） |
+| `scenarios[].steps` | 操作手順の配列 |
+| `scenarios[].expect` | 期待結果の配列 |
+
+### 任意フィールド
+
+| フィールド | 説明 |
+|---|---|
+| `scenarios[].precondition` | 前提条件 |
+
+## シナリオ ID 体系
+
+| 画面 | 略称 | ID例 |
+|---|---|---|
+| トップページ（設定） | HOME | HOME-001, HOME-201 |
+| 出題画面 | QUIZ | QUIZ-001, QUIZ-201 |
+| 結果サマリー画面 | RESULT | RESULT-001 |
+
+### 連番レンジ
+
+| レンジ | 観点 |
+|---|---|
+| 001〜099 | 正常系 |
+| 200〜299 | 異常系・バリデーション |
+| 300〜399 | 境界値 |
+| 400〜499 | リグレッション |
+
+## precondition の書き方
+
+このプロジェクトは認証なし・localStorage 管理のため、前提条件は以下のいずれかを使用：
+
+```yaml
+precondition: localStorage がクリアな状態
+precondition: 不正解履歴が存在する状態
+precondition: 中断セッションが存在する状態
+precondition: トップページを表示している状態
+precondition: 出題画面を表示している状態（1問目）
+precondition: 全問回答済みで結果画面を表示している状態
+```
+
+## steps の書き方
+
+1. **ユーザーの操作**を自然言語で書く（DOM要素やセレクタは書かない）
+2. 具体的な値がある場合は「」で囲む（例: 開始番号「1」、終了番号「10」を入力）
+3. 1ステップ = 1操作
+4. 画面遷移が発生する場合は明示する
+
+**良い例:**
+```yaml
+steps:
+  - 開始番号に「1」、終了番号に「10」を入力する
+  - 出題形式で「熟語（英語→日本語）」を選択する
+  - 「開始」ボタンをクリックする
+```
+
+**悪い例:**
+```yaml
+steps:
+  - ".v-select" をクリック                # ← セレクタは書かない
+  - 設定を入力して開始する                # ← 複合操作は分割する
+```
+
+## expect の書き方
+
+1. **画面上で確認できること**を書く（「〜と表示される」「〜に遷移する」）
+2. 具体的な値がある場合は「」で囲む
+3. ハッシュルーターのため URL 確認は `#/quiz` のように `#` 付きで記載
+
+## ファイル命名規則
+
+```
+<アクション名>[-<観点>].yaml
+```
+
+- 小文字英数字 + ハイフンのみ
+- 1ファイル上限: 20シナリオ（超えたら分割）
+
+## 重要: テストコードとの同期
+
+仕様を追加・変更した場合は、対応するテストコードも生成・更新すること（e2e-codegen スキル使用）。`status: done` なのにテストファイルが存在しない状態は不正。
 
 ## フォルダ構成
 
