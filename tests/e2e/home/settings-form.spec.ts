@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.describe('トップページ - 出題設定フォーム', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('./')
     await page.evaluate(() => localStorage.clear())
     await page.reload()
   })
