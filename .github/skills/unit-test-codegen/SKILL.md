@@ -206,7 +206,71 @@ beforeEach(() => {
 | 高 | composables (`useHistory`, `useQuizSession`) | ビジネスロジックの中核 |
 | 高 | `useGitHubData`（データ変換ロジック） | 画像パス変換、Markdown相対パス解決 |
 | 中 | コンポーネント（イベント発火・props表示） | UI動作の担保 |
+| 中 | views（バグ修正時の状態変更ロジック） | リグレッション防止 |
 | 低 | views（統合的な画面テスト） | E2Eテストでカバー可能 |
+
+### バグ修正・仕様変更時のリグレッションテスト規約
+
+**バグ修正をする際は必ず対応するテストを追加してから push すること。**
+
+#### 追加先の判断基準
+
+| バグの種類 | テスト追加先 |
+|---|---|
+| composable の計算ロジックのバグ | `src/composables/__tests__/*.spec.ts` に `it` を追加 |
+| view の状態変更ロジックのバグ | `src/views/__tests__/*.spec.ts` に `it` を追加（新規作成でも可） |
+| UI の表示/非表示・操作のバグ | `specs/<画面>/<アクション>.yaml` にシナリオ追加 → E2Eテストコードに反映 |
+
+#### view のユニットテストを書くときの注意
+
+Vuetify コンポーネントは `ResizeObserver` を使用するため、jsdom 環境ではポリフィルが必要。
+`src/test-setup.ts` に追加済みなので新たなセットアップは不要。
+
+```typescript
+// ResizeObserver は src/test-setup.ts で polyfill 済み
+// vitest.config.ts の setupFiles に登録されている
+```
+
+ボタンの特定には `.findAll('button').find(b => b.text().includes('ボタン名'))` を使用する。
+
+```typescript
+import { mount, flushPromises } from '@vue/test-utils'
+import { createVuetify } from 'vuetify'
+import SomeView from '../SomeView.vue'
+
+const vuetify = createVuetify()
+// vue-router をモック
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}))
+
+it('バグ修正のリグレッションテスト', async () => {
+  // localStorage に前提データをセット
+  localStorage.setItem('key', JSON.stringify(data))
+
+  const wrapper = mount(SomeView, { global: { plugins: [vuetify] } })
+  await flushPromises()  // onMounted の完了を待つ
+
+  const btn = wrapper.findAll('button').find(b => b.text().includes('ボタン名'))
+  await btn!.trigger('click')
+
+  // localStorage や emitted イベントで結果を検証
+  const saved = JSON.parse(localStorage.getItem('key')!)
+  expect(saved.someField).toBe(expectedValue)
+})
+```
+
+#### テストコメントの書き方
+
+リグレッションテストであることを明示するコメントを付ける。
+
+```typescript
+/**
+ * リグレッションテスト:
+ * 〈再現手順の一行説明〉というバグの防止
+ */
+it('...', async () => { ... })
+```
 
 ### テスト命名規則
 
