@@ -1,0 +1,29 @@
+feature: トップページ - 出題設定フォーム
+action: settings-form
+page: "#/"
+
+scenarios:
+  - id: HOME-001
+    category: normal
+    status: done
+    scenario: ページを開くと出題設定フォームが表示される
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+    expect:
+      - 「開始番号」入力フィールドが表示される
+      - 「終了番号」入力フィールドが表示される
+      - 「出題形式」セレクトボックスが表示される
+      - 「出題対象」セレクトボックスが表示される
+      - 「出題順序」セレクトボックスが表示される
+      - 「開始」ボタンが表示される
+
+  - id: HOME-002
+    category: normal
+    status: done
+    scenario: 不正解履歴のリセットセクションが表示される
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+    expect:
+      - 「全履歴をクリア」ボタンが表示される
