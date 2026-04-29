@@ -133,9 +133,11 @@ function goHome() {
 
 function retryIncorrect() {
   if (!session.value) return
+  const incorrectItems = session.value.items.filter((_, i) => session.value!.results[i] === false)
   const retrySession = {
     ...session.value,
     settings: { ...session.value.settings, target: 'incorrect' as const },
+    items: incorrectItems,
     currentIndex: 0,
     results: {},
   }
