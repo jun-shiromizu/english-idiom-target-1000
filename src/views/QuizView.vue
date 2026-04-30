@@ -22,15 +22,32 @@
       <!-- 回答表示フェーズ（スワイプ対応ラッパー） -->
       <div
         v-else
+        class="swipe-zone"
         @touchstart="onTouchStart"
+        @touchmove="onTouchMove"
         @touchend="onTouchEnd"
         @touchcancel="resetTouch"
       >
-        <QuizAnswer
-          :item="currentItem"
-          @correct="onJudge(true)"
-          @incorrect="onJudge(false)"
-        />
+        <div class="swipe-feedback swipe-feedback-incorrect" :style="{ opacity: incorrectFeedbackOpacity }">
+          <v-icon size="32">mdi-close-circle-outline</v-icon>
+          <span>不正解</span>
+        </div>
+        <div class="swipe-feedback swipe-feedback-correct" :style="{ opacity: correctFeedbackOpacity }">
+          <v-icon size="32">mdi-check-circle-outline</v-icon>
+          <span>正解</span>
+        </div>
+
+        <div
+          class="swipe-card"
+          :class="{ 'is-dragging': isSwipeActive }"
+          :style="swipeCardStyle"
+        >
+          <QuizAnswer
+            :item="currentItem"
+            @correct="onJudge(true)"
+            @incorrect="onJudge(false)"
+          />
+        </div>
       </div>
     </template>
   </v-container>
@@ -68,13 +85,24 @@ const revealed = ref(false)
 const showQuitDialog = ref(false)
 let touchStartX = 0
 let touchStartY = 0
+const swipeOffsetX = ref(0)
+const isSwipeActive = ref(false)
 
 const SWIPE_MIN_X = 120
 const SWIPE_MAX_Y = 40
 const SWIPE_MIN_XY_RATIO = 3
+const SWIPE_ACTIVATE_X = 24
+const SWIPE_ACTIVATE_XY_RATIO = 1.5
+const SWIPE_MAX_OFFSET = 160
 
 const currentIndex = computed(() => session.value?.currentIndex ?? 0)
 const currentItem = computed(() => session.value!.items[currentIndex.value])
+const swipeProgress = computed(() => Math.min(Math.abs(swipeOffsetX.value) / SWIPE_MIN_X, 1))
+const correctFeedbackOpacity = computed(() => (swipeOffsetX.value > 0 ? swipeProgress.value : 0))
+const incorrectFeedbackOpacity = computed(() => (swipeOffsetX.value < 0 ? swipeProgress.value : 0))
+const swipeCardStyle = computed(() => ({
+  transform: `translate3d(${swipeOffsetX.value}px, 0, 0) rotate(${swipeOffsetX.value / 18}deg)`,
+}))
 
 onMounted(() => {
   const loaded = loadSession()
@@ -117,6 +145,25 @@ function onTouchStart(e: TouchEvent) {
   touchStartY = e.touches[0].clientY
 }
 
+function onTouchMove(e: TouchEvent) {
+  if (!touchStartX || !touchStartY || e.touches.length !== 1) return
+
+  const touch = e.touches[0]
+  const diffX = touch.clientX - touchStartX
+  const diffY = touch.clientY - touchStartY
+  const absX = Math.abs(diffX)
+  const absY = Math.abs(diffY)
+
+  if (!isSwipeActive.value) {
+    if (absX < SWIPE_ACTIVATE_X) return
+    if (absX / Math.max(absY, 1) < SWIPE_ACTIVATE_XY_RATIO) return
+    isSwipeActive.value = true
+  }
+
+  if (e.cancelable) e.preventDefault()
+  swipeOffsetX.value = Math.max(-SWIPE_MAX_OFFSET, Math.min(SWIPE_MAX_OFFSET, diffX))
+}
+
 function onTouchEnd(e: TouchEvent) {
   if (!touchStartX || !touchStartY) return
 
@@ -139,6 +186,8 @@ function onTouchEnd(e: TouchEvent) {
 function resetTouch() {
   touchStartX = 0
   touchStartY = 0
+  swipeOffsetX.value = 0
+  isSwipeActive.value = false
 }
 
 function quitSession() {
@@ -146,3 +195,53 @@ function quitSession() {
   router.push({ name: 'home' })
 }
 </script>
+
+<style scoped>
+.swipe-zone {
+  position: relative;
+  overflow: hidden;
+}
+
+.swipe-card {
+  position: relative;
+  z-index: 1;
+  transition: transform 180ms ease;
+  will-change: transform;
+}
+
+.swipe-card.is-dragging {
+  transition: none;
+}
+
+.swipe-feedback {
+  position: absolute;
+  top: 96px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(var(--v-theme-surface), 0.9);
+  border: 2px solid currentColor;
+  border-radius: 8px;
+  font-weight: 700;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.swipe-feedback-correct {
+  right: 16px;
+  color: rgb(var(--v-theme-success));
+}
+
+.swipe-feedback-incorrect {
+  left: 16px;
+  color: rgb(var(--v-theme-error));
+}
+
+@media (min-width: 700px) {
+  .swipe-feedback {
+    top: 88px;
+  }
+}
+</style>
