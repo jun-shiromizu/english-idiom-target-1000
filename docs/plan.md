@@ -24,7 +24,7 @@ src/
 │   ├── QuizQuestion.vue      … 問題表示（タップで回答表示に切替）
 │   ├── QuizAnswer.vue        … 回答表示（正解/不正解ボタン、スワイプ対応）
 │   ├── ProgressBar.vue       … 進捗インジケーター
-│   └── SupplementContent.vue … 補足データ（Markdown→HTML変換表示）
+│   └── SupplementContent.vue … 回答表示時に補足データを取得しMarkdown→HTML変換表示
 ├── composables/
 │   ├── useGitHubData.ts      … GitHub API/Raw URLからのデータ取得
 │   ├── useQuizSession.ts     … セッション管理（出題順生成、進捗管理）
@@ -67,7 +67,6 @@ interface QuizItem {
   questionText: string    // 出題テキスト
   idiomIndex?: number     // 熟語が複数ある場合のインデックス
   meanIndex?: number      // 例文出題時の意味インデックス
-  supplement: string[]    // 補足Markdown（変換済み）
 }
 
 // セッション状態
@@ -96,10 +95,10 @@ interface QuizSession {
 2. GitHub Contents API で `target/` ディレクトリのファイル一覧を取得
 3. 指定範囲のJSONファイル名をフィルタ（例: `0001.json` ～ `0100.json`）
 4. 各JSONファイルを Raw URL で取得
-5. GitHub Contents API で `supplement/` ディレクトリのファイル一覧を取得
-6. 指定範囲に該当する補足ファイルをフィルタ（例: `0001-*.md`）
-7. 該当する補足ファイルを Raw URL で取得
-8. Markdown 内の相対画像パス (`./img/xxx.png`) を Raw URL に変換
+5. 出題リストを生成してセッション保存し、出題画面へ遷移
+6. 回答表示時に `supplement/{番号}-add.md` を Raw URL で取得
+7. 取得できた場合のみ Markdown 内の相対画像パス (`./img/xxx.png`) を Raw URL に変換し、HTML化して表示
+8. 取得済みの補足HTMLは番号単位でメモリキャッシュする
 
 ## 実装手順
 
@@ -119,7 +118,7 @@ interface QuizSession {
 9. `HomeView.vue` — 出題設定フォーム、中断セッション再開ボタン、履歴クリア
 10. `QuizView.vue` + `QuizQuestion.vue` + `QuizAnswer.vue` — 出題・回答表示・正解不正解判定
 11. `ProgressBar.vue` — 進捗インジケーター
-12. `SupplementContent.vue` — Markdown → HTML 変換表示（marked 等のライブラリ使用）
+12. `SupplementContent.vue` — 回答表示時の補足Markdown取得、Markdown → HTML 変換表示（marked 等のライブラリ使用）
 13. `ResultView.vue` — 結果サマリー、3つのアクションボタン
 
 ### Phase 4: モバイル対応

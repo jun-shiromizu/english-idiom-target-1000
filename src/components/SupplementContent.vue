@@ -1,10 +1,8 @@
 <template>
-  <section v-if="htmlList.length" class="supplement-content">
+  <section v-if="html" class="supplement-content">
     <h3 class="text-subtitle-1 font-weight-bold mb-2">補足資料</h3>
     <v-divider class="mb-3" />
     <div
-      v-for="(html, idx) in htmlList"
-      :key="idx"
       class="supplement-item mb-4"
       v-html="html"
     />
@@ -12,9 +10,33 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  htmlList: string[]
+import { ref, watch } from 'vue'
+import { useGitHubData } from '@/composables/useGitHubData'
+
+const props = defineProps<{
+  number: string
 }>()
+
+const { fetchSupplementHtml } = useGitHubData()
+const html = ref<string | null>(null)
+let requestId = 0
+
+watch(
+  () => props.number,
+  async (number) => {
+    const currentRequestId = ++requestId
+    html.value = null
+    try {
+      const nextHtml = await fetchSupplementHtml(number)
+      if (currentRequestId === requestId) {
+        html.value = nextHtml
+      }
+    } catch (e) {
+      console.warn('Failed to fetch supplement:', e)
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>

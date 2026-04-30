@@ -57,23 +57,33 @@ describe('useGitHubData', () => {
     })
   })
 
-  describe('fetchSupplements', () => {
-    it('補足Markdown内の相対画像パスをRaw URLに変換してHTML化する', async () => {
+  describe('fetchSupplementHtml', () => {
+    it('固定ファイル名の補足Markdownを取得し、相対画像パスをRaw URLに変換してHTML化する', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
+        status: 200,
         text: () => Promise.resolve('![bar foo](../img/bar-foo.jpeg)\n\n![baz](./img/baz.png)'),
       })
 
-      const { fetchSupplements } = useGitHubData()
-      const htmlList = await fetchSupplements('0001', ['0001-image.md', '0002-image.md'])
+      const { fetchSupplementHtml } = useGitHubData()
+      const html = await fetchSupplementHtml('0001')
 
-      expect(htmlList).toHaveLength(1)
-      expect(htmlList[0]).toContain(
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/supplement/0001-add.md',
+      )
+      expect(html).toContain(
         'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/img/bar-foo.jpeg"',
       )
-      expect(htmlList[0]).toContain(
+      expect(html).toContain(
         'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/img/baz.png"',
       )
+    })
+
+    it('補足Markdownが存在しない場合は null を返す', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
+
+      const { fetchSupplementHtml } = useGitHubData()
+      await expect(fetchSupplementHtml('0999')).resolves.toBeNull()
     })
   })
 })

@@ -18,21 +18,14 @@ export function useQuizSession() {
 
   /**
    * 設定と取得済みデータから QuizItem[] を生成する。
-   * supplementHtml は後から設定するため空配列で初期化。
    */
-  function buildItems(
-    settings: QuizSettings,
-    dataMap: Map<string, IdiomData>,
-    supplementHtmlMap: Map<string, string[]>,
-  ): QuizItem[] {
+  function buildItems(settings: QuizSettings, dataMap: Map<string, IdiomData>): QuizItem[] {
     const items: QuizItem[] = []
 
     for (let i = settings.startNumber; i <= settings.endNumber; i++) {
       const number = formatNumber(i)
       const data = dataMap.get(number)
       if (!data) continue
-
-      const supplementHtml = supplementHtmlMap.get(number) ?? []
 
       if (settings.mode === 'idiom') {
         // 熟語モード: idioms 配列の各要素を別々に出題
@@ -49,7 +42,6 @@ export function useQuizSession() {
             idiomData: data,
             questionText,
             idiomIndex,
-            supplementHtml,
           })
         })
       } else {
@@ -66,7 +58,6 @@ export function useQuizSession() {
             questionText: mean['example-sentence'],
             idiomIndex,
             meanIndex,
-            supplementHtml,
           })
         })
       }

@@ -2,6 +2,9 @@ import { GITHUB_API_BASE, GITHUB_RAW_BASE } from '@/config'
 import { marked } from 'marked'
 import type { IdiomData } from '@/types'
 
+const supplementHtmlCache = new Map<string, string | null>()
+const pendingSupplementRequests = new Map<string, Promise<string | null>>()
+
 /** 数値を4桁ゼロ埋め文字列に変換 */
 export function formatNumber(n: number): string {
   return String(n).padStart(4, '0')
@@ -37,37 +40,49 @@ export function useGitHubData() {
     return JSON.parse(text) as IdiomData
   }
 
-  /**
-   * 指定番号の補足Markdownファイルを全て取得しHTMLに変換して返す。
-   * ファイル一覧はAPIで取得し、"{number}-" で始まるものを対象とする。
-   */
-  async function fetchSupplements(number: string, allSupplementFiles: string[]): Promise<string[]> {
-    const targets = allSupplementFiles.filter((name) => name.startsWith(`${number}-`) && name.endsWith('.md'))
-    if (targets.length === 0) return []
+  /** 指定番号の補足Markdownを取得しHTMLに変換して返す。補足は supplement/{number}-add.md 固定。 */
+  async function fetchSupplementHtml(number: string): Promise<string | null> {
+    if (supplementHtmlCache.has(number)) {
+      return supplementHtmlCache.get(number) ?? null
+    }
 
-    const htmlList: string[] = []
-    for (const name of targets) {
-      const raw = await fetchRaw(`supplement/${name}`)
+    const pending = pendingSupplementRequests.get(number)
+    if (pending) return pending
+
+    const request = (async () => {
+      const path = `supplement/${number}-add.md`
+      const res = await fetch(`${GITHUB_RAW_BASE}/${path}`)
+
+      if (res.status === 404) {
+        supplementHtmlCache.set(number, null)
+        return null
+      }
+
+      if (!res.ok) throw new Error(`GitHub Raw URL error: ${res.status} ${path}`)
+
+      const raw = await res.text()
       const resolved = resolveImagePaths(raw)
       const html = await marked.parse(resolved)
-      htmlList.push(html)
+      supplementHtmlCache.set(number, html)
+      return html
+    })()
+
+    pendingSupplementRequests.set(number, request)
+    try {
+      return await request
+    } finally {
+      pendingSupplementRequests.delete(number)
     }
-    return htmlList
   }
 
   /**
    * 指定範囲の全IdiomDataを取得する。
-   * 補足ファイル一覧も一括取得して返す。
    */
   async function fetchRangeData(
     start: number,
     end: number,
-  ): Promise<{ dataMap: Map<string, IdiomData>; supplementFiles: string[] }> {
-    // ファイル一覧取得（2回のAPI呼び出し）
-    const [targetFiles, supplementFiles] = await Promise.all([
-      listFiles('target'),
-      listFiles('supplement').catch(() => [] as string[]),
-    ])
+  ): Promise<{ dataMap: Map<string, IdiomData> }> {
+    const targetFiles = await listFiles('target')
 
     // 範囲内のJSONファイルを抽出
     const numbersInRange: string[] = []
@@ -86,11 +101,8 @@ export function useGitHubData() {
       }),
     )
 
-    return {
-      dataMap: new Map(entries),
-      supplementFiles,
-    }
+    return { dataMap: new Map(entries) }
   }
 
-  return { listFiles, fetchRaw, fetchIdiomData, fetchSupplements, fetchRangeData, formatNumber }
+  return { listFiles, fetchRaw, fetchIdiomData, fetchSupplementHtml, fetchRangeData, formatNumber }
 }

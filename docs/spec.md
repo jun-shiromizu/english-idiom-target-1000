@@ -87,9 +87,9 @@
 ```
 
 - 英熟語ターゲット以外のデータ（補足データ）
-  - ファイル名は `{番号}-{任意の文字列}.md` の形式（例: `0001-etymology.md`, `0001-image.md`）。
-  - システムは `{番号}-` で始まるすべての `.md` ファイルを読み込んで表示する。
-  - 番号によっては、補足データが存在しない場合もあるし、複数存在する場合もある。
+  - ファイル名は `{番号}-add.md` の固定形式（例: `0001-add.md`）。
+  - システムは回答表示時に該当番号の補足Markdownを取得し、HTMLに変換して表示する。
+  - 番号によっては、補足データが存在しない場合もある。
   - ファイルはMarkdownファイルで、場合によっては画像ファイルへのリンクが存在する場合もある。
   - 画像もGitHub上に配置する。Markdown中の相対パス（例: `./img/1234-bar-foo.png`）はアプリ側でGitHub Raw URLのフルパスに変換して表示する。
 
@@ -252,9 +252,8 @@ bring「手に持っている」＋up「大きくする」 → 手の中で大�
   │   ├── 0002.json
   │   └── ...
   ├── supplement/       … 補足データ（Markdown）
-  │   ├── 0001-etymology.md
-  │   ├── 0001-image.md
-  │   ├── 0002-usage.md
+  │   ├── 0001-add.md
+  │   ├── 0002-add.md
   │   └── ...
   └── img/              … 補足データ用の画像
       ├── 0001-xxx.png
@@ -269,8 +268,7 @@ bring「手に持っている」＋up「大きくする」 → 手の中で大�
 ### データへのアクセス
 - ディレクトリ内のファイル一覧取得には GitHub Contents API を使用する
   - 例: `https://api.github.com/repos/{owner}/english-idiom-target-1000-data/contents/target/`
-  - 例: `https://api.github.com/repos/{owner}/english-idiom-target-1000-data/contents/supplement/`
 - 個々のファイル内容の取得には GitHub Raw URL を使用する
   - 例: `https://raw.githubusercontent.com/{owner}/english-idiom-target-1000-data/main/target/0001.json`
-  - 例: `https://raw.githubusercontent.com/{owner}/english-idiom-target-1000-data/main/supplement/0001-etymology.md`
+  - 例: `https://raw.githubusercontent.com/{owner}/english-idiom-target-1000-data/main/supplement/0001-add.md`
 - 補足データ内の画像の相対パス（`./img/xxx.png`）はアプリ側でRaw URLのフルパスに変換して表示する

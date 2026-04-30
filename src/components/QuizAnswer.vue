@@ -81,7 +81,7 @@
         </section>
 
         <!-- 補足データ (Markdown→HTML) -->
-        <SupplementContent v-if="item.supplementHtml.length" :html-list="item.supplementHtml" />
+        <SupplementContent :number="item.number" />
       </v-card-text>
     </v-card>
 

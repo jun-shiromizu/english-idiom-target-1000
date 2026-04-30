@@ -159,7 +159,7 @@ import { useQuizSession } from '@/composables/useQuizSession'
 import { useHistory } from '@/composables/useHistory'
 
 const router = useRouter()
-const { fetchRangeData, fetchSupplements } = useGitHubData()
+const { fetchRangeData } = useGitHubData()
 const { buildItems, saveSession, loadSession, clearSession } = useQuizSession()
 const { clearAll } = useHistory()
 
@@ -200,19 +200,12 @@ async function startQuiz() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const { dataMap, supplementFiles } = await fetchRangeData(
+    const { dataMap } = await fetchRangeData(
       settings.value.startNumber,
       settings.value.endNumber,
     )
 
-    // 補足HTMLマップ構築
-    const supplementHtmlMap = new Map<string, string[]>()
-    for (const [number] of dataMap) {
-      const htmlList = await fetchSupplements(number, supplementFiles)
-      if (htmlList.length) supplementHtmlMap.set(number, htmlList)
-    }
-
-    const items = buildItems(settings.value, dataMap, supplementHtmlMap)
+    const items = buildItems(settings.value, dataMap)
 
     if (items.length === 0) {
       errorMessage.value = '出題できる問題がありません。設定を確認してください。'

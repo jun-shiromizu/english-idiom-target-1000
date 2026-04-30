@@ -33,8 +33,6 @@ export interface QuizItem {
   idiomIndex: number
   /** 例文出題時の means インデックス */
   meanIndex?: number
-  /** 補足Markdownを変換したHTML文字列の配列 */
-  supplementHtml: string[]
 }
 
 export interface QuizSession {

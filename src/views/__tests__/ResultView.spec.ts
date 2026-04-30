@@ -25,7 +25,6 @@ function makeItem(number: string): QuizItem {
     idiomData: mockIdiomData,
     questionText: `idiom ${number}`,
     idiomIndex: 0,
-    supplementHtml: [],
   }
 }
 
