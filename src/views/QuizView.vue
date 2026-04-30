@@ -24,6 +24,7 @@
         v-else
         @touchstart="onTouchStart"
         @touchend="onTouchEnd"
+        @touchcancel="resetTouch"
       >
         <QuizAnswer
           :item="currentItem"
@@ -66,6 +67,11 @@ const session = ref<QuizSession | null>(null)
 const revealed = ref(false)
 const showQuitDialog = ref(false)
 let touchStartX = 0
+let touchStartY = 0
+
+const SWIPE_MIN_X = 120
+const SWIPE_MAX_Y = 40
+const SWIPE_MIN_XY_RATIO = 3
 
 const currentIndex = computed(() => session.value?.currentIndex ?? 0)
 const currentItem = computed(() => session.value!.items[currentIndex.value])
@@ -103,13 +109,36 @@ function onJudge(correct: boolean) {
 }
 
 function onTouchStart(e: TouchEvent) {
+  if (e.touches.length !== 1) {
+    resetTouch()
+    return
+  }
   touchStartX = e.touches[0].clientX
+  touchStartY = e.touches[0].clientY
 }
 
 function onTouchEnd(e: TouchEvent) {
-  const diff = e.changedTouches[0].clientX - touchStartX
-  if (diff > 50) onJudge(true)
-  else if (diff < -50) onJudge(false)
+  if (!touchStartX || !touchStartY) return
+
+  const touch = e.changedTouches[0]
+  const diffX = touch.clientX - touchStartX
+  const diffY = touch.clientY - touchStartY
+  const absX = Math.abs(diffX)
+  const absY = Math.abs(diffY)
+
+  resetTouch()
+
+  if (absX < SWIPE_MIN_X) return
+  if (absY > SWIPE_MAX_Y) return
+  if (absX / Math.max(absY, 1) < SWIPE_MIN_XY_RATIO) return
+
+  if (diffX > 0) onJudge(true)
+  else onJudge(false)
+}
+
+function resetTouch() {
+  touchStartX = 0
+  touchStartY = 0
 }
 
 function quitSession() {
