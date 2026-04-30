@@ -56,4 +56,24 @@ describe('useGitHubData', () => {
       expect(files).toEqual(['0001.json', '0002.json'])
     })
   })
+
+  describe('fetchSupplements', () => {
+    it('補足Markdown内の相対画像パスをRaw URLに変換してHTML化する', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve('![bar foo](../img/bar-foo.jpeg)\n\n![baz](./img/baz.png)'),
+      })
+
+      const { fetchSupplements } = useGitHubData()
+      const htmlList = await fetchSupplements('0001', ['0001-image.md', '0002-image.md'])
+
+      expect(htmlList).toHaveLength(1)
+      expect(htmlList[0]).toContain(
+        'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/img/bar-foo.jpeg"',
+      )
+      expect(htmlList[0]).toContain(
+        'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/img/baz.png"',
+      )
+    })
+  })
 })

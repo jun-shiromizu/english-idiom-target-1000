@@ -10,7 +10,7 @@ export function formatNumber(n: number): string {
 /** 補足Markdown内の相対画像パスをGitHub Raw URLに変換 */
 function resolveImagePaths(markdown: string): string {
   return markdown.replace(
-    /!\[([^\]]*)\]\(\.\/img\/([^)]+)\)/g,
+    /!\[([^\]]*)\]\((?:\.{1,2}\/)?img\/([^)]+)\)/g,
     (_, alt, filename) => `![${alt}](${GITHUB_RAW_BASE}/img/${filename})`,
   )
 }
