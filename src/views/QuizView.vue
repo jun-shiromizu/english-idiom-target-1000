@@ -214,9 +214,9 @@ function quitSession() {
 }
 
 .swipe-feedback {
-  position: absolute;
-  top: 96px;
-  z-index: 2;
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 96px);
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -230,12 +230,12 @@ function quitSession() {
 }
 
 .swipe-feedback-correct {
-  right: 16px;
+  right: max(16px, calc((100vw - 700px) / 2 + 16px));
   color: rgb(var(--v-theme-success));
 }
 
 .swipe-feedback-incorrect {
-  left: 16px;
+  left: max(16px, calc((100vw - 700px) / 2 + 16px));
   color: rgb(var(--v-theme-error));
 }
 
