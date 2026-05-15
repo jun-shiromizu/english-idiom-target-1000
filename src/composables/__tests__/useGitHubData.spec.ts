@@ -69,13 +69,13 @@ describe('useGitHubData', () => {
       const html = await fetchSupplementHtml('idiom-target-1000', '0001')
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/supplement/0001-add.md',
+        'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/supplement/0001-add.md',
       )
       expect(html).toContain(
-        'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/img/bar-foo.jpeg"',
+        'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/img/bar-foo.jpeg"',
       )
       expect(html).toContain(
-        'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/img/baz.png"',
+        'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/img/baz.png"',
       )
     })
 
