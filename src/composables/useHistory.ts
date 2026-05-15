@@ -1,4 +1,4 @@
-import { DEFAULT_BOOK_ID, STORAGE_KEY_HISTORY } from '@/config'
+import { LEGACY_BOOK_ID, STORAGE_KEY_HISTORY } from '@/config'
 import type { BookId } from '@/types'
 import { formatNumber } from './useGitHubData'
 
@@ -48,7 +48,7 @@ export function useHistory() {
     const key = makeKey(bookId, number, idiomIndex, totalIdioms)
     // 未回答は "不正解扱いしない"（出題対象から除外しない）
     if (!(key in history)) {
-      if (bookId === DEFAULT_BOOK_ID) {
+      if (bookId === LEGACY_BOOK_ID) {
         const legacyKey = makeLegacyKey(number, idiomIndex, totalIdioms)
         return history[legacyKey] === false
       }
@@ -72,7 +72,7 @@ export function useHistory() {
         if (key === prefix || key.startsWith(`${prefix}-`)) {
           delete history[key]
         }
-        if (bookId === DEFAULT_BOOK_ID && (key === num || key.startsWith(`${num}-`))) {
+        if (bookId === LEGACY_BOOK_ID && (key === num || key.startsWith(`${num}-`))) {
           delete history[key]
         }
       })

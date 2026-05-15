@@ -1,4 +1,4 @@
-import { DEFAULT_BOOK_ID, STORAGE_KEY_SESSION } from '@/config'
+import { DEFAULT_BOOK_ID, LEGACY_BOOK_ID, STORAGE_KEY_SESSION } from '@/config'
 import type { IdiomData, QuizItem, QuizSession, QuizSettings } from '@/types'
 import { useHistory } from './useHistory'
 import { formatNumber } from './useGitHubData'
@@ -98,7 +98,10 @@ export function useQuizSession() {
       const session = JSON.parse(raw) as QuizSession
       return {
         ...session,
-        settings: normalizeSettings(session.settings),
+        settings: {
+          ...normalizeSettings(session.settings),
+          bookId: session.settings.bookId ?? LEGACY_BOOK_ID,
+        },
       }
     } catch {
       return null
