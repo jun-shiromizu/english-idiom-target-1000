@@ -13,6 +13,16 @@ Vue 3 アプリを GitHub Pages に公開する手順。
 - GitHub Actions でビルド → `gh-pages` ブランチへ自動 push
 - **手動 push は行わない**。全てワークフロー経由でデプロイ
 
+## デプロイ前の必須条件
+
+- **デプロイ前に必ずローカルで全テストを通すこと**
+- 一部の関連テストだけで済ませず、少なくとも以下をすべて成功させてから `main` へ push すること
+  - `npx vitest run`
+  - `npm run test:e2e`
+  - `npm run build`
+- いずれか 1 つでも失敗した場合は、**デプロイ作業を中断して先に修正すること**
+- GitHub Actions で検知させる前にローカルで失敗を止めることを優先する
+
 ## 公開 URL
 
 ```
@@ -100,6 +110,8 @@ jobs:
 ## デプロイの流れ
 
 ```
+ローカルで npx vitest run / npm run test:e2e / npm run build を全て成功
+  ↓
 main ブランチへ push
   ↓
 GitHub Actions トリガー

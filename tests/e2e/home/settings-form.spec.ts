@@ -229,6 +229,27 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await expect(page).toHaveURL(/#\/quiz/)
   })
 
+  test('HOME-009: 出題設定を変更すると次回表示時にも同じ選択状態が復元される', async ({ page }) => {
+    await page.getByRole('radio', { name: '英熟語ターゲット1000' }).click()
+    await page.getByLabel('開始番号').fill('101')
+    await page.getByLabel('終了番号').fill('110')
+    await page.getByRole('combobox', { name: '出題形式' }).press('ArrowDown')
+    await page.getByRole('option', { name: '例文（英語 → 日本語）' }).click()
+    await page.getByRole('combobox', { name: '出題対象' }).press('ArrowDown')
+    await page.getByRole('option', { name: '間違えたものだけ' }).click()
+    await page.getByRole('combobox', { name: '出題順序' }).press('ArrowDown')
+    await page.getByRole('option', { name: 'ランダム' }).click()
+
+    await page.reload()
+
+    await expect(page.getByRole('radio', { name: '英熟語ターゲット1000' })).toBeChecked()
+    await expect(page.getByLabel('開始番号')).toHaveValue('101')
+    await expect(page.getByLabel('終了番号')).toHaveValue('110')
+    await expect(page.getByRole('combobox', { name: '出題形式' })).toHaveValue('例文（英語 → 日本語）')
+    await expect(page.getByRole('combobox', { name: '出題対象' })).toHaveValue('間違えたものだけ')
+    await expect(page.getByRole('combobox', { name: '出題順序' })).toHaveValue('ランダム')
+  })
+
   test('HOME-301: 教材を英単語ターゲット1900に切り替えると 1900 番まで入力できる', async ({ page }) => {
     await page.getByRole('radio', { name: '英単語ターゲット1900' }).click()
     await page.getByLabel('開始番号').fill('1500')

@@ -169,7 +169,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { QuizSettings } from '@/types'
-import { BOOK_ORDER, DEFAULT_BOOK_ID, getBookConfig } from '@/config'
+import { BOOK_ORDER, DEFAULT_BOOK_ID, STORAGE_KEY_SETTINGS, getBookConfig } from '@/config'
 import { useGitHubData } from '@/composables/useGitHubData'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { useHistory } from '@/composables/useHistory'
@@ -179,14 +179,48 @@ const { fetchRangeData } = useGitHubData()
 const { buildItems, saveSession, loadSession, clearSession } = useQuizSession()
 const { clearAll } = useHistory()
 
-const settings = ref<QuizSettings>({
-  bookId: DEFAULT_BOOK_ID,
-  startNumber: 1,
-  endNumber: 100,
-  mode: 'idiom',
-  target: 'all',
-  order: 'sequential',
-})
+function createDefaultSettings(): QuizSettings {
+  return {
+    bookId: DEFAULT_BOOK_ID,
+    startNumber: 1,
+    endNumber: 100,
+    mode: 'idiom',
+    target: 'all',
+    order: 'sequential',
+  }
+}
+
+function normalizeSettings(raw: Partial<QuizSettings> | null | undefined): QuizSettings {
+  const defaults = createDefaultSettings()
+  const bookId = raw?.bookId && BOOK_ORDER.includes(raw.bookId) ? raw.bookId : defaults.bookId
+  const maxNumber = getBookConfig(bookId).maxNumber
+  const startNumber = Math.min(Math.max(raw?.startNumber ?? defaults.startNumber, 1), maxNumber)
+  const endNumber = Math.min(Math.max(raw?.endNumber ?? defaults.endNumber, 1), maxNumber)
+
+  return {
+    bookId,
+    startNumber: Math.min(startNumber, endNumber),
+    endNumber: Math.max(startNumber, endNumber),
+    mode: raw?.mode ?? defaults.mode,
+    target: raw?.target ?? defaults.target,
+    order: raw?.order ?? defaults.order,
+  }
+}
+
+function loadSettings(): QuizSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SETTINGS)
+    return normalizeSettings(raw ? (JSON.parse(raw) as Partial<QuizSettings>) : null)
+  } catch {
+    return createDefaultSettings()
+  }
+}
+
+function saveSettings(settings: QuizSettings): void {
+  localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings))
+}
+
+const settings = ref<QuizSettings>(createDefaultSettings())
 
 const bookItems = BOOK_ORDER.map((bookId) => {
   const book = getBookConfig(bookId)
@@ -226,6 +260,14 @@ watch(
     if (settings.value.startNumber > maxNumber) settings.value.startNumber = maxNumber
     if (settings.value.endNumber > maxNumber) settings.value.endNumber = maxNumber
   },
+)
+
+watch(
+  settings,
+  (value) => {
+    saveSettings(normalizeSettings(value))
+  },
+  { deep: true },
 )
 
 async function startQuiz() {
@@ -280,6 +322,7 @@ function clearAllHistory() {
 }
 
 onMounted(() => {
+  settings.value = loadSettings()
   savedSession.value = loadSession()
 })
 </script>

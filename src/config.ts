@@ -53,3 +53,4 @@ export function buildGitHubRawBase(bookId: BookId): string {
 
 export const STORAGE_KEY_HISTORY = 'idiom-app-history'
 export const STORAGE_KEY_SESSION = 'idiom-app-session'
+export const STORAGE_KEY_SETTINGS = 'idiom-app-settings'
