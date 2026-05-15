@@ -194,7 +194,7 @@ const bookItems = BOOK_ORDER.map((bookId) => {
 })
 
 const modeItems = [
-  { label: '熟語（英語 → 日本語）', value: 'idiom' },
+  { label: '単語／熟語（英語 → 日本語）', value: 'idiom' },
   { label: '例文（英語 → 日本語）', value: 'sentence' },
 ]
 const targetItems = [

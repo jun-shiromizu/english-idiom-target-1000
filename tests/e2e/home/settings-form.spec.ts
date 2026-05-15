@@ -103,9 +103,12 @@ test.describe('トップページ - 出題設定フォーム', () => {
 
   test('HOME-001: ページを開くと出題設定フォームが表示される', async ({ page }) => {
     await expect(page.getByLabel('教材')).toBeVisible()
+    await expect(page.getByRole('radio', { name: '英単語ターゲット1900' })).toBeChecked()
+    await expect(page.getByRole('radio', { name: '英熟語ターゲット1000' })).not.toBeChecked()
     await expect(page.getByLabel('開始番号')).toBeVisible()
     await expect(page.getByLabel('終了番号')).toBeVisible()
     await expect(page.getByLabel('出題形式')).toBeVisible()
+    await expect(page.getByText('単語／熟語（英語 → 日本語）', { exact: true })).toBeVisible()
     await expect(page.getByLabel('出題対象')).toBeVisible()
     await expect(page.getByLabel('出題順序')).toBeVisible()
     await expect(page.getByRole('button', { name: '開始' })).toBeVisible()
@@ -122,6 +125,7 @@ test.describe('トップページ - 出題設定フォーム', () => {
       'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/target/0001.json',
     )
 
+    await page.getByRole('radio', { name: '英熟語ターゲット1000' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
     await page.getByRole('button', { name: '開始' }).click()
@@ -163,6 +167,7 @@ test.describe('トップページ - 出題設定フォーム', () => {
       'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/target/0001.json',
     )
 
+    await page.getByRole('radio', { name: '英熟語ターゲット1000' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
     await page.getByRole('button', { name: '開始' }).click()

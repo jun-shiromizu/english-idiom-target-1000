@@ -33,8 +33,8 @@ export const BOOKS: Record<BookId, BookConfig> = {
 	},
 }
 
-export const DEFAULT_BOOK_ID: BookId = 'idiom-target-1000'
-export const BOOK_ORDER: BookId[] = ['idiom-target-1000', 'word-target-1900']
+export const DEFAULT_BOOK_ID: BookId = 'word-target-1900'
+export const BOOK_ORDER: BookId[] = ['word-target-1900', 'idiom-target-1000']
 
 export function getBookConfig(bookId: BookId): BookConfig {
 	return BOOKS[bookId]
