@@ -244,29 +244,28 @@ bring「手に持っている」＋up「大きくする」 → 手の中で大�
   ```
 
 ### データリポジトリ
-- リポジトリ名: `english-target-books-data`
+- リポジトリ名: `english-idiom-target-1000-data`
 - 内容: 各教材のJSONデータ、補足Markdown、画像
 - 公開: public（アプリからRaw URLで取得するため）
 - 構成:
   ```
-  english-target-books-data/
-  └── books/
-      ├── idiom-target-1000/
-      │   ├── target/       … 英熟語ターゲット1000 の JSON データ
-      │   │   ├── 0001.json
-      │   │   └── ...
-      │   ├── supplement/   … 補足データ（Markdown）
-      │   │   ├── 0001-add.md
-      │   │   └── ...
-      │   └── img/          … 補足データ用の画像
-      └── word-target-1900/
-          ├── target/       … 英単語ターゲット1900 の JSON データ
-          │   ├── 0001.json
-          │   └── ...
-          ├── supplement/
-          │   ├── 0001-add.md
-          │   └── ...
-          └── img/
+  english-idiom-target-1000-data/
+  ├── idiom-target-1000/
+  │   ├── target/       … 英熟語ターゲット1000 の JSON データ
+  │   │   ├── 0001.json
+  │   │   └── ...
+  │   ├── supplement/   … 補足データ（Markdown）
+  │   │   ├── 0001-add.md
+  │   │   └── ...
+  │   └── img/          … 補足データ用の画像
+  └── word-target-1900/
+      ├── target/       … 英単語ターゲット1900 の JSON データ
+      │   ├── 0001.json
+      │   └── ...
+      ├── supplement/
+      │   ├── 0001-add.md
+      │   └── ...
+      └── img/
   ```
 
 ### デプロイ
@@ -276,8 +275,8 @@ bring「手に持っている」＋up「大きくする」 → 手の中で大�
 
 ### データへのアクセス
 - ディレクトリ内のファイル一覧取得には GitHub Contents API を使用する
-  - 例: `https://api.github.com/repos/{owner}/english-target-books-data/contents/books/idiom-target-1000/target/`
+  - 例: `https://api.github.com/repos/{owner}/english-idiom-target-1000-data/contents/idiom-target-1000/target/`
 - 個々のファイル内容の取得には GitHub Raw URL を使用する
-  - 例: `https://raw.githubusercontent.com/{owner}/english-target-books-data/main/books/idiom-target-1000/target/0001.json`
-  - 例: `https://raw.githubusercontent.com/{owner}/english-target-books-data/main/books/idiom-target-1000/supplement/0001-add.md`
+  - 例: `https://raw.githubusercontent.com/{owner}/english-idiom-target-1000-data/main/idiom-target-1000/target/0001.json`
+  - 例: `https://raw.githubusercontent.com/{owner}/english-idiom-target-1000-data/main/idiom-target-1000/supplement/0001-add.md`
 - 補足データ内の画像の相対パス（`./img/xxx.png`）はアプリ側でRaw URLのフルパスに変換して表示する

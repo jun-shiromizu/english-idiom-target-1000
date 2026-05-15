@@ -97,10 +97,10 @@ describe('useGitHubData', () => {
       const html = await fetchSupplementHtml('word-target-1900', '0001')
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://raw.githubusercontent.com/jun-shiromizu/english-target-books-data/main/books/word-target-1900/supplement/0001-add.md',
+        'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/supplement/0001-add.md',
       )
       expect(html).toContain(
-        'src="https://raw.githubusercontent.com/jun-shiromizu/english-target-books-data/main/books/word-target-1900/img/word.png"',
+        'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/img/word.png"',
       )
     })
   })

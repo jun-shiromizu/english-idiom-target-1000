@@ -118,8 +118,8 @@ test.describe('トップページ - 出題設定フォーム', () => {
   test('HOME-003: 英熟語ターゲット1000で開始すると熟語データの取得先を使って出題画面へ遷移する', async ({ page }) => {
     const requestedUrls = await mockGitHubDataRequests(
       page,
-      'https://api.github.com/repos/jun-shiromizu/english-idiom-target-1000-data/contents/target',
-      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/target/0001.json',
+      'https://api.github.com/repos/jun-shiromizu/english-idiom-target-1000-data/contents/idiom-target-1000/target',
+      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/target/0001.json',
     )
 
     await page.getByLabel('開始番号').fill('1')
@@ -128,18 +128,18 @@ test.describe('トップページ - 出題設定フォーム', () => {
 
     await expect(page).toHaveURL(/#\/quiz/)
     expect(requestedUrls).toContain(
-      'https://api.github.com/repos/jun-shiromizu/english-idiom-target-1000-data/contents/target',
+      'https://api.github.com/repos/jun-shiromizu/english-idiom-target-1000-data/contents/idiom-target-1000/target',
     )
     expect(requestedUrls).toContain(
-      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/target/0001.json',
+      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/target/0001.json',
     )
   })
 
   test('HOME-004: 英単語ターゲット1900で開始すると単語データの取得先を使って出題画面へ遷移する', async ({ page }) => {
     const requestedUrls = await mockGitHubDataRequests(
       page,
-      'https://api.github.com/repos/jun-shiromizu/english-target-books-data/contents/books/word-target-1900/target',
-      'https://raw.githubusercontent.com/jun-shiromizu/english-target-books-data/main/books/word-target-1900/target/0001.json',
+      'https://api.github.com/repos/jun-shiromizu/english-idiom-target-1000-data/contents/word-target-1900/target',
+      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/target/0001.json',
     )
 
     await page.getByRole('radio', { name: '英単語ターゲット1900' }).click()
@@ -149,18 +149,18 @@ test.describe('トップページ - 出題設定フォーム', () => {
 
     await expect(page).toHaveURL(/#\/quiz/)
     expect(requestedUrls).toContain(
-      'https://api.github.com/repos/jun-shiromizu/english-target-books-data/contents/books/word-target-1900/target',
+      'https://api.github.com/repos/jun-shiromizu/english-idiom-target-1000-data/contents/word-target-1900/target',
     )
     expect(requestedUrls).toContain(
-      'https://raw.githubusercontent.com/jun-shiromizu/english-target-books-data/main/books/word-target-1900/target/0001.json',
+      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/target/0001.json',
     )
   })
 
   test('HOME-005: 英熟語ターゲット1000で開始すると熟語教材の session が保存される', async ({ page }) => {
     await mockGitHubDataRequests(
       page,
-      'https://api.github.com/repos/jun-shiromizu/english-idiom-target-1000-data/contents/target',
-      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/target/0001.json',
+      'https://api.github.com/repos/jun-shiromizu/english-idiom-target-1000-data/contents/idiom-target-1000/target',
+      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/target/0001.json',
     )
 
     await page.getByLabel('開始番号').fill('1')
@@ -183,8 +183,8 @@ test.describe('トップページ - 出題設定フォーム', () => {
   test('HOME-006: 英単語ターゲット1900で開始すると単語教材の session が保存される', async ({ page }) => {
     await mockGitHubDataRequests(
       page,
-      'https://api.github.com/repos/jun-shiromizu/english-target-books-data/contents/books/word-target-1900/target',
-      'https://raw.githubusercontent.com/jun-shiromizu/english-target-books-data/main/books/word-target-1900/target/0001.json',
+      'https://api.github.com/repos/jun-shiromizu/english-idiom-target-1000-data/contents/word-target-1900/target',
+      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/target/0001.json',
     )
 
     await page.getByRole('radio', { name: '英単語ターゲット1900' }).click()

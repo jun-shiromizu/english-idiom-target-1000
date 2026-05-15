@@ -20,16 +20,16 @@ export const BOOKS: Record<BookId, BookConfig> = {
 		maxNumber: 1000,
 		dataRepo: 'english-idiom-target-1000-data',
 		dataBranch: 'main',
-		dataPath: '',
+		dataPath: 'idiom-target-1000',
 	},
 	'word-target-1900': {
 		id: 'word-target-1900',
 		title: '英単語ターゲット1900',
 		shortLabel: '単語',
 		maxNumber: 1900,
-		dataRepo: 'english-target-books-data',
+		dataRepo: 'english-idiom-target-1000-data',
 		dataBranch: 'main',
-		dataPath: 'books/word-target-1900',
+		dataPath: 'word-target-1900',
 	},
 }
 
