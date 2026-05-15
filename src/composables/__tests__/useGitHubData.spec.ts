@@ -25,7 +25,7 @@ describe('useGitHubData', () => {
       mockFetch.mockResolvedValueOnce({ ok: true, text: () => Promise.resolve(JSON.stringify(mockData)) })
 
       const { fetchIdiomData } = useGitHubData()
-      const data = await fetchIdiomData('0001')
+      const data = await fetchIdiomData('idiom-target-1000', '0001')
 
       expect(data.idioms).toEqual(['a piece of ~'])
       expect(data.means[0]['idiom-jp']).toBe('１つの～')
@@ -35,7 +35,7 @@ describe('useGitHubData', () => {
       mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
 
       const { fetchIdiomData } = useGitHubData()
-      await expect(fetchIdiomData('9999')).rejects.toThrow()
+      await expect(fetchIdiomData('idiom-target-1000', '9999')).rejects.toThrow()
     })
   })
 
@@ -51,7 +51,7 @@ describe('useGitHubData', () => {
       })
 
       const { listFiles } = useGitHubData()
-      const files = await listFiles('target')
+      const files = await listFiles('idiom-target-1000', 'target')
 
       expect(files).toEqual(['0001.json', '0002.json'])
     })
@@ -66,7 +66,7 @@ describe('useGitHubData', () => {
       })
 
       const { fetchSupplementHtml } = useGitHubData()
-      const html = await fetchSupplementHtml('0001')
+      const html = await fetchSupplementHtml('idiom-target-1000', '0001')
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/supplement/0001-add.md',
@@ -83,7 +83,25 @@ describe('useGitHubData', () => {
       mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
 
       const { fetchSupplementHtml } = useGitHubData()
-      await expect(fetchSupplementHtml('0999')).resolves.toBeNull()
+      await expect(fetchSupplementHtml('idiom-target-1000', '0999')).resolves.toBeNull()
+    })
+
+    it('教材ごとの dataPath を使って単語データの補足を取得する', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve('![word](./img/word.png)'),
+      })
+
+      const { fetchSupplementHtml } = useGitHubData()
+      const html = await fetchSupplementHtml('word-target-1900', '0001')
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://raw.githubusercontent.com/jun-shiromizu/english-target-books-data/main/books/word-target-1900/supplement/0001-add.md',
+      )
+      expect(html).toContain(
+        'src="https://raw.githubusercontent.com/jun-shiromizu/english-target-books-data/main/books/word-target-1900/img/word.png"',
+      )
     })
   })
 })

@@ -1,17 +1,17 @@
-# 英熟語暗記アプリ
+# ターゲット暗記アプリ
 
-- 高校生向けの英熟語暗記アプリ
+- 高校生向けの英単語・英熟語暗記アプリ
 - ユーザは暗記カードのように問題を解く
 
 ## データ
-- 基本的に「旺文社・英熟語ターゲット1000」を利用する
-- 英熟語ターゲットのデータは、GitHub 上の特定リポジトリの特定ディレクトリに格納しておく（publicで公開しておく）
-- 英熟語ターゲット以外のデータ（例えば他の書籍由来のデータ）も同様にGitHub上に格納しておく
+- 基本的に「旺文社・英熟語ターゲット1000」と「英単語ターゲット1900」を利用する
+- 各教材のデータは、GitHub 上の public データリポジトリに教材ごとのディレクトリを分けて格納しておく
+- 将来的に他の書籍由来のデータを追加する場合も同様に教材ディレクトリを増やして対応する
 - データの取得方法
   - 毎回GitHubからランタイムで取得する（ローカルキャッシュは行わない）
   - ディレクトリ内のファイル一覧取得には GitHub Contents API を使用する
   - 個々のファイル内容の取得には GitHub Raw URL を使用する
-- 英熟語ターゲット由来のデータは基本的に以下の形式
+- 各教材ディレクトリ配下のデータは基本的に以下の形式
 
   - 基本形
 
@@ -86,7 +86,7 @@
 }
 ```
 
-- 英熟語ターゲット以外のデータ（補足データ）
+- 各教材の補足データ
   - ファイル名は `{番号}-add.md` の固定形式（例: `0001-add.md`）。
   - システムは回答表示時に該当番号の補足Markdownを取得し、HTMLに変換して表示する。
   - 番号によっては、補足データが存在しない場合もある。
@@ -106,6 +106,9 @@ bring「手に持っている」＋up「大きくする」 → 手の中で大�
 
 ## 機能
 - ユーザは開始時に以下を設定し、「開始」を押す
+  - 教材
+    - 英熟語ターゲット1000
+    - 英単語ターゲット1900
   - 開始番号と終了番号（例えば 1 ~ 100）：出題する熟語番号の範囲
   - 出題形式
     - 熟語（英語 --> 日本語）
@@ -241,23 +244,29 @@ bring「手に持っている」＋up「大きくする」 → 手の中で大�
   ```
 
 ### データリポジトリ
-- リポジトリ名: `english-idiom-target-1000-data`
-- 内容: 英熟語ターゲットのJSONデータ、補足Markdown、画像
+- リポジトリ名: `english-target-books-data`
+- 内容: 各教材のJSONデータ、補足Markdown、画像
 - 公開: public（アプリからRaw URLで取得するため）
 - 構成:
   ```
-  english-idiom-target-1000-data/
-  ├── target/           … 英熟語ターゲット由来のJSONデータ
-  │   ├── 0001.json
-  │   ├── 0002.json
-  │   └── ...
-  ├── supplement/       … 補足データ（Markdown）
-  │   ├── 0001-add.md
-  │   ├── 0002-add.md
-  │   └── ...
-  └── img/              … 補足データ用の画像
-      ├── 0001-xxx.png
-      └── ...
+  english-target-books-data/
+  └── books/
+      ├── idiom-target-1000/
+      │   ├── target/       … 英熟語ターゲット1000 の JSON データ
+      │   │   ├── 0001.json
+      │   │   └── ...
+      │   ├── supplement/   … 補足データ（Markdown）
+      │   │   ├── 0001-add.md
+      │   │   └── ...
+      │   └── img/          … 補足データ用の画像
+      └── word-target-1900/
+          ├── target/       … 英単語ターゲット1900 の JSON データ
+          │   ├── 0001.json
+          │   └── ...
+          ├── supplement/
+          │   ├── 0001-add.md
+          │   └── ...
+          └── img/
   ```
 
 ### デプロイ
@@ -267,8 +276,8 @@ bring「手に持っている」＋up「大きくする」 → 手の中で大�
 
 ### データへのアクセス
 - ディレクトリ内のファイル一覧取得には GitHub Contents API を使用する
-  - 例: `https://api.github.com/repos/{owner}/english-idiom-target-1000-data/contents/target/`
+  - 例: `https://api.github.com/repos/{owner}/english-target-books-data/contents/books/idiom-target-1000/target/`
 - 個々のファイル内容の取得には GitHub Raw URL を使用する
-  - 例: `https://raw.githubusercontent.com/{owner}/english-idiom-target-1000-data/main/target/0001.json`
-  - 例: `https://raw.githubusercontent.com/{owner}/english-idiom-target-1000-data/main/supplement/0001-add.md`
+  - 例: `https://raw.githubusercontent.com/{owner}/english-target-books-data/main/books/idiom-target-1000/target/0001.json`
+  - 例: `https://raw.githubusercontent.com/{owner}/english-target-books-data/main/books/idiom-target-1000/supplement/0001-add.md`
 - 補足データ内の画像の相対パス（`./img/xxx.png`）はアプリ側でRaw URLのフルパスに変換して表示する

@@ -11,6 +11,7 @@ scenarios:
     steps:
       - アプリのトップページを開く
     expect:
+      - 「教材」ラジオボタンが表示される
       - 「開始番号」入力フィールドが表示される
       - 「終了番号」入力フィールドが表示される
       - 「出題形式」セレクトボックスが表示される
@@ -27,3 +28,110 @@ scenarios:
       - アプリのトップページを開く
     expect:
       - 「全履歴をクリア」ボタンが表示される
+
+  - id: HOME-003
+    category: normal
+    status: done
+    scenario: 英熟語ターゲット1000で開始すると熟語データの取得先を使って出題画面へ遷移する
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+      - 開始番号に「1」、終了番号に「1」を入力する
+      - 「開始」ボタンをクリックする
+    expect:
+      - 英熟語ターゲット1000用のデータ取得先にリクエストが送られる
+      - 出題画面に遷移する
+
+  - id: HOME-004
+    category: normal
+    status: done
+    scenario: 英単語ターゲット1900で開始すると単語データの取得先を使って出題画面へ遷移する
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+      - 教材で「英単語ターゲット1900」を選択する
+      - 開始番号に「1」、終了番号に「1」を入力する
+      - 「開始」ボタンをクリックする
+    expect:
+      - 英単語ターゲット1900用のデータ取得先にリクエストが送られる
+      - 出題画面に遷移する
+
+  - id: HOME-005
+    category: normal
+    status: done
+    scenario: 英熟語ターゲット1000で開始すると熟語教材の session が保存される
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+      - 開始番号に「1」、終了番号に「1」を入力する
+      - 「開始」ボタンをクリックする
+    expect:
+      - localStorage に session が保存される
+      - 保存された session の settings.bookId が英熟語ターゲット1000になる
+      - 保存された session の items に 1 問目のデータが含まれる
+
+  - id: HOME-006
+    category: normal
+    status: done
+    scenario: 英単語ターゲット1900で開始すると単語教材の session が保存される
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+      - 教材で「英単語ターゲット1900」を選択する
+      - 開始番号に「1」、終了番号に「1」を入力する
+      - 「開始」ボタンをクリックする
+    expect:
+      - localStorage に session が保存される
+      - 保存された session の settings.bookId が英単語ターゲット1900になる
+      - 保存された session の items に 1 問目のデータが含まれる
+
+  - id: HOME-007
+    category: normal
+    status: done
+    scenario: 英熟語ターゲット1000の保存済み session があると再開バナーに教材名が表示される
+    precondition: 中断セッションが存在する状態
+    steps:
+      - 英熟語ターゲット1000の session を保存した状態でトップページを開く
+    expect:
+      - 再開バナーが表示される
+      - 再開バナーに「英熟語ターゲット1000」が表示される
+      - 再開バナーに現在位置と総問題数が表示される
+
+  - id: HOME-008
+    category: normal
+    status: done
+    scenario: 英単語ターゲット1900の保存済み session があると再開バナーから出題画面へ遷移できる
+    precondition: 中断セッションが存在する状態
+    steps:
+      - 英単語ターゲット1900の session を保存した状態でトップページを開く
+      - 「再開する」ボタンをクリックする
+    expect:
+      - 再開バナーに「英単語ターゲット1900」が表示される
+      - 出題画面に遷移する
+
+  - id: HOME-301
+    category: boundary
+    status: done
+    scenario: 教材を英単語ターゲット1900に切り替えると 1900 番まで入力できる
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+      - 教材で「英単語ターゲット1900」を選択する
+      - 開始番号に「1500」、終了番号に「1900」を入力する
+    expect:
+      - 開始番号に「1500」が入力された状態になる
+      - 終了番号に「1900」が入力された状態になる
+
+  - id: HOME-302
+    category: boundary
+    status: done
+    scenario: 英単語ターゲット1900で 1000 超の番号を入力後に英熟語ターゲット1000へ切り替えると 1000 に補正される
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+      - 教材で「英単語ターゲット1900」を選択する
+      - 開始番号に「1500」、終了番号に「1900」を入力する
+      - 教材で「英熟語ターゲット1000」を選択する
+    expect:
+      - 開始番号が「1000」に補正される
+      - 終了番号が「1000」に補正される

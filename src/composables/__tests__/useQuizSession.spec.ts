@@ -41,6 +41,7 @@ const dataMap = new Map<string, IdiomData>([
 ])
 
 const baseSettings: QuizSettings = {
+  bookId: 'idiom-target-1000',
   startNumber: 1,
   endNumber: 6,
   mode: 'idiom',
@@ -102,19 +103,36 @@ describe('useQuizSession', () => {
 
       expect(loaded?.currentIndex).toBe(2)
       expect(loaded?.results[0]).toBe(true)
+      expect(loaded?.settings.bookId).toBe('idiom-target-1000')
     })
 
     it('clearSession でlocalStorageから削除される', () => {
       const { saveSession, clearSession, loadSession } = useQuizSession()
-      const items = buildItems(baseSettings, dataMap)
-      function buildItems(s: QuizSettings, d: Map<string, IdiomData>) {
-        const { buildItems: b } = useQuizSession()
-        return b(s, d)
-      }
       const session = { settings: baseSettings, items: [], currentIndex: 0, results: {} }
       saveSession(session)
       clearSession()
       expect(loadSession()).toBeNull()
+    })
+
+    it('旧セッション形式を読み込むと既定教材が補完される', () => {
+      localStorage.setItem(
+        'idiom-app-session',
+        JSON.stringify({
+          settings: {
+            startNumber: 1,
+            endNumber: 3,
+            mode: 'idiom',
+            target: 'all',
+            order: 'sequential',
+          },
+          items: [],
+          currentIndex: 0,
+          results: {},
+        }),
+      )
+
+      const { loadSession } = useQuizSession()
+      expect(loadSession()?.settings.bookId).toBe('idiom-target-1000')
     })
   })
 })

@@ -11,11 +11,13 @@ export interface Mean {
   'sentence-jp': string
 }
 
+export type BookId = 'idiom-target-1000' | 'word-target-1900'
 export type QuizMode = 'idiom' | 'sentence'
 export type QuizTarget = 'all' | 'incorrect'
 export type QuizOrder = 'sequential' | 'random'
 
 export interface QuizSettings {
+  bookId: BookId
   startNumber: number
   endNumber: number
   mode: QuizMode

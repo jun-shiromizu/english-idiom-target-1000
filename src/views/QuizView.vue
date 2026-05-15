@@ -121,7 +121,7 @@ function onJudge(correct: boolean) {
     : item.idiomData.idioms.length
   const index = item.meanIndex !== undefined ? item.meanIndex : item.idiomIndex
 
-  setResult(item.number, index, totalIdioms, correct)
+  setResult(session.value.settings.bookId, item.number, index, totalIdioms, correct)
   session.value.results[currentIndex.value] = correct
 
   const nextIndex = currentIndex.value + 1

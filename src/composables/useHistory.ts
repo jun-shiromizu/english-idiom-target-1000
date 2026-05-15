@@ -1,11 +1,17 @@
-import { STORAGE_KEY_HISTORY } from '@/config'
+import { DEFAULT_BOOK_ID, STORAGE_KEY_HISTORY } from '@/config'
+import type { BookId } from '@/types'
 import { formatNumber } from './useGitHubData'
 
 /** localStorage に保存する履歴の型 */
 type HistoryRecord = Record<string, boolean>
 
-/** 熟語キーを生成: 熟語が1つなら "0001"、複数なら "0001-1" のように idiomIndex を付与 */
-function makeKey(number: string, idiomIndex: number, totalIdioms: number): string {
+/** 教材別の履歴キーを生成: 単一なら "bookId:0001"、複数なら "bookId:0001-1" */
+function makeKey(bookId: BookId, number: string, idiomIndex: number, totalIdioms: number): string {
+  const suffix = totalIdioms > 1 ? `${number}-${idiomIndex}` : number
+  return `${bookId}:${suffix}`
+}
+
+function makeLegacyKey(number: string, idiomIndex: number, totalIdioms: number): string {
   return totalIdioms > 1 ? `${number}-${idiomIndex}` : number
 }
 
@@ -24,18 +30,30 @@ export function useHistory() {
   }
 
   /** 最新の回答を記録（正解/不正解） */
-  function setResult(number: string, idiomIndex: number, totalIdioms: number, correct: boolean): void {
+  function setResult(
+    bookId: BookId,
+    number: string,
+    idiomIndex: number,
+    totalIdioms: number,
+    correct: boolean,
+  ): void {
     const history = getHistory()
-    history[makeKey(number, idiomIndex, totalIdioms)] = correct
+    history[makeKey(bookId, number, idiomIndex, totalIdioms)] = correct
     saveHistory(history)
   }
 
   /** 指定の熟語の最新回答が不正解かどうか */
-  function isIncorrect(number: string, idiomIndex: number, totalIdioms: number): boolean {
+  function isIncorrect(bookId: BookId, number: string, idiomIndex: number, totalIdioms: number): boolean {
     const history = getHistory()
-    const key = makeKey(number, idiomIndex, totalIdioms)
+    const key = makeKey(bookId, number, idiomIndex, totalIdioms)
     // 未回答は "不正解扱いしない"（出題対象から除外しない）
-    if (!(key in history)) return false
+    if (!(key in history)) {
+      if (bookId === DEFAULT_BOOK_ID) {
+        const legacyKey = makeLegacyKey(number, idiomIndex, totalIdioms)
+        return history[legacyKey] === false
+      }
+      return false
+    }
     return history[key] === false
   }
 
@@ -45,13 +63,16 @@ export function useHistory() {
   }
 
   /** 指定範囲の履歴をクリア */
-  function clearRange(start: number, end: number): void {
+  function clearRange(bookId: BookId, start: number, end: number): void {
     const history = getHistory()
     for (let i = start; i <= end; i++) {
       const num = formatNumber(i)
-      // "0001" と "0001-0", "0001-1" ... の両パターンを削除
+      const prefix = `${bookId}:${num}`
       Object.keys(history).forEach((key) => {
-        if (key === num || key.startsWith(`${num}-`)) {
+        if (key === prefix || key.startsWith(`${prefix}-`)) {
+          delete history[key]
+        }
+        if (bookId === DEFAULT_BOOK_ID && (key === num || key.startsWith(`${num}-`))) {
           delete history[key]
         }
       })

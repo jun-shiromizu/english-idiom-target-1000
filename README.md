@@ -61,8 +61,21 @@ src/
 
 ```ts
 export const GITHUB_OWNER = 'jun-shiromizu'
-export const DATA_REPO   = 'english-idiom-target-1000-data'
-export const DATA_BRANCH = 'main'
+
+export const BOOKS = {
+    'idiom-target-1000': {
+        title: '英熟語ターゲット1000',
+        dataRepo: 'english-idiom-target-1000-data',
+        dataBranch: 'main',
+        dataPath: '',
+    },
+    'word-target-1900': {
+        title: '英単語ターゲット1900',
+        dataRepo: 'english-target-books-data',
+        dataBranch: 'main',
+        dataPath: 'books/word-target-1900',
+    },
+} as const
 ```
 
 ---

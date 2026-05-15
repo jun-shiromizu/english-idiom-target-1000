@@ -30,7 +30,14 @@ function makeItem(number: string): QuizItem {
 
 function makeSession(results: Record<number, boolean>): QuizSession {
   return {
-    settings: { startNumber: 1, endNumber: 3, mode: 'idiom', target: 'all', order: 'sequential' },
+    settings: {
+      bookId: 'idiom-target-1000',
+      startNumber: 1,
+      endNumber: 3,
+      mode: 'idiom',
+      target: 'all',
+      order: 'sequential',
+    },
     items: [makeItem('0001'), makeItem('0002'), makeItem('0003')],
     currentIndex: 3,
     results,

@@ -147,8 +147,8 @@ function retryIncorrect() {
 
 function clearAndRetry() {
   if (!session.value) return
-  const { startNumber, endNumber } = session.value.settings
-  clearRange(startNumber, endNumber)
+  const { bookId, startNumber, endNumber } = session.value.settings
+  clearRange(bookId, startNumber, endNumber)
   const retrySession = {
     ...session.value,
     currentIndex: 0,

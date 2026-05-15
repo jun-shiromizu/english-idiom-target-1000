@@ -3,7 +3,7 @@
     <v-row justify="center">
       <v-col cols="12">
         <h1 class="text-h5 font-weight-bold text-center mb-6">
-          英熟語ターゲット1000
+          ターゲット暗記アプリ
         </h1>
 
         <!-- 中断セッション再開バナー -->
@@ -18,7 +18,7 @@
           <div class="d-flex align-center justify-space-between flex-wrap gap-2">
             <span>
               前回のセッションが保存されています
-              （{{ savedSession.currentIndex }} / {{ savedSession.items.length }}問目）
+              （{{ getBookTitle(savedSession.settings.bookId) }} / {{ savedSession.currentIndex }} / {{ savedSession.items.length }}問目）
             </span>
             <v-btn size="small" color="info" variant="elevated" @click="resumeSession">
               再開する
@@ -31,13 +31,28 @@
           <v-card-title class="pa-4 pb-2 text-subtitle-1">出題設定</v-card-title>
           <v-card-text>
             <v-row>
+              <v-col cols="12">
+                <v-radio-group
+                  v-model="settings.bookId"
+                  label="教材"
+                  inline
+                  aria-label="教材"
+                >
+                  <v-radio
+                    v-for="book in bookItems"
+                    :key="book.value"
+                    :label="book.label"
+                    :value="book.value"
+                  />
+                </v-radio-group>
+              </v-col>
               <v-col cols="6">
                 <v-text-field
                   v-model.number="settings.startNumber"
                   label="開始番号"
                   type="number"
                   :min="1"
-                  :max="1000"
+                  :max="selectedBook.maxNumber"
                   variant="outlined"
                   density="compact"
                   aria-label="開始番号"
@@ -49,7 +64,7 @@
                   label="終了番号"
                   type="number"
                   :min="1"
-                  :max="1000"
+                  :max="selectedBook.maxNumber"
                   variant="outlined"
                   density="compact"
                   aria-label="終了番号"
@@ -151,9 +166,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { QuizSettings } from '@/types'
+import { BOOK_ORDER, DEFAULT_BOOK_ID, getBookConfig } from '@/config'
 import { useGitHubData } from '@/composables/useGitHubData'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { useHistory } from '@/composables/useHistory'
@@ -164,11 +180,17 @@ const { buildItems, saveSession, loadSession, clearSession } = useQuizSession()
 const { clearAll } = useHistory()
 
 const settings = ref<QuizSettings>({
+  bookId: DEFAULT_BOOK_ID,
   startNumber: 1,
   endNumber: 100,
   mode: 'idiom',
   target: 'all',
   order: 'sequential',
+})
+
+const bookItems = BOOK_ORDER.map((bookId) => {
+  const book = getBookConfig(bookId)
+  return { label: book.title, value: book.id }
 })
 
 const modeItems = [
@@ -188,12 +210,22 @@ const loading = ref(false)
 const errorMessage = ref('')
 const showClearDialog = ref(false)
 const savedSession = ref(loadSession())
+const selectedBook = computed(() => getBookConfig(settings.value.bookId))
 
 const isValid = computed(
   () =>
     settings.value.startNumber >= 1 &&
-    settings.value.endNumber <= 1000 &&
+    settings.value.endNumber <= selectedBook.value.maxNumber &&
     settings.value.startNumber <= settings.value.endNumber,
+)
+
+watch(
+  () => settings.value.bookId,
+  () => {
+    const maxNumber = selectedBook.value.maxNumber
+    if (settings.value.startNumber > maxNumber) settings.value.startNumber = maxNumber
+    if (settings.value.endNumber > maxNumber) settings.value.endNumber = maxNumber
+  },
 )
 
 async function startQuiz() {
@@ -201,6 +233,7 @@ async function startQuiz() {
   errorMessage.value = ''
   try {
     const { dataMap } = await fetchRangeData(
+      settings.value.bookId,
       settings.value.startNumber,
       settings.value.endNumber,
     )
@@ -226,6 +259,10 @@ async function startQuiz() {
   } finally {
     loading.value = false
   }
+}
+
+function getBookTitle(bookId: QuizSettings['bookId']) {
+  return getBookConfig(bookId).title
 }
 
 function resumeSession() {
