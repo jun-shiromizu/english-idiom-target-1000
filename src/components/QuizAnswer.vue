@@ -9,7 +9,7 @@
         <!-- 熟語モード -->
         <template v-if="item.meanIndex === undefined">
           <section class="mb-4">
-            <h3 class="text-subtitle-1 font-weight-bold mb-2">熟語</h3>
+            <h3 class="text-subtitle-1 font-weight-bold mb-2">英単語／英熟語</h3>
             <p v-for="idiom in item.idiomData.idioms" :key="idiom" class="text-body-1">
               {{ idiom }}
             </p>
@@ -51,7 +51,7 @@
           </section>
 
           <section class="mb-4">
-            <h3 class="text-subtitle-1 font-weight-bold mb-2">熟語</h3>
+            <h3 class="text-subtitle-1 font-weight-bold mb-2">英単語／英熟語</h3>
             <p v-for="idiom in item.idiomData.idioms" :key="idiom" class="text-body-1">
               {{ idiom }}
             </p>
