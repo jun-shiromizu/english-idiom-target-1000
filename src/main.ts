@@ -10,6 +10,7 @@ import App from './App.vue'
 import HomeView from './views/HomeView.vue'
 import QuizView from './views/QuizView.vue'
 import ResultView from './views/ResultView.vue'
+import GameView from './views/GameView.vue'
 
 const vuetify = createVuetify({
   components,
@@ -24,6 +25,7 @@ const router = createRouter({
   routes: [
     { path: '/', name: 'home', component: HomeView },
     { path: '/quiz', name: 'quiz', component: QuizView },
+    { path: '/game', name: 'game', component: GameView },
     { path: '/result', name: 'result', component: ResultView },
   ],
 })

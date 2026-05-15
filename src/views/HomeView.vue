@@ -106,18 +106,41 @@
               density="compact"
               aria-label="出題順序"
             />
+
+            <v-select
+              v-model="gameDifficulty"
+              label="ゲーム難易度"
+              :items="difficultyItems"
+              item-title="label"
+              item-value="value"
+              variant="outlined"
+              density="compact"
+              aria-label="ゲーム難易度"
+            />
           </v-card-text>
-          <v-card-actions class="pa-4 pt-0">
+          <v-card-actions class="pa-4 pt-0 flex-wrap action-buttons">
             <v-spacer />
             <v-btn
               color="primary"
               variant="elevated"
               size="large"
-              :loading="loading"
-              :disabled="!isValid"
-              @click="startQuiz"
+              :loading="startingRoute === 'quiz'"
+              :disabled="!isValid || startingRoute !== null"
+              @click="startSession('quiz')"
             >
-              開始
+              <v-icon start>mdi-card-text-outline</v-icon>
+              単語帳
+            </v-btn>
+            <v-btn
+              color="primary"
+              variant="outlined"
+              size="large"
+              :loading="startingRoute === 'game'"
+              :disabled="!isValid || startingRoute !== null"
+              @click="startSession('game')"
+            >
+              <v-icon start>mdi-gamepad-variant-outline</v-icon>
+              落ち物ゲーム
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -168,8 +191,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import type { QuizSettings } from '@/types'
-import { BOOK_ORDER, DEFAULT_BOOK_ID, STORAGE_KEY_SETTINGS, getBookConfig } from '@/config'
+import type { GameDifficulty, QuizSettings } from '@/types'
+import {
+  BOOK_ORDER,
+  DEFAULT_BOOK_ID,
+  STORAGE_KEY_GAME_SETTINGS,
+  STORAGE_KEY_SETTINGS,
+  getBookConfig,
+} from '@/config'
 import { useGitHubData } from '@/composables/useGitHubData'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { useHistory } from '@/composables/useHistory'
@@ -220,7 +249,24 @@ function saveSettings(settings: QuizSettings): void {
   localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings))
 }
 
+function loadGameDifficulty(): GameDifficulty {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_GAME_SETTINGS)
+    const parsed = raw ? (JSON.parse(raw) as { difficulty?: GameDifficulty }) : null
+    return parsed?.difficulty === 'easy' || parsed?.difficulty === 'hard'
+      ? parsed.difficulty
+      : 'normal'
+  } catch {
+    return 'normal'
+  }
+}
+
+function saveGameDifficulty(difficulty: GameDifficulty): void {
+  localStorage.setItem(STORAGE_KEY_GAME_SETTINGS, JSON.stringify({ difficulty }))
+}
+
 const settings = ref<QuizSettings>(createDefaultSettings())
+const gameDifficulty = ref<GameDifficulty>(loadGameDifficulty())
 
 const bookItems = BOOK_ORDER.map((bookId) => {
   const book = getBookConfig(bookId)
@@ -239,8 +285,13 @@ const orderItems = [
   { label: '番号順', value: 'sequential' },
   { label: 'ランダム', value: 'random' },
 ]
+const difficultyItems = [
+  { label: 'イージー', value: 'easy' },
+  { label: 'ノーマル', value: 'normal' },
+  { label: 'ハード', value: 'hard' },
+]
 
-const loading = ref(false)
+const startingRoute = ref<'quiz' | 'game' | null>(null)
 const errorMessage = ref('')
 const showClearDialog = ref(false)
 const savedSession = ref(loadSession())
@@ -270,8 +321,12 @@ watch(
   { deep: true },
 )
 
-async function startQuiz() {
-  loading.value = true
+watch(gameDifficulty, (value) => {
+  saveGameDifficulty(value)
+})
+
+async function startSession(routeName: 'quiz' | 'game') {
+  startingRoute.value = routeName
   errorMessage.value = ''
   try {
     const { dataMap } = await fetchRangeData(
@@ -287,6 +342,11 @@ async function startQuiz() {
       return
     }
 
+    if (routeName === 'game' && items.length < 4) {
+      errorMessage.value = '落ち物ゲームは4択を作るため、4問以上の範囲を指定してください。'
+      return
+    }
+
     const session = {
       settings: settings.value,
       items,
@@ -294,12 +354,12 @@ async function startQuiz() {
       results: {},
     }
     saveSession(session)
-    router.push({ name: 'quiz' })
+    router.push({ name: routeName })
   } catch (e) {
     errorMessage.value = 'データの取得に失敗しました。ネットワーク接続を確認してください。'
     console.error(e)
   } finally {
-    loading.value = false
+    startingRoute.value = null
   }
 }
 
@@ -326,3 +386,9 @@ onMounted(() => {
   savedSession.value = loadSession()
 })
 </script>
+
+<style scoped>
+.action-buttons {
+  gap: 10px;
+}
+</style>

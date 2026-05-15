@@ -111,7 +111,7 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await expect(page.getByText('単語／熟語（英語 → 日本語）', { exact: true })).toBeVisible()
     await expect(page.getByLabel('出題対象')).toBeVisible()
     await expect(page.getByLabel('出題順序')).toBeVisible()
-    await expect(page.getByRole('button', { name: '開始' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '単語帳' })).toBeVisible()
   })
 
   test('HOME-002: 不正解履歴のリセットセクションが表示される', async ({ page }) => {
@@ -128,7 +128,7 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await page.getByRole('radio', { name: '英熟語ターゲット1000' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
-    await page.getByRole('button', { name: '開始' }).click()
+    await page.getByRole('button', { name: '単語帳' }).click()
 
     await expect(page).toHaveURL(/#\/quiz/)
     expect(requestedUrls).toContain(
@@ -149,7 +149,7 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await page.getByRole('radio', { name: '英単語ターゲット1900' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
-    await page.getByRole('button', { name: '開始' }).click()
+    await page.getByRole('button', { name: '単語帳' }).click()
 
     await expect(page).toHaveURL(/#\/quiz/)
     expect(requestedUrls).toContain(
@@ -170,7 +170,7 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await page.getByRole('radio', { name: '英熟語ターゲット1000' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
-    await page.getByRole('button', { name: '開始' }).click()
+    await page.getByRole('button', { name: '単語帳' }).click()
 
     await expect(page).toHaveURL(/#\/quiz/)
 
@@ -195,7 +195,7 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await page.getByRole('radio', { name: '英単語ターゲット1900' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
-    await page.getByRole('button', { name: '開始' }).click()
+    await page.getByRole('button', { name: '単語帳' }).click()
 
     await expect(page).toHaveURL(/#\/quiz/)
 

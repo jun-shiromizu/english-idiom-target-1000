@@ -24,6 +24,8 @@
   "means": [
     {
       "idiom-jp": "１つの～",
+      "partOfSpeech": "phrase",
+      "choiceType": "quantity-expression",
       "example-sentence": "I handed him a piece of paper so that he could write down all the names.",
       "sentence-jp": "彼がすべての名前を書けるように私は彼に1枚の紙を手渡した。"
     }
@@ -47,12 +49,16 @@
   "means": [
     {
       "idiom-jp": "２つの～",
+      "partOfSpeech": "phrase",
+      "choiceType": "quantity-expression",
       "synonyms": ["two"],
       "example-sentence": "My mother wanted me to byu a couple of sandwiches on my way home.",
       "sentence-jp": "母は私に、帰宅の途中で2個のサンドイッチを買ってきてもらいたかった。"
     },
     {
       "idiom-jp": "２、３の～",
+      "partOfSpeech": "phrase",
+      "choiceType": "quantity-expression",
       "synonyms": ["a few ~"],
       "example-sentence": "Take a couple of sweaters with you; it might be cold up there.",
       "sentence-jp": "２、３枚のセーターを持っていきなさい。その上の方は寒いかもしれません。"
@@ -76,6 +82,8 @@
   "means": [
     {
       "idiom-jp": "たくさん(の～)",
+      "partOfSpeech": "phrase",
+      "choiceType": "quantity-expression",
       "example-sentence": "The recent typhoon did a great deal of damage to rice crops.",
       "sentence-jp": "先ごろの台風は米作に大きな被害を与えた。"
     }
@@ -103,6 +111,12 @@ bring「手に持っている」＋up「大きくする」 → 手の中で大�
 ![](./img/1234-bar-foo.png)
 ```
 
+- `means[]` には、ゲームの選択肢生成で使う分類メタデータを任意で持たせる。
+  - `partOfSpeech` は表示・分析用の大分類。
+    - 例: `noun`, `verb`, `adjective`, `adverb`, `preposition`, `conjunction`, `phrase`, `other`
+  - `choiceType` は落ち物ゲームなどで「紛らわしい選択肢」を選ぶための分類。
+    - 例: `transitive-verb`, `intransitive-verb`, `verb-phrase`, `noun`, `adjective`, `adverb`, `prepositional-phrase`, `conjunction-phrase`, `quantity-expression`, `comparative-expression`, `idiomatic-expression`, `other`
+  - システムは `choiceType` が存在する場合はそれを優先し、存在しない古いデータでは日本語の意味から推定する。
 
 ## 機能
 - ユーザは開始時に以下を設定し、「開始」を押す

@@ -7,14 +7,41 @@ export interface IdiomData {
 export interface Mean {
   'idiom-jp': string
   synonyms?: string[]
+  partOfSpeech?: PartOfSpeech
+  choiceType?: ChoiceType
   'example-sentence': string
   'sentence-jp': string
 }
+
+export type PartOfSpeech =
+  | 'noun'
+  | 'verb'
+  | 'adjective'
+  | 'adverb'
+  | 'preposition'
+  | 'conjunction'
+  | 'phrase'
+  | 'other'
+
+export type ChoiceType =
+  | 'transitive-verb'
+  | 'intransitive-verb'
+  | 'verb-phrase'
+  | 'noun'
+  | 'adjective'
+  | 'adverb'
+  | 'prepositional-phrase'
+  | 'conjunction-phrase'
+  | 'quantity-expression'
+  | 'comparative-expression'
+  | 'idiomatic-expression'
+  | 'other'
 
 export type BookId = 'idiom-target-1000' | 'word-target-1900'
 export type QuizMode = 'idiom' | 'sentence'
 export type QuizTarget = 'all' | 'incorrect'
 export type QuizOrder = 'sequential' | 'random'
+export type GameDifficulty = 'easy' | 'normal' | 'hard'
 
 export interface QuizSettings {
   bookId: BookId
