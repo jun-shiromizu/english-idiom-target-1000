@@ -39,11 +39,11 @@ describe('useThemeSettings', () => {
     expect(localStorage.getItem(STORAGE_KEY_THEME)).toBe('cosmos')
   })
 
-  it('テーマカタログが 40 件あり、ダークとモーションを含む', async () => {
+  it('テーマカタログが 50 件あり、ダークとモーションを含む', async () => {
     const { APP_THEME_OPTIONS } = await import('@/theme')
 
-    expect(APP_THEME_OPTIONS).toHaveLength(40)
-    expect(APP_THEME_OPTIONS.filter((option) => option.isDark).length).toBeGreaterThanOrEqual(8)
+    expect(APP_THEME_OPTIONS).toHaveLength(50)
+    expect(APP_THEME_OPTIONS.filter((option) => option.isDark).length).toBeGreaterThanOrEqual(18)
     expect(APP_THEME_OPTIONS.filter((option) => option.hasMotion)).toHaveLength(5)
   })
 })
