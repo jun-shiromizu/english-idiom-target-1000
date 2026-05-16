@@ -11,7 +11,12 @@
           <div class="text-h6 font-weight-bold">{{ score }}</div>
         </div>
         <ProgressBar :current="currentIndex + 1" :total="session.items.length" class="game-progress" />
-        <v-btn variant="text" size="small" @click="showQuitDialog = true">終了</v-btn>
+        <div class="d-flex align-center ga-1">
+          <v-btn variant="text" size="small" @click="togglePause">
+            {{ isPaused ? '再開' : '一時停止' }}
+          </v-btn>
+          <v-btn variant="text" size="small" @click="showQuitDialog = true">終了</v-btn>
+        </div>
       </div>
 
       <section v-if="gameOver" class="game-result">
@@ -44,33 +49,43 @@
       </section>
 
       <template v-else>
-        <section class="play-field" aria-live="polite">
-          <div class="danger-line" />
-          <div class="falling-word" :style="fallingWordStyle">
-            <span class="text-caption text-medium-emphasis">No.{{ currentItem.number }}</span>
-            <strong>{{ currentItem.questionText }}</strong>
+        <template v-if="isPaused">
+          <section class="play-field paused-field d-flex align-center justify-center">
+            <div class="text-center">
+              <div class="text-subtitle-1 font-weight-bold mb-2">一時停止中</div>
+              <v-btn color="primary" variant="elevated" @click="togglePause">再開する</v-btn>
+            </div>
+          </section>
+        </template>
+        <template v-else>
+          <section class="play-field" aria-live="polite">
+            <div class="danger-line" />
+            <div class="falling-word" :style="fallingWordStyle">
+              <span class="text-caption text-medium-emphasis">No.{{ currentItem.number }}</span>
+              <strong>{{ currentItem.questionText }}</strong>
+            </div>
+          </section>
+
+          <div class="status-row mt-3 mb-3">
+            <v-chip color="secondary" variant="tonal" size="small">{{ difficultyLabel }}</v-chip>
+            <v-chip color="primary" variant="tonal" size="small">COMBO {{ combo }}</v-chip>
+            <v-chip color="error" variant="tonal" size="small">MISS {{ missCount }}</v-chip>
           </div>
-        </section>
 
-        <div class="status-row mt-3 mb-3">
-          <v-chip color="secondary" variant="tonal" size="small">{{ difficultyLabel }}</v-chip>
-          <v-chip color="primary" variant="tonal" size="small">COMBO {{ combo }}</v-chip>
-          <v-chip color="error" variant="tonal" size="small">MISS {{ missCount }}</v-chip>
-        </div>
-
-        <div class="choice-grid">
-          <v-btn
-            v-for="choice in choices"
-            :key="choice.label"
-            class="choice-button"
-            color="primary"
-            variant="outlined"
-            :disabled="isResolving"
-            @click="answer(choice.correct)"
-          >
-            {{ choice.label }}
-          </v-btn>
-        </div>
+          <div class="choice-grid">
+            <v-btn
+              v-for="choice in choices"
+              :key="choice.label"
+              class="choice-button"
+              color="primary"
+              variant="outlined"
+              :disabled="isResolving"
+              @click="answer(choice.correct)"
+            >
+              {{ choice.label }}
+            </v-btn>
+          </div>
+        </template>
       </template>
     </template>
   </v-container>
@@ -144,6 +159,7 @@ const difficulty = ref<GameDifficulty>(loadGameDifficulty())
 const gameOver = ref(false)
 const completed = ref(false)
 const isResolving = ref(false)
+const isPaused = ref(false)
 const showQuitDialog = ref(false)
 let animationFrame = 0
 let previousFrameTime = 0
@@ -182,7 +198,7 @@ function tick(time: number) {
   const delta = Math.min((time - previousFrameTime) / 1000, 0.05)
   previousFrameTime = time
 
-  if (!gameOver.value && !isResolving.value) {
+  if (!gameOver.value && !isResolving.value && !isPaused.value) {
     fallY.value += difficultyConfig.value.fallSpeed * delta
     if (fallY.value >= maxFallY.value) {
       finishGame(false)
@@ -214,7 +230,7 @@ function resetQuestion(options: { resetPosition?: boolean } = {}) {
 }
 
 function answer(correct: boolean) {
-  if (!session.value || isResolving.value || gameOver.value) return
+  if (!session.value || isResolving.value || gameOver.value || isPaused.value) return
 
   recordAnswer(correct)
 
@@ -258,7 +274,14 @@ function nextQuestion() {
 function finishGame(wasCompleted: boolean) {
   gameOver.value = true
   completed.value = wasCompleted
+  isPaused.value = false
   cancelAnimationFrame(animationFrame)
+}
+
+function togglePause() {
+  if (gameOver.value || !session.value) return
+  isPaused.value = !isPaused.value
+  if (!isPaused.value) previousFrameTime = 0
 }
 
 function restartGame() {
@@ -271,6 +294,7 @@ function restartGame() {
   gameOver.value = false
   completed.value = false
   isResolving.value = false
+  isPaused.value = false
   previousFrameTime = 0
   difficulty.value = loadGameDifficulty()
   resetQuestion({ resetPosition: true })
@@ -296,6 +320,10 @@ function restartGame() {
   background:
     linear-gradient(rgba(var(--v-theme-primary), 0.05), transparent 42%),
     rgb(var(--v-theme-surface));
+}
+
+.paused-field {
+  border-style: dashed;
 }
 
 .danger-line {
