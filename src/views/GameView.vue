@@ -39,16 +39,32 @@
         <v-card class="result-details mt-4" variant="outlined">
           <v-list density="compact">
             <v-list-item>
-              <v-list-item-title>モード</v-list-item-title>
+              <v-list-item-title>教材</v-list-item-title>
+              <template #append>{{ bookTitle }}</template>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>開始番号</v-list-item-title>
+              <template #append>{{ startNumberLabel }}</template>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>終了番号</v-list-item-title>
+              <template #append>{{ endNumberLabel }}</template>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>出題形式</v-list-item-title>
               <template #append>{{ modeLabel }}</template>
             </v-list-item>
             <v-list-item>
-              <v-list-item-title>単語／熟語</v-list-item-title>
-              <template #append>{{ bookLabel }}</template>
+              <v-list-item-title>出題対象</v-list-item-title>
+              <template #append>{{ targetLabel }}</template>
             </v-list-item>
             <v-list-item>
-              <v-list-item-title>開始／終了</v-list-item-title>
-              <template #append>{{ rangeLabel }}</template>
+              <v-list-item-title>出題順序</v-list-item-title>
+              <template #append>{{ orderLabel }}</template>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>ゲーム難易度</v-list-item-title>
+              <template #append>{{ gameDifficultyLabel }}</template>
             </v-list-item>
           </v-list>
         </v-card>
@@ -184,6 +200,19 @@ const MODE_LABELS = {
   idiom: '単語／熟語（英語 → 日本語）',
   sentence: '例文（英語 → 日本語）',
 } as const
+const TARGET_LABELS = {
+  all: 'すべて',
+  incorrect: '間違えたものだけ',
+} as const
+const ORDER_LABELS = {
+  sequential: '番号順',
+  random: 'ランダム',
+} as const
+const GAME_DIFFICULTY_LABELS: Record<GameDifficulty, string> = {
+  easy: 'イージー',
+  normal: 'ノーマル',
+  hard: 'ハード',
+}
 
 const router = useRouter()
 const { loadSession } = useQuizSession()
@@ -221,20 +250,24 @@ const fallingWordStyle = computed(() => ({
   transform: `translate3d(0, ${fallY.value}px, 0)`,
 }))
 function getModeLabel(mode: string) {
-  switch (mode) {
-    case 'sentence':
-      return MODE_LABELS.sentence
-    case 'idiom':
-      return MODE_LABELS.idiom
-    default:
-      return ''
-  }
+  return mode === 'sentence' ? MODE_LABELS.sentence : MODE_LABELS.idiom
 }
+
+function getTargetLabel(target: string) {
+  return target === 'incorrect' ? TARGET_LABELS.incorrect : TARGET_LABELS.all
+}
+
+function getOrderLabel(order: string) {
+  return order === 'random' ? ORDER_LABELS.random : ORDER_LABELS.sequential
+}
+
+const bookTitle = computed(() => (session.value ? getBookConfig(session.value.settings.bookId).title : ''))
+const startNumberLabel = computed(() => (session.value ? `${session.value.settings.startNumber}` : ''))
+const endNumberLabel = computed(() => (session.value ? `${session.value.settings.endNumber}` : ''))
 const modeLabel = computed(() => (session.value ? getModeLabel(session.value.settings.mode) : ''))
-const bookLabel = computed(() => (session.value ? getBookConfig(session.value.settings.bookId).shortLabel : ''))
-const rangeLabel = computed(() =>
-  session.value ? `${session.value.settings.startNumber} 〜 ${session.value.settings.endNumber}` : '',
-)
+const targetLabel = computed(() => (session.value ? getTargetLabel(session.value.settings.target) : ''))
+const orderLabel = computed(() => (session.value ? getOrderLabel(session.value.settings.order) : ''))
+const gameDifficultyLabel = computed(() => GAME_DIFFICULTY_LABELS[difficulty.value])
 
 onMounted(() => {
   const loaded = loadSession()

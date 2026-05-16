@@ -174,7 +174,7 @@ describe('GameView', () => {
     expect(afterResumeFrameY - beforeResumeFrameY).toBeLessThan(2)
   })
 
-  it('ゲーム終了時にモード・単語／熟語・開始／終了の情報を表示する', async () => {
+  it('ゲーム終了時に設定情報とゲーム難易度を表示する', async () => {
     localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeGameOverSession()))
     localStorage.setItem(STORAGE_KEY_GAME_SETTINGS, JSON.stringify({ difficulty: 'hard' }))
 
@@ -202,12 +202,20 @@ describe('GameView', () => {
 
     expect(reachedGameOver).toBe(true)
     expect(wrapper.text()).toContain('ゲームオーバー')
-    expect(wrapper.text()).toContain('モード')
+    expect(wrapper.text()).toContain('教材')
+    expect(wrapper.text()).toContain('英熟語ターゲット1000')
+    expect(wrapper.text()).toContain('開始番号')
+    expect(wrapper.text()).toContain('12')
+    expect(wrapper.text()).toContain('終了番号')
+    expect(wrapper.text()).toContain('34')
+    expect(wrapper.text()).toContain('出題形式')
     expect(wrapper.text()).toContain('例文（英語 → 日本語）')
-    expect(wrapper.text()).toContain('単語／熟語')
-    expect(wrapper.text()).toContain('熟語')
-    expect(wrapper.text()).toContain('開始／終了')
-    expect(wrapper.text()).toContain('12 〜 34')
+    expect(wrapper.text()).toContain('出題対象')
+    expect(wrapper.text()).toContain('すべて')
+    expect(wrapper.text()).toContain('出題順序')
+    expect(wrapper.text()).toContain('番号順')
+    expect(wrapper.text()).toContain('ゲーム難易度')
+    expect(wrapper.text()).toContain('ハード')
     expect(cancelAnimationFrameSpy).toHaveBeenCalled()
 
     requestAnimationFrameSpy.mockRestore()
