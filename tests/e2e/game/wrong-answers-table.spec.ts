@@ -155,4 +155,22 @@ test.describe('ゲームモード - 完了画面での間違えた問題一覧�
     await expect(page.getByText('ゲームクリア')).toBeVisible({ timeout: 2000 })
     await expect(page.getByText(/間違えた問題/)).not.toBeVisible()
   })
+
+  test('GAME-006: 完了画面にゲーム設定の詳細が表示される', async ({ page }) => {
+    await setupGame(page)
+
+    for (let i = 0; i < 4; i++) {
+      await clickWrong(page, ITEM1_CORRECT)
+    }
+
+    await expect(page.getByText('ゲームオーバー')).toBeVisible()
+    await expect(page.getByText('教材')).toBeVisible()
+    await expect(page.getByText('英熟語ターゲット1000')).toBeVisible()
+    await expect(page.getByText(/開始番号\s*1/)).toBeVisible()
+    await expect(page.getByText(/終了番号\s*2/)).toBeVisible()
+    await expect(page.getByText(/出題形式\s*単語／熟語（英語 → 日本語）/)).toBeVisible()
+    await expect(page.getByText(/出題対象\s*すべて/)).toBeVisible()
+    await expect(page.getByText(/出題順序\s*番号順/)).toBeVisible()
+    await expect(page.getByText(/ゲーム難易度\s*イージー/)).toBeVisible()
+  })
 })
