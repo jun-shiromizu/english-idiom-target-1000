@@ -1,0 +1,41 @@
+feature: 設定画面 - テーマ選択
+action: theme-selection
+page: "#/settings"
+
+scenarios:
+  - id: SETTINGS-001
+    category: normal
+    status: done
+    scenario: トップページから設定画面へ遷移できる
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+      - 「テーマ設定」ボタンをクリックする
+    expect:
+      - 設定画面に遷移する
+      - 「テーマ設定」の見出しが表示される
+
+  - id: SETTINGS-002
+    category: normal
+    status: done
+    scenario: テーマを選択すると即時に保存される
+    precondition: localStorage がクリアな状態
+    steps:
+      - 設定画面を開く
+      - 「オーロラ」のテーマを選択する
+    expect:
+      - localStorage に選択したテーマ ID が保存される
+      - アプリ全体のテーマ ID が「aurora」になる
+
+  - id: SETTINGS-003
+    category: normal
+    status: done
+    scenario: 保存済みテーマは再読み込み後も反映される
+    precondition: localStorage にテーマ設定が保存されている状態
+    steps:
+      - 設定画面を開く
+      - 「コスモス」のテーマを選択する
+      - ページを再読み込みする
+    expect:
+      - アプリ全体のテーマ ID が「cosmos」のまま維持される
+      - 「コスモス」が使用中テーマとして表示される

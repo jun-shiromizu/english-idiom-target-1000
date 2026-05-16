@@ -42,6 +42,7 @@ export type QuizMode = 'idiom' | 'sentence'
 export type QuizTarget = 'all' | 'incorrect'
 export type QuizOrder = 'sequential' | 'random'
 export type GameDifficulty = 'easy' | 'normal' | 'hard'
+export type ThemeId = string
 
 export interface QuizSettings {
   bookId: BookId

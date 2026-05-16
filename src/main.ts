@@ -11,12 +11,15 @@ import HomeView from './views/HomeView.vue'
 import QuizView from './views/QuizView.vue'
 import ResultView from './views/ResultView.vue'
 import GameView from './views/GameView.vue'
+import SettingsView from './views/SettingsView.vue'
+import { DEFAULT_THEME_ID, VUETIFY_THEMES, loadStoredThemeId } from './theme'
 
 const vuetify = createVuetify({
   components,
   directives,
   theme: {
-    defaultTheme: 'light',
+    defaultTheme: loadStoredThemeId() ?? DEFAULT_THEME_ID,
+    themes: VUETIFY_THEMES,
   },
 })
 
@@ -24,6 +27,7 @@ const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'home', component: HomeView },
+    { path: '/settings', name: 'settings', component: SettingsView },
     { path: '/quiz', name: 'quiz', component: QuizView },
     { path: '/game', name: 'game', component: GameView },
     { path: '/result', name: 'result', component: ResultView },
