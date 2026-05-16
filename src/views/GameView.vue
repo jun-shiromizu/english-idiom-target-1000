@@ -281,6 +281,7 @@ function finishGame(wasCompleted: boolean) {
 function togglePause() {
   if (!session.value) return
   isPaused.value = !isPaused.value
+  // 再開直後に pause 中の経過時間が delta に乗らないように現在時刻へ同期する
   if (!isPaused.value) previousFrameTime = performance.now()
 }
 
