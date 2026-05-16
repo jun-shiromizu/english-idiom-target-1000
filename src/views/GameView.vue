@@ -62,6 +62,29 @@
             トップへ
           </v-btn>
         </div>
+
+        <template v-if="wrongItems.length > 0">
+          <h2 class="text-subtitle-1 font-weight-bold mt-8 mb-2 wrong-answers-heading">
+            <v-icon color="error" size="small" class="mr-1">mdi-close-circle</v-icon>
+            間違えた問題（{{ wrongItems.length }} 問）
+          </h2>
+          <v-table density="compact" class="wrong-answers-table">
+            <thead>
+              <tr>
+                <th class="text-left">No.</th>
+                <th class="text-left">問題</th>
+                <th class="text-left">正解</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in wrongItems" :key="`${item.number}-${item.idiomIndex}-${item.meanIndex}`">
+                <td>{{ item.number }}</td>
+                <td>{{ item.questionText }}</td>
+                <td>{{ getGameAnswerLabel(item) }}</td>
+              </tr>
+            </tbody>
+          </v-table>
+        </template>
       </section>
 
       <template v-else>
@@ -123,12 +146,12 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ProgressBar from '@/components/ProgressBar.vue'
-import { useGameChoices } from '@/composables/useGameChoices'
+import { useGameChoices, getGameAnswerLabel } from '@/composables/useGameChoices'
 import { useHistory } from '@/composables/useHistory'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { STORAGE_KEY_GAME_SETTINGS, getBookConfig } from '@/config'
 import type { GameChoice } from '@/composables/useGameChoices'
-import type { GameDifficulty, QuizSession } from '@/types'
+import type { GameDifficulty, QuizItem, QuizSession } from '@/types'
 
 interface GameDifficultyConfig {
   label: string
@@ -181,6 +204,7 @@ const completed = ref(false)
 const isResolving = ref(false)
 const isPaused = ref(false)
 const showQuitDialog = ref(false)
+const wrongItems = ref<QuizItem[]>([])
 let animationFrame = 0
 let previousFrameTime = 0
 
@@ -281,6 +305,9 @@ function answer(correct: boolean) {
 
   combo.value = 0
   missCount.value += 1
+  if (!wrongItems.value.includes(currentItem.value)) {
+    wrongItems.value.push(currentItem.value)
+  }
   fallY.value += difficultyConfig.value.missDrop
   if (fallY.value >= maxFallY.value) finishGame(false)
 }
@@ -327,6 +354,7 @@ function restartGame() {
   combo.value = 0
   missCount.value = 0
   correctCount.value = 0
+  wrongItems.value = []
   gameOver.value = false
   completed.value = false
   isResolving.value = false
@@ -460,5 +488,14 @@ function restartGame() {
   .choice-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.wrong-answers-heading {
+  align-self: flex-start;
+}
+
+.wrong-answers-table {
+  width: min(100%, 520px);
+  text-align: left;
 }
 </style>

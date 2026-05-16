@@ -213,4 +213,133 @@ describe('GameView', () => {
     requestAnimationFrameSpy.mockRestore()
     cancelAnimationFrameSpy.mockRestore()
   })
+
+  describe('間違えた問題テーブル', () => {
+    // Item 1 の正解は simplifyMeaningLabel('一つの〜') = '一つの〜'
+    // Item 2 がダミー選択肢を供給する (simplifyMeaningLabel('別の何か') = '別の何か')
+    // → 2アイテム以上で buildGameChoices が wrong choices を生成できる
+    const ITEM1_CORRECT_ANSWER = '一つの〜'
+    const ITEM2_CORRECT_ANSWER = '別の何か'
+    const ITEM1_NUMBER = '0099'
+
+    function makeWrongAnswerSession(): QuizSession {
+      const item1: QuizItem = {
+        number: ITEM1_NUMBER,
+        idiomData: {
+          idioms: ['a piece of cake'],
+          means: [
+            {
+              'idiom-jp': ITEM1_CORRECT_ANSWER,
+              'example-sentence': 'This is a piece of cake.',
+              'sentence-jp': 'これは簡単なことだ。',
+            },
+          ],
+          notes: [],
+        },
+        questionText: 'a piece of cake',
+        idiomIndex: 0,
+      }
+      const item2: QuizItem = {
+        number: '0100',
+        idiomData: {
+          idioms: ['at all costs'],
+          means: [
+            {
+              'idiom-jp': '別の何か',
+              'example-sentence': 'example',
+              'sentence-jp': '別の何かの訳。',
+            },
+          ],
+          notes: [],
+        },
+        questionText: 'at all costs',
+        idiomIndex: 0,
+      }
+      return {
+        settings: {
+          bookId: 'idiom-target-1000',
+          startNumber: 99,
+          endNumber: 100,
+          mode: 'idiom',
+          target: 'all',
+          order: 'sequential',
+        },
+        items: [item1, item2],
+        currentIndex: 0,
+        results: {},
+      }
+    }
+
+    async function clickWrongAnswer(wrapper: ReturnType<typeof mount>) {
+      const wrongBtn = wrapper
+        .findAll('button')
+        .find((btn) => btn.text().trim() === ITEM2_CORRECT_ANSWER && !btn.attributes('disabled'))
+      if (wrongBtn) {
+        await wrongBtn.trigger('click')
+        await flushPromises()
+      }
+    }
+
+    async function reachGameOverByWrongAnswers(wrapper: ReturnType<typeof mount>) {
+      // easy モード: missDrop=58, maxFallY=252, START_FALL_Y=24 → 4回で超過
+      for (let i = 0; i < 4; i++) {
+        await clickWrongAnswer(wrapper)
+        if (wrapper.text().includes('ゲームオーバー') || wrapper.text().includes('ゲームクリア')) break
+      }
+    }
+
+    it('間違えた問題が完了画面の表に表示される', async () => {
+      localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeWrongAnswerSession()))
+      localStorage.setItem(STORAGE_KEY_GAME_SETTINGS, JSON.stringify({ difficulty: 'easy' }))
+      const wrapper = mount(GameView, { global: { plugins: [vuetify] } })
+      await flushPromises()
+
+      await reachGameOverByWrongAnswers(wrapper)
+
+      expect(wrapper.text()).toMatch(/ゲームオーバー|ゲームクリア/)
+      expect(wrapper.text()).toContain('間違えた問題')
+      expect(wrapper.text()).toContain('a piece of cake')
+      expect(wrapper.text()).toContain(ITEM1_NUMBER)
+      expect(wrapper.text()).toContain(ITEM1_CORRECT_ANSWER)
+    })
+
+    it('正解のみの場合は間違えた問題テーブルを表示しない', async () => {
+      localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeWrongAnswerSession()))
+      localStorage.setItem(STORAGE_KEY_GAME_SETTINGS, JSON.stringify({ difficulty: 'hard' }))
+      const wrapper = mount(GameView, { global: { plugins: [vuetify] } })
+      await flushPromises()
+
+      // 一度も回答せずアニメーションでゲームオーバーにする（wrong answer なし）
+      let reachedGameOver = false
+      for (let i = 1; i <= MAX_ANIMATION_FRAMES; i++) {
+        if (!rafCallback) break
+        rafCallback(i * FRAME_DURATION_MS)
+        await flushPromises()
+        if (wrapper.text().includes('ゲームオーバー') || wrapper.text().includes('ゲームクリア')) {
+          reachedGameOver = true
+          break
+        }
+      }
+
+      expect(reachedGameOver).toBe(true)
+      expect(wrapper.text()).not.toContain('間違えた問題')
+    })
+
+    it('リスタート後は間違えた問題テーブルがリセットされる', async () => {
+      localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeWrongAnswerSession()))
+      localStorage.setItem(STORAGE_KEY_GAME_SETTINGS, JSON.stringify({ difficulty: 'easy' }))
+      const wrapper = mount(GameView, { global: { plugins: [vuetify] } })
+      await flushPromises()
+
+      await reachGameOverByWrongAnswers(wrapper)
+      expect(wrapper.text()).toContain('間違えた問題')
+
+      const retryBtn = wrapper.findAll('button').find((btn) => btn.text().includes('もう一度'))
+      expect(retryBtn, 'もう一度ボタンが見つかりません').toBeTruthy()
+      await retryBtn!.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).not.toContain('間違えた問題')
+    })
+  })
 })
