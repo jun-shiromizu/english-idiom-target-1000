@@ -221,7 +221,9 @@ describe('GameView', () => {
     await flushPromises()
     expect(rafCallback, 'requestAnimationFrame のコールバックが取得できません').toBeTruthy()
 
-    const wrongButton = wrapper.findAll('.choice-button').find((button) => button.text().trim() !== '一つの〜')
+    const wrongButton = wrapper
+      .findAll('button')
+      .find((button) => !['一時停止', '終了', '一つの〜'].includes(button.text().trim()))
     expect(wrongButton, '不正解ボタンが見つかりません').toBeTruthy()
     await wrongButton!.trigger('click')
     await flushPromises()
