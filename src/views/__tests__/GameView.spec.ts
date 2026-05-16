@@ -12,6 +12,9 @@ vi.mock('vue-router', () => ({
 }))
 
 const vuetify = createVuetify()
+// requestAnimationFrame 経由の更新で delta は最大 0.05 秒にクランプされるため、100ms 間隔で進める
+const FRAME_DURATION_MS = 100
+const MAX_ANIMATION_FRAMES = 160
 
 const mockIdiomData: IdiomData = {
   idioms: ['a piece of ~'],
@@ -67,13 +70,18 @@ describe('GameView', () => {
     const wrapper = mount(GameView, { global: { plugins: [vuetify] } })
     await flushPromises()
 
-    for (let i = 1; i <= 500; i += 1) {
+    let reachedGameOver = false
+    for (let i = 1; i <= MAX_ANIMATION_FRAMES; i += 1) {
       if (!rafCallback) break
-      rafCallback(i * 16)
+      rafCallback(i * FRAME_DURATION_MS)
       await flushPromises()
-      if (wrapper.text().includes('ゲームオーバー')) break
+      if (wrapper.text().includes('ゲームオーバー')) {
+        reachedGameOver = true
+        break
+      }
     }
 
+    expect(reachedGameOver).toBe(true)
     expect(wrapper.text()).toContain('ゲームオーバー')
     expect(wrapper.text()).toContain('モード')
     expect(wrapper.text()).toContain('例文（英語 → 日本語）')
@@ -81,6 +89,7 @@ describe('GameView', () => {
     expect(wrapper.text()).toContain('熟語')
     expect(wrapper.text()).toContain('開始／終了')
     expect(wrapper.text()).toContain('12 〜 34')
+    expect(cancelAnimationFrameSpy).toHaveBeenCalled()
 
     requestAnimationFrameSpy.mockRestore()
     cancelAnimationFrameSpy.mockRestore()

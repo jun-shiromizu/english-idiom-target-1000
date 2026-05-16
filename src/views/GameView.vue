@@ -142,6 +142,10 @@ const GAME_DIFFICULTIES: Record<GameDifficulty, GameDifficultyConfig> = {
     missDrop: 96,
   },
 }
+const MODE_LABELS = {
+  idiom: '単語／熟語（英語 → 日本語）',
+  sentence: '例文（英語 → 日本語）',
+} as const
 
 const router = useRouter()
 const { loadSession } = useQuizSession()
@@ -176,9 +180,17 @@ const maxFallY = computed(() => FIELD_HEIGHT - WORD_HEIGHT - 12)
 const fallingWordStyle = computed(() => ({
   transform: `translate3d(0, ${fallY.value}px, 0)`,
 }))
-const modeLabel = computed(() =>
-  session.value?.settings.mode === 'sentence' ? '例文（英語 → 日本語）' : '単語／熟語（英語 → 日本語）',
-)
+function getModeLabel(mode: string) {
+  switch (mode) {
+    case 'sentence':
+      return MODE_LABELS.sentence
+    case 'idiom':
+      return MODE_LABELS.idiom
+    default:
+      return ''
+  }
+}
+const modeLabel = computed(() => (session.value ? getModeLabel(session.value.settings.mode) : ''))
 const bookLabel = computed(() => (session.value ? getBookConfig(session.value.settings.bookId).shortLabel : ''))
 const rangeLabel = computed(() =>
   session.value ? `${session.value.settings.startNumber} 〜 ${session.value.settings.endNumber}` : '',
