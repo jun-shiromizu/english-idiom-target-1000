@@ -213,4 +213,35 @@ describe('GameView', () => {
     requestAnimationFrameSpy.mockRestore()
     cancelAnimationFrameSpy.mockRestore()
   })
+
+  it('ゲーム終了時に間違えた問題を問題と正解の表で表示する', async () => {
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makePauseSession()))
+
+    const wrapper = mount(GameView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(rafCallback, 'requestAnimationFrame のコールバックが取得できません').toBeTruthy()
+
+    const wrongButton = wrapper.findAll('.choice-button').find((button) => button.text().trim() !== '一つの〜')
+    expect(wrongButton, '不正解ボタンが見つかりません').toBeTruthy()
+    await wrongButton!.trigger('click')
+    await flushPromises()
+
+    let reachedGameOver = false
+    for (let i = 1; i <= MAX_ANIMATION_FRAMES; i += 1) {
+      if (!rafCallback) break
+      rafCallback(i * FRAME_DURATION_MS)
+      await flushPromises()
+      if (wrapper.text().includes('ゲームオーバー')) {
+        reachedGameOver = true
+        break
+      }
+    }
+
+    expect(reachedGameOver).toBe(true)
+    expect(wrapper.text()).toContain('間違えた問題')
+    expect(wrapper.text()).toContain('問題')
+    expect(wrapper.text()).toContain('正解')
+    expect(wrapper.text()).toContain('a piece of ~')
+    expect(wrapper.text()).toContain('一つの〜')
+  })
 })

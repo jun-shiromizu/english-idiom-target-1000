@@ -52,6 +52,23 @@
             </v-list-item>
           </v-list>
         </v-card>
+        <v-card v-if="incorrectRows.length > 0" class="result-details mt-4" variant="outlined">
+          <v-card-title class="text-subtitle-1">間違えた問題</v-card-title>
+          <v-table density="compact">
+            <thead>
+              <tr>
+                <th class="text-left">問題</th>
+                <th class="text-left">正解</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in incorrectRows" :key="row.key">
+                <td>{{ row.question }}</td>
+                <td>{{ row.answer }}</td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card>
         <div class="d-flex justify-center flex-wrap game-actions mt-6">
           <v-btn color="primary" variant="elevated" @click="restartGame">
             <v-icon start>mdi-refresh</v-icon>
@@ -181,6 +198,7 @@ const completed = ref(false)
 const isResolving = ref(false)
 const isPaused = ref(false)
 const showQuitDialog = ref(false)
+const incorrectMap = ref<Record<number, { question: string; answer: string }>>({})
 let animationFrame = 0
 let previousFrameTime = 0
 
@@ -210,6 +228,9 @@ const modeLabel = computed(() => (session.value ? getModeLabel(session.value.set
 const bookLabel = computed(() => (session.value ? getBookConfig(session.value.settings.bookId).shortLabel : ''))
 const rangeLabel = computed(() =>
   session.value ? `${session.value.settings.startNumber} 〜 ${session.value.settings.endNumber}` : '',
+)
+const incorrectRows = computed(() =>
+  Object.entries(incorrectMap.value).map(([key, value]) => ({ key, question: value.question, answer: value.answer })),
 )
 
 onMounted(() => {
@@ -281,8 +302,19 @@ function answer(correct: boolean) {
 
   combo.value = 0
   missCount.value += 1
+  incorrectMap.value[currentIndex.value] = {
+    question: currentItem.value.questionText,
+    answer: getAnswerText(currentItem.value),
+  }
   fallY.value += difficultyConfig.value.missDrop
   if (fallY.value >= maxFallY.value) finishGame(false)
+}
+
+function getAnswerText(item: QuizSession['items'][number]) {
+  if (item.meanIndex !== undefined) {
+    return item.idiomData.means[item.meanIndex]?.['sentence-jp'] ?? ''
+  }
+  return item.idiomData.means[item.idiomIndex]?.['idiom-jp'] ?? ''
 }
 
 function recordAnswer(correct: boolean) {
@@ -331,6 +363,7 @@ function restartGame() {
   completed.value = false
   isResolving.value = false
   isPaused.value = false
+  incorrectMap.value = {}
   previousFrameTime = 0
   difficulty.value = loadGameDifficulty()
   resetQuestion({ resetPosition: true })
