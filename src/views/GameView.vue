@@ -36,6 +36,22 @@
             <strong>{{ missCount }}</strong>
           </div>
         </div>
+        <v-card class="result-details mt-4" variant="outlined">
+          <v-list density="compact">
+            <v-list-item>
+              <v-list-item-title>モード</v-list-item-title>
+              <template #append>{{ modeLabel }}</template>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>単語／熟語</v-list-item-title>
+              <template #append>{{ bookLabel }}</template>
+            </v-list-item>
+            <v-list-item>
+              <v-list-item-title>開始／終了</v-list-item-title>
+              <template #append>{{ rangeLabel }}</template>
+            </v-list-item>
+          </v-list>
+        </v-card>
         <div class="d-flex justify-center flex-wrap game-actions mt-6">
           <v-btn color="primary" variant="elevated" @click="restartGame">
             <v-icon start>mdi-refresh</v-icon>
@@ -110,7 +126,7 @@ import ProgressBar from '@/components/ProgressBar.vue'
 import { useGameChoices } from '@/composables/useGameChoices'
 import { useHistory } from '@/composables/useHistory'
 import { useQuizSession } from '@/composables/useQuizSession'
-import { STORAGE_KEY_GAME_SETTINGS } from '@/config'
+import { STORAGE_KEY_GAME_SETTINGS, getBookConfig } from '@/config'
 import type { GameChoice } from '@/composables/useGameChoices'
 import type { GameDifficulty, QuizSession } from '@/types'
 
@@ -141,6 +157,10 @@ const GAME_DIFFICULTIES: Record<GameDifficulty, GameDifficultyConfig> = {
     missDrop: 96,
   },
 }
+const MODE_LABELS = {
+  idiom: '単語／熟語（英語 → 日本語）',
+  sentence: '例文（英語 → 日本語）',
+} as const
 
 const router = useRouter()
 const { loadSession } = useQuizSession()
@@ -176,6 +196,21 @@ const maxFallY = computed(() => FIELD_HEIGHT - WORD_HEIGHT - 12)
 const fallingWordStyle = computed(() => ({
   transform: `translate3d(0, ${fallY.value}px, 0)`,
 }))
+function getModeLabel(mode: string) {
+  switch (mode) {
+    case 'sentence':
+      return MODE_LABELS.sentence
+    case 'idiom':
+      return MODE_LABELS.idiom
+    default:
+      return ''
+  }
+}
+const modeLabel = computed(() => (session.value ? getModeLabel(session.value.settings.mode) : ''))
+const bookLabel = computed(() => (session.value ? getBookConfig(session.value.settings.bookId).shortLabel : ''))
+const rangeLabel = computed(() =>
+  session.value ? `${session.value.settings.startNumber} 〜 ${session.value.settings.endNumber}` : '',
+)
 
 onMounted(() => {
   const loaded = loadSession()
@@ -397,6 +432,11 @@ function restartGame() {
   width: min(100%, 420px);
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+}
+
+.result-details {
+  width: min(100%, 420px);
+  text-align: left;
 }
 
 .result-stats div {
