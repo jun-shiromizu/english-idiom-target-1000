@@ -12,6 +12,7 @@ vi.mock('vue-router', () => ({
 }))
 
 const vuetify = createVuetify()
+let rafCallback: FrameRequestCallback | null = null
 
 function makeItem(number: string, questionText: string, meaning: string): QuizItem {
   const idiomData: IdiomData = {
@@ -55,7 +56,11 @@ describe('GameView', () => {
     localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeSession()))
     mockPush.mockReset()
     mockReplace.mockReset()
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1)
+    rafCallback = null
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback: FrameRequestCallback) => {
+      rafCallback = callback
+      return 1
+    })
     vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
   })
 
@@ -90,5 +95,45 @@ describe('GameView', () => {
     expect(wrapper.text()).not.toContain('一時停止中')
     expect(wrapper.text()).toContain('a piece of ~')
     expect(wrapper.findAll('.choice-button').length).toBeGreaterThan(0)
+  })
+
+  it('一時停止中はフレーム更新が進まず、再開後に更新が再開される', async () => {
+    const wrapper = mount(GameView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(rafCallback, 'requestAnimationFrame のコールバックが取得できません').toBeTruthy()
+
+    const readFallY = () => {
+      const style = wrapper.find('.falling-word').attributes('style')
+      const matched = style.match(/translate3d\(0,\s*([\d.]+)px/)
+      return matched ? Number(matched[1]) : NaN
+    }
+
+    const frameStart = performance.now()
+    rafCallback!(frameStart)
+    rafCallback!(frameStart + 100)
+    await flushPromises()
+    const beforePauseY = readFallY()
+
+    const pauseButton = wrapper.findAll('button').find((button) => button.text().includes('一時停止'))
+    expect(pauseButton, '一時停止ボタンが見つかりません').toBeTruthy()
+    await pauseButton!.trigger('click')
+    await flushPromises()
+
+    rafCallback!(frameStart + 5100)
+    await flushPromises()
+
+    const resumeButton = wrapper.findAll('button').find((button) => button.text().includes('再開'))
+    expect(resumeButton, '再開ボタンが見つかりません').toBeTruthy()
+    await resumeButton!.trigger('click')
+    await flushPromises()
+
+    const beforeResumeFrameY = readFallY()
+    expect(beforeResumeFrameY).toBe(beforePauseY)
+    rafCallback!(performance.now() + 16)
+    await flushPromises()
+    const afterResumeFrameY = readFallY()
+
+    expect(afterResumeFrameY).toBeGreaterThan(beforeResumeFrameY)
+    expect(afterResumeFrameY - beforeResumeFrameY).toBeLessThan(2)
   })
 })
