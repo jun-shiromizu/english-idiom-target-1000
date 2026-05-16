@@ -279,9 +279,9 @@ function finishGame(wasCompleted: boolean) {
 }
 
 function togglePause() {
-  if (gameOver.value || !session.value) return
+  if (!session.value) return
   isPaused.value = !isPaused.value
-  if (!isPaused.value) previousFrameTime = 0
+  if (!isPaused.value) previousFrameTime = performance.now()
 }
 
 function restartGame() {
