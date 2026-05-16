@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { useGitHubData, formatNumber } from '../useGitHubData'
+import { useGitHubData, formatNumber, resetGitHubDataCaches } from '../useGitHubData'
 
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
@@ -13,22 +13,69 @@ describe('formatNumber', () => {
 describe('useGitHubData', () => {
   beforeEach(() => {
     mockFetch.mockReset()
+    resetGitHubDataCaches()
   })
 
   describe('fetchIdiomData', () => {
     it('JSONデータを取得してパースできる', async () => {
-      const mockData = {
-        idioms: ['a piece of ~'],
-        means: [{ 'idiom-jp': '１つの～', 'example-sentence': 'example', 'sentence-jp': '例文訳' }],
-        notes: ['補足説明'],
-      }
-      mockFetch.mockResolvedValueOnce({ ok: true, text: () => Promise.resolve(JSON.stringify(mockData)) })
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([{ name: '0001.json', type: 'file' }]),
+        })
+        .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve(JSON.stringify({
+          idioms: ['a piece of ~'],
+          means: [{ 'idiom-jp': '１つの～', 'example-sentence': 'example', 'sentence-jp': '例文訳' }],
+          notes: ['補足説明'],
+        })) })
 
       const { fetchIdiomData } = useGitHubData()
       const data = await fetchIdiomData('idiom-target-1000', '0001')
 
       expect(data.idioms).toEqual(['a piece of ~'])
       expect(data.means[0]['idiom-jp']).toBe('１つの～')
+    })
+
+    it('target 配下がサブディレクトリでもJSONデータを取得できる', async () => {
+      const mockData = {
+        idioms: ['a piece of ~'],
+        means: [{ 'idiom-jp': '１つの～', 'example-sentence': 'example', 'sentence-jp': '例文訳' }],
+        notes: ['補足説明'],
+      }
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.endsWith('/contents/idiom-target-1000/target')) {
+          return {
+            ok: true,
+            json: () => Promise.resolve([{ name: '0001-0100', type: 'dir' }]),
+          }
+        }
+
+        if (url.endsWith('/contents/idiom-target-1000/target/0001-0100')) {
+          return {
+            ok: true,
+            json: () => Promise.resolve([{ name: '0001.json', type: 'file' }]),
+          }
+        }
+
+        if (url.endsWith('/idiom-target-1000/target/0001-0100/0001.json')) {
+          return {
+            ok: true,
+            text: () => Promise.resolve(JSON.stringify(mockData)),
+          }
+        }
+
+        throw new Error(`Unexpected fetch URL: ${url}`)
+      })
+
+      const { fetchIdiomData } = useGitHubData()
+      const data = await fetchIdiomData('idiom-target-1000', '0001')
+
+      expect(data.idioms).toEqual(['a piece of ~'])
+      expect(data.means[0]['idiom-jp']).toBe('１つの～')
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        3,
+        'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/target/0001-0100/0001.json',
+      )
     })
 
     it('取得失敗時にエラーをスローする', async () => {
@@ -54,6 +101,73 @@ describe('useGitHubData', () => {
       const files = await listFiles('idiom-target-1000', 'target')
 
       expect(files).toEqual(['0001.json', '0002.json'])
+    })
+  })
+
+  describe('fetchRangeData', () => {
+    it('target 配下のサブディレクトリもたどって範囲データを取得できる', async () => {
+      const mockData1 = {
+        idioms: ['first'],
+        means: [{ 'idiom-jp': '最初', 'example-sentence': 'first sentence', 'sentence-jp': '最初の文' }],
+        notes: [],
+      }
+      const mockData2 = {
+        idioms: ['second'],
+        means: [{ 'idiom-jp': '二番目', 'example-sentence': 'second sentence', 'sentence-jp': '二番目の文' }],
+        notes: [],
+      }
+
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.endsWith('/contents/idiom-target-1000/target')) {
+          return {
+            ok: true,
+            json: () => Promise.resolve([
+              { name: '0001-0100', type: 'dir' },
+              { name: '0101-0200', type: 'dir' },
+            ]),
+          }
+        }
+
+        if (url.endsWith('/contents/idiom-target-1000/target/0001-0100')) {
+          return {
+            ok: true,
+            json: () => Promise.resolve([
+              { name: '0001.json', type: 'file' },
+              { name: '0002.json', type: 'file' },
+            ]),
+          }
+        }
+
+        if (url.endsWith('/contents/idiom-target-1000/target/0101-0200')) {
+          return {
+            ok: true,
+            json: () => Promise.resolve([{ name: '0101.json', type: 'file' }]),
+          }
+        }
+
+        if (url.endsWith('/idiom-target-1000/target/0001-0100/0001.json')) {
+          return {
+            ok: true,
+            text: () => Promise.resolve(JSON.stringify(mockData1)),
+          }
+        }
+
+        if (url.endsWith('/idiom-target-1000/target/0001-0100/0002.json')) {
+          return {
+            ok: true,
+            text: () => Promise.resolve(JSON.stringify(mockData2)),
+          }
+        }
+
+        throw new Error(`Unexpected fetch URL: ${url}`)
+      })
+
+      const { fetchRangeData } = useGitHubData()
+      const { dataMap } = await fetchRangeData('idiom-target-1000', 1, 2)
+
+      expect([...dataMap.keys()]).toEqual(['0001', '0002'])
+      expect(dataMap.get('0001')?.idioms).toEqual(['first'])
+      expect(dataMap.get('0002')?.idioms).toEqual(['second'])
     })
   })
 

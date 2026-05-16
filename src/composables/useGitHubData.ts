@@ -4,6 +4,15 @@ import type { BookId, IdiomData } from '@/types'
 
 const supplementHtmlCache = new Map<string, string | null>()
 const pendingSupplementRequests = new Map<string, Promise<string | null>>()
+const targetFileIndexCache = new Map<BookId, Map<string, string>>()
+const pendingTargetFileIndexRequests = new Map<BookId, Promise<Map<string, string>>>()
+
+export function resetGitHubDataCaches(): void {
+  supplementHtmlCache.clear()
+  pendingSupplementRequests.clear()
+  targetFileIndexCache.clear()
+  pendingTargetFileIndexRequests.clear()
+}
 
 function joinBookPath(bookId: BookId, path: string): string {
   const { dataPath } = getBookConfig(bookId)
@@ -12,6 +21,11 @@ function joinBookPath(bookId: BookId, path: string): string {
 
 function makeCacheKey(bookId: BookId, number: string): string {
   return `${bookId}:${number}`
+}
+
+function getFileName(path: string): string {
+  const segments = path.split('/')
+  return segments[segments.length - 1]
 }
 
 /** 数値を4桁ゼロ埋め文字列に変換 */
@@ -40,6 +54,62 @@ export function useGitHubData() {
     return items.filter((i) => i.type === 'file').map((i) => i.name)
   }
 
+  /** GitHub Contents API でディレクトリ配下のファイル相対パス一覧を再帰取得 */
+  async function listFilesRecursive(bookId: BookId, path: string): Promise<string[]> {
+    const apiBase = buildGitHubApiBase(bookId)
+    const bookPath = joinBookPath(bookId, path)
+    const res = await fetch(`${apiBase}/${bookPath}`)
+    if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${path}`)
+
+    const items: Array<{ name: string; type: string }> = await res.json()
+    const files = items.filter((item) => item.type === 'file').map((item) => `${path}/${item.name}`)
+    const childFiles = await Promise.all(
+      items
+        .filter((item) => item.type === 'dir')
+        .map((item) => listFilesRecursive(bookId, `${path}/${item.name}`)),
+    )
+
+    return [...files, ...childFiles.flat()]
+  }
+
+  async function getTargetFileIndex(bookId: BookId): Promise<Map<string, string>> {
+    const cached = targetFileIndexCache.get(bookId)
+    if (cached) return cached
+
+    const pending = pendingTargetFileIndexRequests.get(bookId)
+    if (pending) return pending
+
+    const request = (async () => {
+      const targetFiles = await listFilesRecursive(bookId, 'target')
+      const targetFileIndex = new Map<string, string>()
+
+      for (const path of targetFiles) {
+        targetFileIndex.set(getFileName(path), path)
+      }
+
+      targetFileIndexCache.set(bookId, targetFileIndex)
+      return targetFileIndex
+    })()
+
+    pendingTargetFileIndexRequests.set(bookId, request)
+    try {
+      return await request
+    } finally {
+      pendingTargetFileIndexRequests.delete(bookId)
+    }
+  }
+
+  async function resolveTargetJsonPath(bookId: BookId, number: string): Promise<string> {
+    const fileName = `${number}.json`
+    const matchedPath = (await getTargetFileIndex(bookId)).get(fileName)
+
+    if (!matchedPath) {
+      throw new Error(`Target file not found: ${fileName}`)
+    }
+
+    return matchedPath
+  }
+
   /** Raw URL でファイルのテキスト内容を取得 */
   async function fetchRaw(bookId: BookId, path: string): Promise<string> {
     const rawBase = buildGitHubRawBase(bookId)
@@ -51,7 +121,8 @@ export function useGitHubData() {
 
   /** 指定番号の IdiomData を取得 */
   async function fetchIdiomData(bookId: BookId, number: string): Promise<IdiomData> {
-    const text = await fetchRaw(bookId, `target/${number}.json`)
+    const targetPath = await resolveTargetJsonPath(bookId, number)
+    const text = await fetchRaw(bookId, targetPath)
     return JSON.parse(text) as IdiomData
   }
 
@@ -101,13 +172,13 @@ export function useGitHubData() {
     start: number,
     end: number,
   ): Promise<{ dataMap: Map<string, IdiomData> }> {
-    const targetFiles = await listFiles(bookId, 'target')
+    const targetFileIndex = await getTargetFileIndex(bookId)
 
     // 範囲内のJSONファイルを抽出
     const numbersInRange: string[] = []
     for (let i = start; i <= end; i++) {
       const num = formatNumber(i)
-      if (targetFiles.includes(`${num}.json`)) {
+      if (targetFileIndex.has(`${num}.json`)) {
         numbersInRange.push(num)
       }
     }
