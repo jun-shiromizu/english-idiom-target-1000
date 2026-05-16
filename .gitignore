@@ -19,3 +19,6 @@ Thumbs.db
 
 # Editor
 .vscode/settings.json
+
+# serena
+.serena/*
