@@ -1,0 +1,62 @@
+feature: ゲームモード - 完了画面での間違えた問題一覧表示
+action: wrong-answers-table
+page: "#/game"
+
+scenarios:
+  - id: GAME-001
+    category: normal
+    status: done
+    scenario: ゲームオーバー時に間違えた問題が表形式で表示される
+    precondition: ゲームモードを開始している状態
+    steps:
+      - ゲームプレイ中に誤答を選択して残機を消費する
+      - ゲームオーバーになる
+    expect:
+      - 完了画面に「間違えた問題」セクションが表示される
+      - 表に「No.」「問題」「正解」の列見出しが表示される
+      - 間違えた問題の番号・問題文・日本語の正解が行として表示される
+
+  - id: GAME-002
+    category: normal
+    status: done
+    scenario: ゲームクリア時に間違えた問題が表形式で表示される
+    precondition: ゲームモードを開始している状態
+    steps:
+      - ゲームプレイ中に一部の問題を誤答する
+      - 残りの問題を全問正解してゲームクリアになる
+    expect:
+      - 完了画面に「間違えた問題」セクションが表示される
+      - 誤答した問題の番号・問題文・日本語の正解が表示される
+      - 正解した問題は表に含まれない
+
+  - id: GAME-003
+    category: normal
+    status: done
+    scenario: 全問正解（ミスなし）の場合は間違えた問題テーブルを表示しない
+    precondition: ゲームモードを開始している状態
+    steps:
+      - ゲームプレイ中に一度もミスせずゲームオーバーになる（単語が落下して終了）
+    expect:
+      - 完了画面に「間違えた問題」セクションが表示されない
+
+  - id: GAME-004
+    category: normal
+    status: done
+    scenario: 同じ問題を複数回間違えても表には1回だけ表示される
+    precondition: ゲームモードを開始している状態
+    steps:
+      - 同じ問題に対して複数回誤答を選択する
+      - ゲームオーバーになる
+    expect:
+      - 完了画面の表に同じ問題は1行だけ表示される
+
+  - id: GAME-005
+    category: normal
+    status: done
+    scenario: もう一度ボタンでリスタートすると間違えた問題テーブルがリセットされる
+    precondition: ゲームオーバーになり完了画面を表示している状態
+    steps:
+      - 「もう一度」ボタンをクリックしてゲームを再スタートする
+      - ゲームオーバーになる（ミスなし）
+    expect:
+      - 完了画面に「間違えた問題」セクションが表示されない
