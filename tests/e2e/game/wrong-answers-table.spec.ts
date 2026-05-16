@@ -65,9 +65,14 @@ async function setupGame(page: Parameters<typeof test.beforeEach>[0] extends (ar
   await page.goto('./#/game')
 }
 
+function getChoiceButton(page: Parameters<typeof test.beforeEach>[0] extends (args: infer T) => any ? T['page'] : never, label: string) {
+  return page.getByRole('button', { name: label, exact: true })
+}
+
 /** Click a wrong-answer button for the current question. */
 async function clickWrong(page: Parameters<typeof test.beforeEach>[0] extends (args: infer T) => any ? T['page'] : never, correctLabel: string) {
-  await page.locator('.choice-grid').getByRole('button').filter({ hasNotText: correctLabel }).first().click()
+  const wrongLabel = correctLabel === ITEM1_CORRECT ? ITEM2_CORRECT : ITEM1_CORRECT
+  await getChoiceButton(page, wrongLabel).click()
 }
 
 test.describe('ゲームモード - 完了画面での間違えた問題一覧表示', () => {
@@ -95,9 +100,9 @@ test.describe('ゲームモード - 完了画面での間違えた問題一覧�
     // Wrong once on item 1 (fallY 24+58=82, not game over)
     await clickWrong(page, ITEM1_CORRECT)
     // Correct on item 1 → isResolving for 180ms → nextQuestion() → item 2 choices load
-    await page.locator('.choice-grid').getByRole('button', { name: ITEM1_CORRECT }).click()
+    await getChoiceButton(page, ITEM1_CORRECT).click()
     // Wait for item 2's correct button to appear and become enabled
-    await page.locator('.choice-grid').getByRole('button', { name: ITEM2_CORRECT }).click({ timeout: 2000 })
+    await getChoiceButton(page, ITEM2_CORRECT).click({ timeout: 2000 })
 
     await expect(page.getByText('ゲームクリア')).toBeVisible({ timeout: 2000 })
     await expect(page.getByText(/間違えた問題/)).toBeVisible()
@@ -112,8 +117,8 @@ test.describe('ゲームモード - 完了画面での間違えた問題一覧�
     await setupGame(page)
 
     // Correct on item 1 → wait → correct on item 2 → game clear
-    await page.locator('.choice-grid').getByRole('button', { name: ITEM1_CORRECT }).click()
-    await page.locator('.choice-grid').getByRole('button', { name: ITEM2_CORRECT }).click({ timeout: 2000 })
+    await getChoiceButton(page, ITEM1_CORRECT).click()
+    await getChoiceButton(page, ITEM2_CORRECT).click({ timeout: 2000 })
 
     await expect(page.getByText('ゲームクリア')).toBeVisible({ timeout: 2000 })
     await expect(page.getByText(/間違えた問題/)).not.toBeVisible()
@@ -128,7 +133,7 @@ test.describe('ゲームモード - 完了画面での間違えた問題一覧�
     }
 
     await expect(page.getByText('ゲームオーバー')).toBeVisible()
-    await expect(page.locator('tbody tr')).toHaveCount(1)
+    await expect(page.getByRole('cell', { name: '0001' })).toHaveCount(1)
   })
 
   test('GAME-005: もう一度ボタンでリスタートすると間違えた問題テーブルがリセットされる', async ({ page }) => {
@@ -144,8 +149,8 @@ test.describe('ゲームモード - 完了画面での間違えた問題一覧�
     await page.getByRole('button', { name: 'もう一度' }).click()
 
     // Answer all questions correctly → game clear without wrong answers table
-    await page.locator('.choice-grid').getByRole('button', { name: ITEM1_CORRECT }).click()
-    await page.locator('.choice-grid').getByRole('button', { name: ITEM2_CORRECT }).click({ timeout: 2000 })
+    await getChoiceButton(page, ITEM1_CORRECT).click()
+    await getChoiceButton(page, ITEM2_CORRECT).click({ timeout: 2000 })
 
     await expect(page.getByText('ゲームクリア')).toBeVisible({ timeout: 2000 })
     await expect(page.getByText(/間違えた問題/)).not.toBeVisible()

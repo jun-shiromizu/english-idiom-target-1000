@@ -219,6 +219,7 @@ describe('GameView', () => {
     // Item 2 がダミー選択肢を供給する (simplifyMeaningLabel('別の何か') = '別の何か')
     // → 2アイテム以上で buildGameChoices が wrong choices を生成できる
     const ITEM1_CORRECT_ANSWER = '一つの〜'
+    const ITEM2_CORRECT_ANSWER = '別の何か'
     const ITEM1_NUMBER = '0099'
 
     function makeWrongAnswerSession(): QuizSession {
@@ -270,12 +271,9 @@ describe('GameView', () => {
     }
 
     async function clickWrongAnswer(wrapper: ReturnType<typeof mount>) {
-      // .choice-grid 内の button から正解以外を探す
-      const choiceGrid = wrapper.find('.choice-grid')
-      if (!choiceGrid.exists()) return
-      const wrongBtn = choiceGrid
+      const wrongBtn = wrapper
         .findAll('button')
-        .find((btn) => btn.text().trim() !== ITEM1_CORRECT_ANSWER && !btn.attributes('disabled'))
+        .find((btn) => btn.text().trim() === ITEM2_CORRECT_ANSWER && !btn.attributes('disabled'))
       if (wrongBtn) {
         await wrongBtn.trigger('click')
         await flushPromises()
