@@ -2,9 +2,14 @@
   <v-container class="py-8" max-width="600">
     <v-row justify="center">
       <v-col cols="12">
-        <h1 class="text-h5 font-weight-bold text-center mb-6">
-          ターゲット暗記アプリ
-        </h1>
+        <div class="header-row mb-6">
+          <h1 class="text-h5 font-weight-bold">
+            ターゲット暗記アプリ
+          </h1>
+          <v-btn variant="text" prepend-icon="mdi-palette-outline" @click="openThemeSettings">
+            テーマ設定
+          </v-btn>
+        </div>
 
         <!-- 中断セッション再開バナー -->
         <v-alert
@@ -381,6 +386,10 @@ function clearAllHistory() {
   showClearDialog.value = false
 }
 
+function openThemeSettings() {
+  router.push({ name: 'settings' })
+}
+
 onMounted(() => {
   settings.value = loadSettings()
   savedSession.value = loadSession()
@@ -388,6 +397,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .action-buttons {
   gap: 10px;
 }

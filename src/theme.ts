@@ -1,0 +1,853 @@
+import type { ThemeDefinition } from 'vuetify'
+
+import { STORAGE_KEY_THEME } from '@/config'
+import type { ThemeId } from '@/types'
+
+type ThemeCatalogCategory = 'color' | 'scenic' | 'motion'
+export type ThemeFilterId = 'all' | ThemeCatalogCategory | 'dark'
+
+interface ThemePalette {
+  background: string
+  surface: string
+  primary: string
+  secondary: string
+  success: string
+  warning: string
+  error: string
+  info: string
+}
+
+interface ThemeSeed {
+  id: ThemeId
+  label: string
+  description: string
+  category: ThemeCatalogCategory
+  isDark: boolean
+  effectClass: string | null
+  colors: ThemePalette
+}
+
+export interface AppThemeOption {
+  id: ThemeId
+  label: string
+  description: string
+  category: ThemeCatalogCategory
+  isDark: boolean
+  hasMotion: boolean
+  appClass: string | null
+  previewColors: string[]
+  theme: ThemeDefinition
+}
+
+export interface ThemeFilterOption {
+  id: ThemeFilterId
+  label: string
+}
+
+export const DEFAULT_THEME_ID: ThemeId = 'classic'
+
+const THEME_FILTER_OPTIONS_INTERNAL: ThemeFilterOption[] = [
+  {
+    id: 'all',
+    label: 'すべて',
+  },
+  {
+    id: 'color',
+    label: '配色のみ',
+  },
+  {
+    id: 'scenic',
+    label: '背景演出',
+  },
+  {
+    id: 'motion',
+    label: 'アニメーション',
+  },
+  {
+    id: 'dark',
+    label: 'ダーク',
+  },
+]
+
+const THEME_SEEDS: ThemeSeed[] = [
+  {
+    id: 'classic',
+    label: 'クラシック',
+    description: '読みやすさ優先の標準配色です。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#F6F8FB',
+      surface: '#FFFFFF',
+      primary: '#2F5DA8',
+      secondary: '#5D7AA6',
+      success: '#2E7D32',
+      warning: '#B26A00',
+      error: '#C43D36',
+      info: '#2C6E9B',
+    },
+  },
+  {
+    id: 'mint',
+    label: 'ミント',
+    description: '爽やかな緑寄りの配色で、軽い印象に整えます。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#F3FBF7',
+      surface: '#FFFFFF',
+      primary: '#2F9E7A',
+      secondary: '#6CC3A0',
+      success: '#2E7D5A',
+      warning: '#C78C2B',
+      error: '#C44F45',
+      info: '#2D8A8B',
+    },
+  },
+  {
+    id: 'coral',
+    label: 'コーラル',
+    description: 'あたたかい赤みを主体にした明るい配色です。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#FFF6F3',
+      surface: '#FFFFFF',
+      primary: '#D96C5F',
+      secondary: '#F2A18B',
+      success: '#3F8A6B',
+      warning: '#D08B2C',
+      error: '#C65348',
+      info: '#4778A8',
+    },
+  },
+  {
+    id: 'harbor',
+    label: 'ハーバー',
+    description: '青緑のトーンで、落ち着いた海辺のような雰囲気を作ります。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#F5FAFC',
+      surface: '#FFFFFF',
+      primary: '#2F6F8F',
+      secondary: '#79B6C9',
+      success: '#2C7A61',
+      warning: '#C7942E',
+      error: '#C54B4B',
+      info: '#4B84A6',
+    },
+  },
+  {
+    id: 'meadow',
+    label: 'メドウ',
+    description: '草原のようなやさしいグリーン系テーマです。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#F6FBF4',
+      surface: '#FFFFFF',
+      primary: '#4A8F4C',
+      secondary: '#88C070',
+      success: '#2D7A3E',
+      warning: '#BE8B28',
+      error: '#BA4C44',
+      info: '#3A8C84',
+    },
+  },
+  {
+    id: 'citrus',
+    label: 'シトラス',
+    description: '黄色とグリーンで軽快なアクセントを出します。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#FFFCEB',
+      surface: '#FFFFFF',
+      primary: '#D2A11B',
+      secondary: '#7BB661',
+      success: '#6A8E2D',
+      warning: '#C87A1A',
+      error: '#C6513D',
+      info: '#3C8C9D',
+    },
+  },
+  {
+    id: 'linen',
+    label: 'リネン',
+    description: '紙のような柔らかいベージュ基調です。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#FAF7F2',
+      surface: '#FFFFFF',
+      primary: '#8C6E52',
+      secondary: '#C4AA8A',
+      success: '#5A8A63',
+      warning: '#C29354',
+      error: '#B95C52',
+      info: '#6787A6',
+    },
+  },
+  {
+    id: 'steel',
+    label: 'スチール',
+    description: 'ブルーグレー主体の整った配色です。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#F4F7FA',
+      surface: '#FFFFFF',
+      primary: '#506C86',
+      secondary: '#9CB1C7',
+      success: '#3A7A66',
+      warning: '#B98439',
+      error: '#B74B52',
+      info: '#3F79A8',
+    },
+  },
+  {
+    id: 'ruby',
+    label: 'ルビー',
+    description: '落ち着いた赤を差し色にした配色です。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#FDF4F6',
+      surface: '#FFFFFF',
+      primary: '#B64A63',
+      secondary: '#E2A3B1',
+      success: '#4E8A67',
+      warning: '#C58A2E',
+      error: '#AD334D',
+      info: '#5A7BB2',
+    },
+  },
+  {
+    id: 'arctic',
+    label: 'アークティック',
+    description: '氷のような淡い青でまとめたテーマです。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#F2FAFC',
+      surface: '#FFFFFF',
+      primary: '#3A8FB7',
+      secondary: '#A3D3E2',
+      success: '#2E7D70',
+      warning: '#C5A145',
+      error: '#C5564C',
+      info: '#3B76C0',
+    },
+  },
+  {
+    id: 'graphite',
+    label: 'グラファイト',
+    description: '高コントラストで見やすいダークテーマです。',
+    category: 'color',
+    isDark: true,
+    effectClass: null,
+    colors: {
+      background: '#0F1722',
+      surface: '#18212C',
+      primary: '#7A9CEB',
+      secondary: '#4E648B',
+      success: '#59B88A',
+      warning: '#D3A14A',
+      error: '#E17373',
+      info: '#63B5E6',
+    },
+  },
+  {
+    id: 'midnight-ink',
+    label: 'ミッドナイトインク',
+    description: '深いネイビーをベースにしたダーク配色です。',
+    category: 'color',
+    isDark: true,
+    effectClass: null,
+    colors: {
+      background: '#0A1220',
+      surface: '#121C2F',
+      primary: '#5D83D5',
+      secondary: '#7B8DB8',
+      success: '#4FA67D',
+      warning: '#D3A04D',
+      error: '#E06767',
+      info: '#4CB4D8',
+    },
+  },
+  {
+    id: 'espresso',
+    label: 'エスプレッソ',
+    description: 'ブラウンベースのシックなダークテーマです。',
+    category: 'color',
+    isDark: true,
+    effectClass: null,
+    colors: {
+      background: '#17110F',
+      surface: '#241A17',
+      primary: '#C48C4E',
+      secondary: '#7A5A42',
+      success: '#5E9478',
+      warning: '#DBA34A',
+      error: '#D86B5E',
+      info: '#6AA5C8',
+    },
+  },
+  {
+    id: 'neon-noir',
+    label: 'ネオンノワール',
+    description: '発色の強いアクセントをのせたダークテーマです。',
+    category: 'color',
+    isDark: true,
+    effectClass: null,
+    colors: {
+      background: '#08121A',
+      surface: '#0F1E29',
+      primary: '#17B9FF',
+      secondary: '#3AF0D0',
+      success: '#38C172',
+      warning: '#F1B842',
+      error: '#F85F7A',
+      info: '#87A7FF',
+    },
+  },
+  {
+    id: 'olive',
+    label: 'オリーブ',
+    description: '落ち着いた黄緑で、柔らかな差し色を作ります。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#FAFAF0',
+      surface: '#FFFFFF',
+      primary: '#738B3D',
+      secondary: '#B8C17A',
+      success: '#5C7C39',
+      warning: '#BD8D26',
+      error: '#B65A43',
+      info: '#567B9A',
+    },
+  },
+  {
+    id: 'sand',
+    label: 'サンド',
+    description: '砂浜のようなベージュと空色の組み合わせです。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#FCF7ED',
+      surface: '#FFFFFF',
+      primary: '#B48752',
+      secondary: '#D8BD8A',
+      success: '#5B8A64',
+      warning: '#C98E3E',
+      error: '#B75C49',
+      info: '#5C7AA7',
+    },
+  },
+  {
+    id: 'denim',
+    label: 'デニム',
+    description: '青のメリハリを効かせた配色です。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#F4F7FD',
+      surface: '#FFFFFF',
+      primary: '#355C9A',
+      secondary: '#8EA8D4',
+      success: '#3C7E6A',
+      warning: '#B8892C',
+      error: '#B74C48',
+      info: '#497CB8',
+    },
+  },
+  {
+    id: 'terracotta',
+    label: 'テラコッタ',
+    description: '素焼きのような赤茶を中心にした配色です。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#FCF4EF',
+      surface: '#FFFFFF',
+      primary: '#B55F3F',
+      secondary: '#D9A07D',
+      success: '#5D8261',
+      warning: '#C37E2F',
+      error: '#B64A3F',
+      info: '#637FA6',
+    },
+  },
+  {
+    id: 'breeze',
+    label: 'ブリーズ',
+    description: '水色寄りのクリーンな配色です。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#F1FBFB',
+      surface: '#FFFFFF',
+      primary: '#2994A0',
+      secondary: '#7ED0D7',
+      success: '#34816C',
+      warning: '#C1A039',
+      error: '#BE5A52',
+      info: '#3C72BA',
+    },
+  },
+  {
+    id: 'sakura',
+    label: 'サクラ',
+    description: '淡いピンクを中心にした軽やかな配色です。',
+    category: 'color',
+    isDark: false,
+    effectClass: null,
+    colors: {
+      background: '#FFF4F7',
+      surface: '#FFFFFF',
+      primary: '#B85D8B',
+      secondary: '#F2B3C8',
+      success: '#4E8B70',
+      warning: '#C78A4B',
+      error: '#C65271',
+      info: '#6A7FD3',
+    },
+  },
+  {
+    id: 'aurora',
+    label: 'オーロラ',
+    description: '朝焼けのような背景演出を加えたテーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-sunrise',
+    colors: {
+      background: '#FFF5EC',
+      surface: '#FFFDFC',
+      primary: '#E66F51',
+      secondary: '#D9895B',
+      success: '#4A8B5C',
+      warning: '#D28A2E',
+      error: '#C84C3B',
+      info: '#A85F7A',
+    },
+  },
+  {
+    id: 'cosmos',
+    label: 'コスモス',
+    description: '夜空を思わせる静かな背景演出のテーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-cosmos',
+    colors: {
+      background: '#EEF3FF',
+      surface: '#F9FBFF',
+      primary: '#5B6CFA',
+      secondary: '#304A90',
+      success: '#347B68',
+      warning: '#C7852D',
+      error: '#C94856',
+      info: '#3B6FD8',
+    },
+  },
+  {
+    id: 'sunrise',
+    label: 'サンライズ',
+    description: '日の出のグラデーションを背景にした明るいテーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-sunrise',
+    colors: {
+      background: '#FFF7E9',
+      surface: '#FFFDFC',
+      primary: '#E89342',
+      secondary: '#F0C66C',
+      success: '#5A9054',
+      warning: '#D7932D',
+      error: '#C75B47',
+      info: '#8C7DD6',
+    },
+  },
+  {
+    id: 'shoreline',
+    label: 'ショアライン',
+    description: '海辺のような静かな背景演出を持つテーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-lagoon',
+    colors: {
+      background: '#F1FBFD',
+      surface: '#FFFFFF',
+      primary: '#2F7AA2',
+      secondary: '#84D2E7',
+      success: '#2E8268',
+      warning: '#C7A243',
+      error: '#C65A4C',
+      info: '#4F75C4',
+    },
+  },
+  {
+    id: 'evergreen',
+    label: 'エバーグリーン',
+    description: '森の空気感を背景に薄く重ねたテーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-forest',
+    colors: {
+      background: '#F4FAF4',
+      surface: '#FFFFFF',
+      primary: '#487B52',
+      secondary: '#9AC38C',
+      success: '#2D6E43',
+      warning: '#BD8A2D',
+      error: '#B95947',
+      info: '#447F8A',
+    },
+  },
+  {
+    id: 'desert',
+    label: 'デザート',
+    description: '砂丘のような陰影を加えた温かいテーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-desert',
+    colors: {
+      background: '#FDF3E7',
+      surface: '#FFFEFC',
+      primary: '#C97841',
+      secondary: '#E7BF72',
+      success: '#6A8B52',
+      warning: '#D48F35',
+      error: '#C45A46',
+      info: '#6A7AB2',
+    },
+  },
+  {
+    id: 'glacier',
+    label: 'グレイシャー',
+    description: '凍った光のような背景を重ねたテーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-frost',
+    colors: {
+      background: '#F3FAFF',
+      surface: '#FFFFFF',
+      primary: '#4D8EC9',
+      secondary: '#B7DCF5',
+      success: '#3D8573',
+      warning: '#CBA34C',
+      error: '#C5645C',
+      info: '#5A76D6',
+    },
+  },
+  {
+    id: 'atelier',
+    label: 'アトリエ',
+    description: '紙と絵具のような柔らかい背景質感を持つテーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-paper',
+    colors: {
+      background: '#FAF5EF',
+      surface: '#FFFCF9',
+      primary: '#9C6D4C',
+      secondary: '#D6B89A',
+      success: '#5D8267',
+      warning: '#C98E4C',
+      error: '#BF6257',
+      info: '#6A84B0',
+    },
+  },
+  {
+    id: 'blossom-night',
+    label: 'ブロッサムナイト',
+    description: '花明かりのような光をのせたダークテーマです。',
+    category: 'scenic',
+    isDark: true,
+    effectClass: 'app-theme-effect-midnight',
+    colors: {
+      background: '#181425',
+      surface: '#231C35',
+      primary: '#E088A6',
+      secondary: '#7D67AB',
+      success: '#6AB38E',
+      warning: '#E0A455',
+      error: '#F06B82',
+      info: '#8CA1FF',
+    },
+  },
+  {
+    id: 'ember-sky',
+    label: 'エンバースカイ',
+    description: '夕焼けの熱を感じる背景演出を持つテーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-sunrise',
+    colors: {
+      background: '#FFF2EB',
+      surface: '#FFFDFC',
+      primary: '#D86A4A',
+      secondary: '#F3B275',
+      success: '#5E8F60',
+      warning: '#D78837',
+      error: '#C54F45',
+      info: '#8A79D0',
+    },
+  },
+  {
+    id: 'lagoon',
+    label: 'ラグーン',
+    description: '水面の反射をイメージした背景つきテーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-lagoon',
+    colors: {
+      background: '#F0FBFA',
+      surface: '#FFFFFF',
+      primary: '#1F8D95',
+      secondary: '#81D6CF',
+      success: '#347C6A',
+      warning: '#C5A24A',
+      error: '#C55A56',
+      info: '#4B7CC4',
+    },
+  },
+  {
+    id: 'moonlit',
+    label: 'ムーンリット',
+    description: '月明かりを思わせる深いダーク背景テーマです。',
+    category: 'scenic',
+    isDark: true,
+    effectClass: 'app-theme-effect-midnight',
+    colors: {
+      background: '#09111F',
+      surface: '#121C2D',
+      primary: '#92A7FF',
+      secondary: '#4F77A5',
+      success: '#4FA681',
+      warning: '#D1A24F',
+      error: '#DB6A6A',
+      info: '#67C7E7',
+    },
+  },
+  {
+    id: 'frost-garden',
+    label: 'フロストガーデン',
+    description: '白い霧と淡い緑を重ねた静かな背景テーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-frost',
+    colors: {
+      background: '#F5FBF8',
+      surface: '#FFFFFF',
+      primary: '#5A8F7B',
+      secondary: '#CCE5DE',
+      success: '#3A7A61',
+      warning: '#BCA458',
+      error: '#C76962',
+      info: '#6386C0',
+    },
+  },
+  {
+    id: 'festival',
+    label: 'フェスティバル',
+    description: '光の粒を散らした華やかな背景テーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-festival',
+    colors: {
+      background: '#FDF6FF',
+      surface: '#FFFFFF',
+      primary: '#B96BD7',
+      secondary: '#F0A5E6',
+      success: '#4D8D72',
+      warning: '#D59A39',
+      error: '#CC5A7F',
+      info: '#6B7ADE',
+    },
+  },
+  {
+    id: 'canyon',
+    label: 'キャニオン',
+    description: '地層のような奥行きを背景に持つ暖色テーマです。',
+    category: 'scenic',
+    isDark: false,
+    effectClass: 'app-theme-effect-desert',
+    colors: {
+      background: '#FCF1EA',
+      surface: '#FFFDFC',
+      primary: '#B75D3E',
+      secondary: '#D9996B',
+      success: '#5D8861',
+      warning: '#CB8A36',
+      error: '#BE5348',
+      info: '#6880C0',
+    },
+  },
+  {
+    id: 'tide-flow',
+    label: 'タイドフロー',
+    description: '水面がゆっくり流れるように背景が動くテーマです。',
+    category: 'motion',
+    isDark: false,
+    effectClass: 'app-theme-motion-wave',
+    colors: {
+      background: '#F1FBFC',
+      surface: '#FFFFFF',
+      primary: '#2E89A8',
+      secondary: '#7AD0D8',
+      success: '#377E6E',
+      warning: '#C3A047',
+      error: '#BF6256',
+      info: '#4B73C5',
+    },
+  },
+  {
+    id: 'starlight-drift',
+    label: 'スターライトドリフト',
+    description: '星明かりがゆっくり漂うダークテーマです。',
+    category: 'motion',
+    isDark: true,
+    effectClass: 'app-theme-motion-orbit',
+    colors: {
+      background: '#08101E',
+      surface: '#111A2D',
+      primary: '#8AA2FF',
+      secondary: '#5B77C8',
+      success: '#52B08B',
+      warning: '#D0A557',
+      error: '#DD7079',
+      info: '#73C7EA',
+    },
+  },
+  {
+    id: 'sunrise-wave',
+    label: 'サンライズウェーブ',
+    description: '朝の光がゆっくり揺れるように背景が変化します。',
+    category: 'motion',
+    isDark: false,
+    effectClass: 'app-theme-motion-drift',
+    colors: {
+      background: '#FFF8EF',
+      surface: '#FFFDFC',
+      primary: '#E98B55',
+      secondary: '#F2C979',
+      success: '#588D62',
+      warning: '#D68E3E',
+      error: '#C75C4F',
+      info: '#7C83D6',
+    },
+  },
+  {
+    id: 'neon-rain',
+    label: 'ネオンレイン',
+    description: 'ネオンの筋が流れるように背景が動くダークテーマです。',
+    category: 'motion',
+    isDark: true,
+    effectClass: 'app-theme-motion-rain',
+    colors: {
+      background: '#07131C',
+      surface: '#102132',
+      primary: '#24D5FF',
+      secondary: '#7E7CFF',
+      success: '#43C38F',
+      warning: '#F1BE4A',
+      error: '#FF6B8B',
+      info: '#7ADCF8',
+    },
+  },
+  {
+    id: 'polar-glow',
+    label: 'ポーラーグロウ',
+    description: '極光のような柔らかな明滅を背景に持つテーマです。',
+    category: 'motion',
+    isDark: false,
+    effectClass: 'app-theme-motion-pulse',
+    colors: {
+      background: '#F2FBFF',
+      surface: '#FFFFFF',
+      primary: '#5F9BEA',
+      secondary: '#A7E4F8',
+      success: '#4E9E90',
+      warning: '#CCB35C',
+      error: '#C86B66',
+      info: '#70B8FF',
+    },
+  },
+]
+
+function createThemeOption(seed: ThemeSeed): AppThemeOption {
+  return {
+    id: seed.id,
+    label: seed.label,
+    description: seed.description,
+    category: seed.category,
+    isDark: seed.isDark,
+    hasMotion: seed.category === 'motion',
+    appClass: seed.effectClass,
+    previewColors: [
+      seed.colors.primary,
+      seed.colors.secondary,
+      seed.isDark ? seed.colors.surface : seed.colors.background,
+    ],
+    theme: {
+      dark: seed.isDark,
+      colors: seed.colors,
+    },
+  }
+}
+
+export const THEME_FILTER_OPTIONS = THEME_FILTER_OPTIONS_INTERNAL
+
+export const APP_THEME_OPTIONS: AppThemeOption[] = THEME_SEEDS.map(createThemeOption)
+
+export const VUETIFY_THEMES: Record<string, ThemeDefinition> = Object.fromEntries(
+  APP_THEME_OPTIONS.map((option) => [option.id, option.theme]),
+)
+
+export function matchesThemeFilter(theme: AppThemeOption, filterId: ThemeFilterId): boolean {
+  switch (filterId) {
+    case 'all':
+      return true
+    case 'dark':
+      return theme.isDark
+    default:
+      return theme.category === filterId
+  }
+}
+
+export function normalizeThemeId(raw: unknown): ThemeId {
+  return APP_THEME_OPTIONS.some((option) => option.id === raw) ? (raw as ThemeId) : DEFAULT_THEME_ID
+}
+
+export function loadStoredThemeId(): ThemeId {
+  try {
+    return normalizeThemeId(localStorage.getItem(STORAGE_KEY_THEME))
+  } catch {
+    return DEFAULT_THEME_ID
+  }
+}
+
+export function saveStoredThemeId(themeId: ThemeId): void {
+  localStorage.setItem(STORAGE_KEY_THEME, themeId)
+}
+
+export function getThemeOption(themeId: ThemeId): AppThemeOption {
+  return APP_THEME_OPTIONS.find((option) => option.id === themeId) ?? APP_THEME_OPTIONS[0]
+}
