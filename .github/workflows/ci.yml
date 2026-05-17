@@ -44,7 +44,7 @@ jobs:
     if: ${{ always() }}
     steps:
       - name: Publish required branch protection status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const state = '${{ needs.required-checks.result }}' === 'success' ? 'success' : 'failure'
