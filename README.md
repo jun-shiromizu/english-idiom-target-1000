@@ -138,6 +138,8 @@ Pull Request を開くと GitHub Actions の CI が自動で以下を実行し�
 
 Dependabot の PR も同じ CI で確認できます。ワークフローの状況は [Actions タブ](https://github.com/jun-shiromizu/english-idiom-target-1000/actions) と PR 画面の checks で確認できます。
 
+Branch protection で required check を設定する場合は、`required-pr-checks` を選択します。
+
 ### デプロイ
 
 デプロイは `main` への push では自動実行されません。まとめて反映したいタイミングで、Actions タブ → "Deploy to GitHub Pages" → "Run workflow" から手動実行します。
