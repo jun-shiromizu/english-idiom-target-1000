@@ -1,5 +1,6 @@
-# 英熟語暗記アプリ
+# 英単語／英熟語暗記アプリ
 
+[![CI](https://github.com/jun-shiromizu/english-idiom-target-1000/actions/workflows/ci.yml/badge.svg)](https://github.com/jun-shiromizu/english-idiom-target-1000/actions/workflows/ci.yml)
 [![Deploy to GitHub Pages](https://github.com/jun-shiromizu/english-idiom-target-1000/actions/workflows/deploy.yml/badge.svg)](https://github.com/jun-shiromizu/english-idiom-target-1000/actions/workflows/deploy.yml)
 ![Vue 3](https://img.shields.io/badge/Vue-3-42b883?logo=vue.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
@@ -126,21 +127,25 @@ npx playwright install
 
 ---
 
-## リリースの仕方
+## CI とリリースの仕方
 
-`main` ブランチに push すると GitHub Actions が自動で以下を実行します。
+Pull Request を開くと GitHub Actions の CI が自動で以下を実行します。
 
 1. 型チェック（`vue-tsc --noEmit`）
 2. ユニットテスト（`vitest run`）
-3. プロダクションビルド（`vite build`）
-4. `gh-pages` ブランチへデプロイ（`peaceiris/actions-gh-pages`）
+3. E2E テスト（`npm run test:e2e`）
+4. プロダクションビルド（`vite build`）
 
-```bash
-git push origin main
-```
+Dependabot の PR も同じ CI で確認できます。ワークフローの状況は [Actions タブ](https://github.com/jun-shiromizu/english-idiom-target-1000/actions) と PR 画面の checks で確認できます。
 
-ワークフローの状況は [Actions タブ](https://github.com/jun-shiromizu/english-idiom-target-1000/actions) で確認できます。
+### デプロイ
 
-### 手動デプロイ（任意）
+デプロイは `main` への push では自動実行されません。まとめて反映したいタイミングで、Actions タブ → "Deploy to GitHub Pages" → "Run workflow" から手動実行します。
 
-Actions タブ → "Deploy to GitHub Pages" → "Run workflow" からも実行できます。
+手動デプロイ時には以下を実行してから `gh-pages` ブランチへ反映します。
+
+1. 型チェック（`vue-tsc --noEmit`）
+2. ユニットテスト（`vitest run`）
+3. E2E テスト（`npm run test:e2e`）
+4. プロダクションビルド（`vite build`）
+5. `gh-pages` ブランチへデプロイ（`peaceiris/actions-gh-pages`）
