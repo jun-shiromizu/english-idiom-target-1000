@@ -1,6 +1,6 @@
-name: CI
+name: Required PR Checks
 
-on:
+"on":
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  required-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
