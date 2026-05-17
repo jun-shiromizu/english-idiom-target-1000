@@ -1,4 +1,4 @@
-name: CI
+name: Required PR Checks
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  required-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
