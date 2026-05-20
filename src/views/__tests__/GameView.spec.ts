@@ -28,6 +28,8 @@ function makePauseItem(number: string, questionText: string, meaning: string): Q
   return {
     number,
     idiomData,
+    mode: 'idiom',
+    direction: 'en-to-ja',
     questionText,
     idiomIndex: 0,
   }
@@ -40,6 +42,7 @@ function makePauseSession(): QuizSession {
       startNumber: 1,
       endNumber: 4,
       mode: 'idiom',
+      direction: 'en-to-ja',
       target: 'all',
       order: 'sequential',
     },
@@ -64,6 +67,8 @@ function makeGameOverItem(number: string): QuizItem {
   return {
     number,
     idiomData: gameOverIdiomData,
+    mode: 'sentence',
+    direction: 'en-to-ja',
     questionText: `question ${number}`,
     idiomIndex: 0,
   }
@@ -76,6 +81,7 @@ function makeGameOverSession(): QuizSession {
       startNumber: 12,
       endNumber: 34,
       mode: 'sentence',
+      direction: 'en-to-ja',
       target: 'all',
       order: 'sequential',
     },
@@ -209,7 +215,9 @@ describe('GameView', () => {
     expect(wrapper.text()).toContain('終了番号')
     expect(wrapper.text()).toContain('34')
     expect(wrapper.text()).toContain('出題形式')
-    expect(wrapper.text()).toContain('例文（英語 → 日本語）')
+    expect(wrapper.text()).toContain('例文')
+    expect(wrapper.text()).toContain('出題方向')
+    expect(wrapper.text()).toContain('英語 → 日本語')
     expect(wrapper.text()).toContain('出題対象')
     expect(wrapper.text()).toContain('すべて')
     expect(wrapper.text()).toContain('出題順序')
@@ -244,6 +252,8 @@ describe('GameView', () => {
           ],
           notes: [],
         },
+        mode: 'idiom',
+        direction: 'en-to-ja',
         questionText: 'a piece of cake',
         idiomIndex: 0,
       }
@@ -260,6 +270,8 @@ describe('GameView', () => {
           ],
           notes: [],
         },
+        mode: 'idiom',
+        direction: 'en-to-ja',
         questionText: 'at all costs',
         idiomIndex: 0,
       }
@@ -269,6 +281,7 @@ describe('GameView', () => {
           startNumber: 99,
           endNumber: 100,
           mode: 'idiom',
+          direction: 'en-to-ja',
           target: 'all',
           order: 'sequential',
         },

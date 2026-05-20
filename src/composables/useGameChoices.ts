@@ -60,16 +60,31 @@ function makeCandidate(mean: Mean): GameChoiceCandidate {
   }
 }
 
+function joinIdiomsLabel(item: QuizItem): string {
+  return item.idiomData.idioms.join(' / ')
+}
+
+function getSentenceQuestionAnswer(item: QuizItem): string {
+  const meanIndex = item.meanIndex ?? 0
+  return item.direction === 'en-to-ja'
+    ? item.idiomData.means[meanIndex]['sentence-jp']
+    : item.idiomData.means[meanIndex]['example-sentence']
+}
+
 export function getGameAnswerLabel(item: QuizItem): string {
-  if (item.meanIndex !== undefined) {
-    return item.idiomData.means[item.meanIndex]['sentence-jp']
+  if (item.mode === 'sentence') {
+    return getSentenceQuestionAnswer(item)
+  }
+
+  if (item.direction === 'ja-to-en') {
+    return joinIdiomsLabel(item)
   }
 
   return simplifyMeaningLabel(item.idiomData.means[0]['idiom-jp'])
 }
 
 function getAnswerChoiceType(item: QuizItem): ChoiceType {
-  if (item.meanIndex !== undefined) {
+  if (item.mode === 'sentence' || item.direction === 'ja-to-en') {
     return 'other'
   }
 
@@ -77,11 +92,22 @@ function getAnswerChoiceType(item: QuizItem): ChoiceType {
 }
 
 function getDistractorCandidates(item: QuizItem): GameChoiceCandidate[] {
-  if (item.meanIndex !== undefined) {
-    return item.idiomData.means.map((mean) => ({
-      label: mean['sentence-jp'],
-      choiceType: 'other',
-    }))
+  if (item.mode === 'sentence') {
+    return [
+      {
+        label: getSentenceQuestionAnswer(item),
+        choiceType: 'other',
+      },
+    ]
+  }
+
+  if (item.direction === 'ja-to-en') {
+    return [
+      {
+        label: joinIdiomsLabel(item),
+        choiceType: 'other',
+      },
+    ]
   }
 
   return item.idiomData.means.map(makeCandidate)
@@ -102,7 +128,7 @@ export function buildGameChoices(currentItem: QuizItem, items: QuizItem[]): Game
 
   const fallbackDistractors = uniqueCandidates(
     items
-      .flatMap((item) => item.idiomData.means.map(makeCandidate))
+      .flatMap(getDistractorCandidates)
       .filter((candidate) => candidate.label !== correctAnswer),
   )
 

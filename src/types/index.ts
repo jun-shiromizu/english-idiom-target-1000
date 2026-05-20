@@ -39,6 +39,7 @@ export type ChoiceType =
 
 export type BookId = 'idiom-target-1000' | 'word-target-1900'
 export type QuizMode = 'idiom' | 'sentence'
+export type QuizDirection = 'en-to-ja' | 'ja-to-en'
 export type QuizTarget = 'all' | 'incorrect'
 export type QuizOrder = 'sequential' | 'random'
 export type GameDifficulty = 'easy' | 'normal' | 'hard'
@@ -49,6 +50,7 @@ export interface QuizSettings {
   startNumber: number
   endNumber: number
   mode: QuizMode
+  direction: QuizDirection
   target: QuizTarget
   order: QuizOrder
 }
@@ -57,6 +59,10 @@ export interface QuizItem {
   /** 4桁ゼロ埋め熟語番号 e.g. "0001" */
   number: string
   idiomData: IdiomData
+  /** 出題形式 */
+  mode: QuizMode
+  /** 出題方向 */
+  direction: QuizDirection
   /** 出題テキスト e.g. "a piece of ~ (1)" */
   questionText: string
   /** idioms 配列のインデックス（複数熟語対応） */

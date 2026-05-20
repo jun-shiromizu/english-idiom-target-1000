@@ -22,6 +22,7 @@ export function useQuizSession() {
       startNumber: settings.startNumber,
       endNumber: settings.endNumber,
       mode: settings.mode,
+      direction: settings.direction ?? 'en-to-ja',
       target: settings.target,
       order: settings.order,
     }
@@ -40,32 +41,78 @@ export function useQuizSession() {
       if (!data) continue
 
       if (normalizedSettings.mode === 'idiom') {
-        // 熟語モード: idioms 配列の各要素を別々に出題
-        data.idioms.forEach((idiom, idiomIndex) => {
-          const totalMeans = data.means.length
-          const questionText = totalMeans > 1 ? `${idiom} (${totalMeans})` : idiom
+        if (normalizedSettings.direction === 'en-to-ja') {
+          // 英語→日本語: idioms 配列の各要素を別々に出題
+          data.idioms.forEach((idiom, idiomIndex) => {
+            const totalMeans = data.means.length
+            const questionText = totalMeans > 1 ? `${idiom} (${totalMeans})` : idiom
 
-          if (
-            normalizedSettings.target === 'incorrect' &&
-            !isIncorrect(normalizedSettings.bookId, number, idiomIndex, data.idioms.length)
-          ) {
-            return
-          }
+            if (
+              normalizedSettings.target === 'incorrect' &&
+              !isIncorrect(
+                normalizedSettings.bookId,
+                number,
+                idiomIndex,
+                data.idioms.length,
+                normalizedSettings.mode,
+                normalizedSettings.direction,
+              )
+            ) {
+              return
+            }
 
-          items.push({
-            number,
-            idiomData: data,
-            questionText,
-            idiomIndex,
+            items.push({
+              number,
+              idiomData: data,
+              mode: 'idiom',
+              direction: normalizedSettings.direction,
+              questionText,
+              idiomIndex,
+            })
           })
-        })
+        } else {
+          // 日本語→英語: means 配列の各要素を別々に出題
+          data.means.forEach((mean, meanIndex) => {
+            const idiomIndex = 0
+            if (
+              normalizedSettings.target === 'incorrect' &&
+              !isIncorrect(
+                normalizedSettings.bookId,
+                number,
+                meanIndex,
+                data.means.length,
+                normalizedSettings.mode,
+                normalizedSettings.direction,
+              )
+            ) {
+              return
+            }
+
+            items.push({
+              number,
+              idiomData: data,
+              mode: 'idiom',
+              direction: normalizedSettings.direction,
+              questionText: mean['idiom-jp'],
+              idiomIndex,
+              meanIndex,
+            })
+          })
+        }
       } else {
         // 例文モード: means 配列の各要素を別々に出題
         data.means.forEach((mean, meanIndex) => {
           const idiomIndex = 0 // 例文モードでは idiomIndex は参照用として 0 を設定
           if (
             normalizedSettings.target === 'incorrect' &&
-            !isIncorrect(normalizedSettings.bookId, number, meanIndex, data.means.length)
+            !isIncorrect(
+              normalizedSettings.bookId,
+              number,
+              meanIndex,
+              data.means.length,
+              normalizedSettings.mode,
+              normalizedSettings.direction,
+            )
           ) {
             return
           }
@@ -73,7 +120,12 @@ export function useQuizSession() {
           items.push({
             number,
             idiomData: data,
-            questionText: mean['example-sentence'],
+            mode: 'sentence',
+            direction: normalizedSettings.direction,
+            questionText:
+              normalizedSettings.direction === 'en-to-ja'
+                ? mean['example-sentence']
+                : mean['sentence-jp'],
             idiomIndex,
             meanIndex,
           })
@@ -101,6 +153,7 @@ export function useQuizSession() {
         settings: {
           ...normalizeSettings(session.settings),
           bookId: session.settings.bookId ?? LEGACY_BOOK_ID,
+          direction: session.settings.direction ?? 'en-to-ja',
         },
       }
     } catch {

@@ -20,6 +20,8 @@ function item(number: string, idiom: string, jp: string): QuizItem {
   return {
     number,
     idiomData: data(idiom, jp),
+    mode: 'idiom',
+    direction: 'en-to-ja',
     questionText: idiom,
     idiomIndex: 0,
   }
@@ -46,6 +48,7 @@ describe('useGameChoices', () => {
   it('例文モードでは例文訳を正解にする', () => {
     const current: QuizItem = {
       ...item('0001', 'create', 'を創り出す'),
+      mode: 'sentence',
       questionText: 'Technological change will create new ways of living.',
       meanIndex: 0,
     }
@@ -102,6 +105,52 @@ describe('useGameChoices', () => {
 
     const distractors = choices.filter((choice) => !choice.correct).map((choice) => choice.label)
     expect(distractors).toEqual(expect.arrayContaining(['包含', '考慮', '変更']))
+
+    vi.restoreAllMocks()
+  })
+
+  it('日本語→英語の単語／熟語モードでは英語を正解候補にする', () => {
+    const current: QuizItem = {
+      ...item('0001', 'create', 'を創り出す'),
+      direction: 'ja-to-en',
+      questionText: 'を創り出す',
+      meanIndex: 0,
+    }
+
+    expect(getGameAnswerLabel(current)).toBe('create')
+  })
+
+  it('日本語→英語で熟語が複数ある場合はまとめて1つの正解候補にする', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const current: QuizItem = {
+      number: '0006',
+      idiomData: {
+        idioms: ['a great deal of ~', 'a good deal of ~'],
+        means: [
+          {
+            'idiom-jp': 'たくさん',
+            'example-sentence': 'example 6',
+            'sentence-jp': '例文訳6',
+          },
+        ],
+        notes: [],
+      },
+      mode: 'idiom',
+      direction: 'ja-to-en',
+      questionText: 'たくさん',
+      idiomIndex: 0,
+      meanIndex: 0,
+    }
+
+    const choices = buildGameChoices(current, [
+      current,
+      item('0002', 'increase', '増える'),
+      item('0003', 'include', 'を含む'),
+      item('0004', 'consider', 'を考慮する'),
+    ])
+
+    expect(choices).toHaveLength(4)
+    expect(choices.map((choice) => choice.label)).toContain('a great deal of ~ / a good deal of ~')
 
     vi.restoreAllMocks()
   })

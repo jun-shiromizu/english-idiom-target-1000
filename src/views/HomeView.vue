@@ -90,6 +90,18 @@
             />
 
             <v-select
+              v-model="settings.direction"
+              label="出題方向"
+              :items="directionItems"
+              item-title="label"
+              item-value="value"
+              variant="outlined"
+              density="compact"
+              class="mb-2"
+              aria-label="出題方向"
+            />
+
+            <v-select
               v-model="settings.target"
               label="出題対象"
               :items="targetItems"
@@ -196,7 +208,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import type { GameDifficulty, QuizSettings } from '@/types'
+import type { GameDifficulty, QuizDirection, QuizSettings } from '@/types'
 import {
   BOOK_ORDER,
   DEFAULT_BOOK_ID,
@@ -219,6 +231,7 @@ function createDefaultSettings(): QuizSettings {
     startNumber: 1,
     endNumber: 100,
     mode: 'idiom',
+    direction: 'en-to-ja',
     target: 'all',
     order: 'sequential',
   }
@@ -236,6 +249,7 @@ function normalizeSettings(raw: Partial<QuizSettings> | null | undefined): QuizS
     startNumber: Math.min(startNumber, endNumber),
     endNumber: Math.max(startNumber, endNumber),
     mode: raw?.mode ?? defaults.mode,
+    direction: raw?.direction === 'ja-to-en' ? 'ja-to-en' : defaults.direction,
     target: raw?.target ?? defaults.target,
     order: raw?.order ?? defaults.order,
   }
@@ -279,8 +293,12 @@ const bookItems = BOOK_ORDER.map((bookId) => {
 })
 
 const modeItems = [
-  { label: '単語／熟語（英語 → 日本語）', value: 'idiom' },
-  { label: '例文（英語 → 日本語）', value: 'sentence' },
+  { label: '単語／熟語', value: 'idiom' },
+  { label: '例文', value: 'sentence' },
+]
+const directionItems: Array<{ label: string; value: QuizDirection }> = [
+  { label: '英語 → 日本語', value: 'en-to-ja' },
+  { label: '日本語 → 英語', value: 'ja-to-en' },
 ]
 const targetItems = [
   { label: 'すべて', value: 'all' },

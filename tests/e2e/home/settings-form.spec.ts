@@ -74,6 +74,7 @@ async function seedSavedSession(
           startNumber: 1,
           endNumber: 3,
           mode: 'idiom',
+          direction: 'en-to-ja',
           target: 'all',
           order: 'sequential',
         },
@@ -87,6 +88,8 @@ async function seedSavedSession(
     item: {
       number: '0001',
       idiomData: mockQuizData,
+      mode: 'idiom',
+      direction: 'en-to-ja',
       questionText: 'a piece of ~',
       idiomIndex: 0,
     },
@@ -108,7 +111,9 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await expect(page.getByLabel('開始番号')).toBeVisible()
     await expect(page.getByLabel('終了番号')).toBeVisible()
     await expect(page.getByLabel('出題形式')).toBeVisible()
-    await expect(page.getByText('単語／熟語（英語 → 日本語）', { exact: true })).toBeVisible()
+    await expect(page.getByText('単語／熟語', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('出題方向')).toBeVisible()
+    await expect(page.getByText('英語 → 日本語', { exact: true })).toBeVisible()
     await expect(page.getByLabel('出題対象')).toBeVisible()
     await expect(page.getByLabel('出題順序')).toBeVisible()
     await expect(page.getByRole('button', { name: '単語帳' })).toBeVisible()
@@ -178,6 +183,7 @@ test.describe('トップページ - 出題設定フォーム', () => {
 
     expect(session).not.toBeNull()
     expect(session.settings.bookId).toBe('idiom-target-1000')
+    expect(session.settings.direction).toBe('en-to-ja')
     expect(session.currentIndex).toBe(0)
     expect(session.results).toEqual({})
     expect(session.items).toHaveLength(1)
@@ -203,6 +209,7 @@ test.describe('トップページ - 出題設定フォーム', () => {
 
     expect(session).not.toBeNull()
     expect(session.settings.bookId).toBe('word-target-1900')
+    expect(session.settings.direction).toBe('en-to-ja')
     expect(session.currentIndex).toBe(0)
     expect(session.results).toEqual({})
     expect(session.items).toHaveLength(1)
@@ -234,7 +241,9 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await page.getByLabel('開始番号').fill('101')
     await page.getByLabel('終了番号').fill('110')
     await page.getByRole('combobox', { name: '出題形式' }).press('ArrowDown')
-    await page.getByRole('option', { name: '例文（英語 → 日本語）' }).click()
+    await page.getByRole('option', { name: '例文' }).click()
+    await page.getByRole('combobox', { name: '出題方向' }).press('ArrowDown')
+    await page.getByRole('option', { name: '日本語 → 英語' }).click()
     await page.getByRole('combobox', { name: '出題対象' }).press('ArrowDown')
     await page.getByRole('option', { name: '間違えたものだけ' }).click()
     await page.getByRole('combobox', { name: '出題順序' }).press('ArrowDown')
@@ -245,7 +254,8 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await expect(page.getByRole('radio', { name: '英熟語ターゲット1000' })).toBeChecked()
     await expect(page.getByLabel('開始番号')).toHaveValue('101')
     await expect(page.getByLabel('終了番号')).toHaveValue('110')
-    await expect(page.getByRole('combobox', { name: '出題形式' })).toHaveValue('例文（英語 → 日本語）')
+    await expect(page.getByRole('combobox', { name: '出題形式' })).toHaveValue('例文')
+    await expect(page.getByRole('combobox', { name: '出題方向' })).toHaveValue('日本語 → 英語')
     await expect(page.getByRole('combobox', { name: '出題対象' })).toHaveValue('間違えたものだけ')
     await expect(page.getByRole('combobox', { name: '出題順序' })).toHaveValue('ランダム')
   })
