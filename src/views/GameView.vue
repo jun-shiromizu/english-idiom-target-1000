@@ -135,7 +135,7 @@
             <v-btn
               v-for="choice in choices"
               :key="choice.label"
-              class="choice-button"
+              class="choice-button text-none"
               color="primary"
               variant="outlined"
               :disabled="isResolving"
