@@ -119,4 +119,39 @@ describe('useGameChoices', () => {
 
     expect(getGameAnswerLabel(current)).toBe('create')
   })
+
+  it('日本語→英語で熟語が複数ある場合はまとめて1つの正解候補にする', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const current: QuizItem = {
+      number: '0006',
+      idiomData: {
+        idioms: ['a great deal of ~', 'a good deal of ~'],
+        means: [
+          {
+            'idiom-jp': 'たくさん',
+            'example-sentence': 'example 6',
+            'sentence-jp': '例文訳6',
+          },
+        ],
+        notes: [],
+      },
+      mode: 'idiom',
+      direction: 'ja-to-en',
+      questionText: 'たくさん',
+      idiomIndex: 0,
+      meanIndex: 0,
+    }
+
+    const choices = buildGameChoices(current, [
+      current,
+      item('0002', 'increase', '増える'),
+      item('0003', 'include', 'を含む'),
+      item('0004', 'consider', 'を考慮する'),
+    ])
+
+    expect(choices).toHaveLength(4)
+    expect(choices.map((choice) => choice.label)).toContain('a great deal of ~ / a good deal of ~')
+
+    vi.restoreAllMocks()
+  })
 })

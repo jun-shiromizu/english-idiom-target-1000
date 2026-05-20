@@ -1,14 +1,23 @@
 import { LEGACY_BOOK_ID, STORAGE_KEY_HISTORY } from '@/config'
-import type { BookId } from '@/types'
+import type { BookId, QuizDirection, QuizMode } from '@/types'
 import { formatNumber } from './useGitHubData'
 
 /** localStorage に保存する履歴の型 */
 type HistoryRecord = Record<string, boolean>
 
-/** 教材別の履歴キーを生成: 単一なら "bookId:0001"、複数なら "bookId:0001-1" */
-function makeKey(bookId: BookId, number: string, idiomIndex: number, totalIdioms: number): string {
+interface HistoryKeyParams {
+  bookId: BookId
+  mode: QuizMode
+  direction: QuizDirection
+  number: string
+  idiomIndex: number
+  totalIdioms: number
+}
+
+/** 教材・出題条件別の履歴キーを生成 */
+function makeKey({ bookId, mode, direction, number, idiomIndex, totalIdioms }: HistoryKeyParams): string {
   const suffix = totalIdioms > 1 ? `${number}-${idiomIndex}` : number
-  return `${bookId}:${suffix}`
+  return `${bookId}:${mode}:${direction}:${suffix}`
 }
 
 function makeLegacyKey(number: string, idiomIndex: number, totalIdioms: number): string {
@@ -36,19 +45,28 @@ export function useHistory() {
     idiomIndex: number,
     totalIdioms: number,
     correct: boolean,
+    mode: QuizMode = 'idiom',
+    direction: QuizDirection = 'en-to-ja',
   ): void {
     const history = getHistory()
-    history[makeKey(bookId, number, idiomIndex, totalIdioms)] = correct
+    history[makeKey({ bookId, mode, direction, number, idiomIndex, totalIdioms })] = correct
     saveHistory(history)
   }
 
   /** 指定の熟語の最新回答が不正解かどうか */
-  function isIncorrect(bookId: BookId, number: string, idiomIndex: number, totalIdioms: number): boolean {
+  function isIncorrect(
+    bookId: BookId,
+    number: string,
+    idiomIndex: number,
+    totalIdioms: number,
+    mode: QuizMode = 'idiom',
+    direction: QuizDirection = 'en-to-ja',
+  ): boolean {
     const history = getHistory()
-    const key = makeKey(bookId, number, idiomIndex, totalIdioms)
+    const key = makeKey({ bookId, mode, direction, number, idiomIndex, totalIdioms })
     // 未回答は "不正解扱いしない"（出題対象から除外しない）
     if (!(key in history)) {
-      if (bookId === LEGACY_BOOK_ID) {
+      if (mode === 'idiom' && direction === 'en-to-ja' && bookId === LEGACY_BOOK_ID) {
         const legacyKey = makeLegacyKey(number, idiomIndex, totalIdioms)
         return history[legacyKey] === false
       }
@@ -67,10 +85,17 @@ export function useHistory() {
     const history = getHistory()
     for (let i = start; i <= end; i++) {
       const num = formatNumber(i)
-      const prefix = `${bookId}:${num}`
+      const prefixes = [
+        `${bookId}:idiom:en-to-ja:${num}`,
+        `${bookId}:sentence:en-to-ja:${num}`,
+        `${bookId}:idiom:ja-to-en:${num}`,
+        `${bookId}:sentence:ja-to-en:${num}`,
+        `${bookId}:${num}`,
+      ]
       Object.keys(history).forEach((key) => {
-        if (key === prefix || key.startsWith(`${prefix}-`)) {
+        if (prefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}-`))) {
           delete history[key]
+          return
         }
         if (bookId === LEGACY_BOOK_ID && (key === num || key.startsWith(`${num}-`))) {
           delete history[key]

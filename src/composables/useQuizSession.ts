@@ -49,7 +49,14 @@ export function useQuizSession() {
 
             if (
               normalizedSettings.target === 'incorrect' &&
-              !isIncorrect(normalizedSettings.bookId, number, idiomIndex, data.idioms.length)
+              !isIncorrect(
+                normalizedSettings.bookId,
+                number,
+                idiomIndex,
+                data.idioms.length,
+                normalizedSettings.mode,
+                normalizedSettings.direction,
+              )
             ) {
               return
             }
@@ -69,7 +76,14 @@ export function useQuizSession() {
             const idiomIndex = 0
             if (
               normalizedSettings.target === 'incorrect' &&
-              !isIncorrect(normalizedSettings.bookId, number, meanIndex, data.means.length)
+              !isIncorrect(
+                normalizedSettings.bookId,
+                number,
+                meanIndex,
+                data.means.length,
+                normalizedSettings.mode,
+                normalizedSettings.direction,
+              )
             ) {
               return
             }
@@ -91,7 +105,14 @@ export function useQuizSession() {
           const idiomIndex = 0 // 例文モードでは idiomIndex は参照用として 0 を設定
           if (
             normalizedSettings.target === 'incorrect' &&
-            !isIncorrect(normalizedSettings.bookId, number, meanIndex, data.means.length)
+            !isIncorrect(
+              normalizedSettings.bookId,
+              number,
+              meanIndex,
+              data.means.length,
+              normalizedSettings.mode,
+              normalizedSettings.direction,
+            )
           ) {
             return
           }

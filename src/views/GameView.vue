@@ -365,7 +365,15 @@ function recordAnswer(correct: boolean) {
   const item = currentItem.value
   const totalItems = item.meanIndex !== undefined ? item.idiomData.means.length : item.idiomData.idioms.length
   const answerIndex = item.meanIndex !== undefined ? item.meanIndex : item.idiomIndex
-  setResult(session.value.settings.bookId, item.number, answerIndex, totalItems, correct)
+  setResult(
+    session.value.settings.bookId,
+    item.number,
+    answerIndex,
+    totalItems,
+    correct,
+    session.value.settings.mode,
+    session.value.settings.direction,
+  )
 }
 
 function nextQuestion() {

@@ -60,16 +60,24 @@ function makeCandidate(mean: Mean): GameChoiceCandidate {
   }
 }
 
+function joinIdiomsLabel(item: QuizItem): string {
+  return item.idiomData.idioms.join(' / ')
+}
+
+function getSentenceQuestionAnswer(item: QuizItem): string {
+  const meanIndex = item.meanIndex ?? 0
+  return item.direction === 'en-to-ja'
+    ? item.idiomData.means[meanIndex]['sentence-jp']
+    : item.idiomData.means[meanIndex]['example-sentence']
+}
+
 export function getGameAnswerLabel(item: QuizItem): string {
   if (item.mode === 'sentence') {
-    const meanIndex = item.meanIndex ?? 0
-    return item.direction === 'en-to-ja'
-      ? item.idiomData.means[meanIndex]['sentence-jp']
-      : item.idiomData.means[meanIndex]['example-sentence']
+    return getSentenceQuestionAnswer(item)
   }
 
   if (item.direction === 'ja-to-en') {
-    return item.idiomData.idioms[item.idiomIndex] ?? item.idiomData.idioms[0]
+    return joinIdiomsLabel(item)
   }
 
   return simplifyMeaningLabel(item.idiomData.means[0]['idiom-jp'])
@@ -85,14 +93,21 @@ function getAnswerChoiceType(item: QuizItem): ChoiceType {
 
 function getDistractorCandidates(item: QuizItem): GameChoiceCandidate[] {
   if (item.mode === 'sentence') {
-    return item.idiomData.means.map((mean) => ({
-      label: item.direction === 'en-to-ja' ? mean['sentence-jp'] : mean['example-sentence'],
-      choiceType: 'other',
-    }))
+    return [
+      {
+        label: getSentenceQuestionAnswer(item),
+        choiceType: 'other',
+      },
+    ]
   }
 
   if (item.direction === 'ja-to-en') {
-    return item.idiomData.idioms.map((idiom) => ({ label: idiom, choiceType: 'other' }))
+    return [
+      {
+        label: joinIdiomsLabel(item),
+        choiceType: 'other',
+      },
+    ]
   }
 
   return item.idiomData.means.map(makeCandidate)
