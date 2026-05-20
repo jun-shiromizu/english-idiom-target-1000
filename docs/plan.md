@@ -55,7 +55,8 @@ interface Mean {
 interface QuizSettings {
   startNumber: number
   endNumber: number
-  mode: "idiom" | "sentence"       // 熟語 or 例文
+  mode: "idiom" | "sentence"       // 単語／熟語 or 例文
+  direction: "en-to-ja" | "ja-to-en" // 英語→日本語 or 日本語→英語
   target: "all" | "incorrect"      // すべて or 間違えたもの
   order: "sequential" | "random"   // 番号順 or ランダム
 }
@@ -64,9 +65,11 @@ interface QuizSettings {
 interface QuizItem {
   number: string          // 熟語番号 "0001"
   idiomData: IdiomData    // 元データ
+  mode: "idiom" | "sentence"
+  direction: "en-to-ja" | "ja-to-en"
   questionText: string    // 出題テキスト
   idiomIndex?: number     // 熟語が複数ある場合のインデックス
-  meanIndex?: number      // 例文出題時の意味インデックス
+  meanIndex?: number      // 意味単位の出題インデックス
 }
 
 // セッション状態

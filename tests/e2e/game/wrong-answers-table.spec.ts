@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test'
 
 const ITEM1 = {
   number: '0001',
+  mode: 'idiom',
+  direction: 'en-to-ja',
   idiomData: {
     idioms: ['a piece of ~'],
     means: [
@@ -19,6 +21,8 @@ const ITEM1 = {
 
 const ITEM2 = {
   number: '0002',
+  mode: 'idiom',
+  direction: 'en-to-ja',
   idiomData: {
     idioms: ['as a rule'],
     means: [
@@ -50,6 +54,7 @@ async function setupGame(page: Parameters<typeof test.beforeEach>[0] extends (ar
           startNumber: 1,
           endNumber: 2,
           mode: 'idiom',
+          direction: 'en-to-ja',
           target: 'all',
           order: 'sequential',
         },
@@ -168,7 +173,8 @@ test.describe('ゲームモード - 完了画面での間違えた問題一覧�
     await expect(page.getByText('英熟語ターゲット1000')).toBeVisible()
     await expect(page.getByText(/開始番号\s*1/)).toBeVisible()
     await expect(page.getByText(/終了番号\s*2/)).toBeVisible()
-    await expect(page.getByText(/出題形式\s*単語／熟語（英語 → 日本語）/)).toBeVisible()
+    await expect(page.getByText(/出題形式\s*単語／熟語/)).toBeVisible()
+    await expect(page.getByText(/出題方向\s*英語 → 日本語/)).toBeVisible()
     await expect(page.getByText(/出題対象\s*すべて/)).toBeVisible()
     await expect(page.getByText(/出題順序\s*番号順/)).toBeVisible()
     await expect(page.getByText(/ゲーム難易度\s*イージー/)).toBeVisible()

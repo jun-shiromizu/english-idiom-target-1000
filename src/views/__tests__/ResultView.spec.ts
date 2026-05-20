@@ -23,6 +23,8 @@ function makeItem(number: string): QuizItem {
   return {
     number,
     idiomData: mockIdiomData,
+    mode: 'idiom',
+    direction: 'en-to-ja',
     questionText: `idiom ${number}`,
     idiomIndex: 0,
   }
@@ -35,6 +37,7 @@ function makeSession(results: Record<number, boolean>): QuizSession {
       startNumber: 1,
       endNumber: 3,
       mode: 'idiom',
+      direction: 'en-to-ja',
       target: 'all',
       order: 'sequential',
     },

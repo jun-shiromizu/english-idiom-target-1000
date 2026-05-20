@@ -45,6 +45,7 @@ const baseSettings: QuizSettings = {
   startNumber: 1,
   endNumber: 6,
   mode: 'idiom',
+  direction: 'en-to-ja',
   target: 'all',
   order: 'sequential',
 }
@@ -90,6 +91,35 @@ describe('useQuizSession', () => {
       expect(items0002[0].questionText).toBe('example 2a')
       expect(items0002[1].questionText).toBe('example 2b')
     })
+
+    it('日本語→英語では例文訳を問題文にする', () => {
+      const sentenceSettings: QuizSettings = {
+        ...baseSettings,
+        mode: 'sentence',
+        direction: 'ja-to-en',
+      }
+      const { buildItems } = useQuizSession()
+      const items = buildItems(sentenceSettings, dataMap)
+      const item0002 = items.find((i) => i.number === '0002' && i.meanIndex === 0)
+      expect(item0002?.questionText).toBe('例文訳2a')
+    })
+  })
+
+  describe('buildItems - 日本語→英語', () => {
+    it('単語／熟語モードでは意味ごとに別問題を作成する', () => {
+      const settings: QuizSettings = {
+        ...baseSettings,
+        mode: 'idiom',
+        direction: 'ja-to-en',
+      }
+      const { buildItems } = useQuizSession()
+      const items = buildItems(settings, dataMap)
+      const items0002 = items.filter((i) => i.number === '0002')
+
+      expect(items0002).toHaveLength(2)
+      expect(items0002[0].questionText).toBe('２つの～')
+      expect(items0002[1].questionText).toBe('２、３の～')
+    })
   })
 
   describe('セッション保存・復元', () => {
@@ -133,6 +163,7 @@ describe('useQuizSession', () => {
 
       const { loadSession } = useQuizSession()
       expect(loadSession()?.settings.bookId).toBe('idiom-target-1000')
+      expect(loadSession()?.settings.direction).toBe('en-to-ja')
     })
   })
 })

@@ -35,6 +35,8 @@ describe('QuizAnswer', () => {
     const wrapper = mountComponent({
       number: '0001',
       idiomData: mockData,
+      mode: 'idiom',
+      direction: 'en-to-ja',
       questionText: 'create',
       idiomIndex: 0,
     })
@@ -47,6 +49,8 @@ describe('QuizAnswer', () => {
     const wrapper = mountComponent({
       number: '0001',
       idiomData: mockData,
+      mode: 'sentence',
+      direction: 'en-to-ja',
       questionText: mockData.means[0]['example-sentence'],
       idiomIndex: 0,
       meanIndex: 0,

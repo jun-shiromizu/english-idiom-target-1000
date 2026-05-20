@@ -61,15 +61,22 @@ function makeCandidate(mean: Mean): GameChoiceCandidate {
 }
 
 export function getGameAnswerLabel(item: QuizItem): string {
-  if (item.meanIndex !== undefined) {
-    return item.idiomData.means[item.meanIndex]['sentence-jp']
+  if (item.mode === 'sentence') {
+    const meanIndex = item.meanIndex ?? 0
+    return item.direction === 'en-to-ja'
+      ? item.idiomData.means[meanIndex]['sentence-jp']
+      : item.idiomData.means[meanIndex]['example-sentence']
+  }
+
+  if (item.direction === 'ja-to-en') {
+    return item.idiomData.idioms[item.idiomIndex] ?? item.idiomData.idioms[0]
   }
 
   return simplifyMeaningLabel(item.idiomData.means[0]['idiom-jp'])
 }
 
 function getAnswerChoiceType(item: QuizItem): ChoiceType {
-  if (item.meanIndex !== undefined) {
+  if (item.mode === 'sentence' || item.direction === 'ja-to-en') {
     return 'other'
   }
 
@@ -77,11 +84,15 @@ function getAnswerChoiceType(item: QuizItem): ChoiceType {
 }
 
 function getDistractorCandidates(item: QuizItem): GameChoiceCandidate[] {
-  if (item.meanIndex !== undefined) {
+  if (item.mode === 'sentence') {
     return item.idiomData.means.map((mean) => ({
-      label: mean['sentence-jp'],
+      label: item.direction === 'en-to-ja' ? mean['sentence-jp'] : mean['example-sentence'],
       choiceType: 'other',
     }))
+  }
+
+  if (item.direction === 'ja-to-en') {
+    return item.idiomData.idioms.map((idiom) => ({ label: idiom, choiceType: 'other' }))
   }
 
   return item.idiomData.means.map(makeCandidate)
@@ -102,7 +113,7 @@ export function buildGameChoices(currentItem: QuizItem, items: QuizItem[]): Game
 
   const fallbackDistractors = uniqueCandidates(
     items
-      .flatMap((item) => item.idiomData.means.map(makeCandidate))
+      .flatMap(getDistractorCandidates)
       .filter((candidate) => candidate.label !== correctAnswer),
   )
 

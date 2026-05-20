@@ -55,6 +55,10 @@
               <template #append>{{ modeLabel }}</template>
             </v-list-item>
             <v-list-item>
+              <v-list-item-title>出題方向</v-list-item-title>
+              <template #append>{{ directionLabel }}</template>
+            </v-list-item>
+            <v-list-item>
               <v-list-item-title>出題対象</v-list-item-title>
               <template #append>{{ targetLabel }}</template>
             </v-list-item>
@@ -197,8 +201,12 @@ const GAME_DIFFICULTIES: Record<GameDifficulty, GameDifficultyConfig> = {
   },
 }
 const MODE_LABELS = {
-  idiom: '単語／熟語（英語 → 日本語）',
-  sentence: '例文（英語 → 日本語）',
+  idiom: '単語／熟語',
+  sentence: '例文',
+} as const
+const DIRECTION_LABELS = {
+  'en-to-ja': '英語 → 日本語',
+  'ja-to-en': '日本語 → 英語',
 } as const
 const TARGET_LABELS = {
   all: 'すべて',
@@ -253,6 +261,10 @@ function getModeLabel(mode: string) {
   return mode === 'sentence' ? MODE_LABELS.sentence : MODE_LABELS.idiom
 }
 
+function getDirectionLabel(direction: string) {
+  return direction === 'ja-to-en' ? DIRECTION_LABELS['ja-to-en'] : DIRECTION_LABELS['en-to-ja']
+}
+
 function getTargetLabel(target: string) {
   return target === 'incorrect' ? TARGET_LABELS.incorrect : TARGET_LABELS.all
 }
@@ -265,6 +277,9 @@ const bookTitle = computed(() => (session.value ? getBookConfig(session.value.se
 const startNumberLabel = computed(() => (session.value ? `${session.value.settings.startNumber}` : ''))
 const endNumberLabel = computed(() => (session.value ? `${session.value.settings.endNumber}` : ''))
 const modeLabel = computed(() => (session.value ? getModeLabel(session.value.settings.mode) : ''))
+const directionLabel = computed(() =>
+  session.value ? getDirectionLabel(session.value.settings.direction) : '',
+)
 const targetLabel = computed(() => (session.value ? getTargetLabel(session.value.settings.target) : ''))
 const orderLabel = computed(() => (session.value ? getOrderLabel(session.value.settings.order) : ''))
 const gameDifficultyLabel = computed(() => GAME_DIFFICULTY_LABELS[difficulty.value])

@@ -20,6 +20,8 @@ function item(number: string, idiom: string, jp: string): QuizItem {
   return {
     number,
     idiomData: data(idiom, jp),
+    mode: 'idiom',
+    direction: 'en-to-ja',
     questionText: idiom,
     idiomIndex: 0,
   }
@@ -46,6 +48,7 @@ describe('useGameChoices', () => {
   it('例文モードでは例文訳を正解にする', () => {
     const current: QuizItem = {
       ...item('0001', 'create', 'を創り出す'),
+      mode: 'sentence',
       questionText: 'Technological change will create new ways of living.',
       meanIndex: 0,
     }
@@ -104,5 +107,16 @@ describe('useGameChoices', () => {
     expect(distractors).toEqual(expect.arrayContaining(['包含', '考慮', '変更']))
 
     vi.restoreAllMocks()
+  })
+
+  it('日本語→英語の単語／熟語モードでは英語を正解候補にする', () => {
+    const current: QuizItem = {
+      ...item('0001', 'create', 'を創り出す'),
+      direction: 'ja-to-en',
+      questionText: 'を創り出す',
+      meanIndex: 0,
+    }
+
+    expect(getGameAnswerLabel(current)).toBe('create')
   })
 })
