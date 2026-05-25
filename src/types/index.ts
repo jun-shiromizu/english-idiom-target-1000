@@ -77,4 +77,6 @@ export interface QuizSession {
   currentIndex: number
   /** QuizItem インデックス → 正解(true)/不正解(false) */
   results: Record<number, boolean>
+  /** セッション種別（未定義時は 'quiz' 扱い） */
+  sessionType?: 'quiz' | 'dictation'
 }

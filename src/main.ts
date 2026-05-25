@@ -12,6 +12,7 @@ import QuizView from './views/QuizView.vue'
 import ResultView from './views/ResultView.vue'
 import GameView from './views/GameView.vue'
 import SettingsView from './views/SettingsView.vue'
+import DictationView from './views/DictationView.vue'
 import { DEFAULT_THEME_ID, VUETIFY_THEMES, loadStoredThemeId } from './theme'
 
 const vuetify = createVuetify({
@@ -29,6 +30,7 @@ const router = createRouter({
     { path: '/', name: 'home', component: HomeView },
     { path: '/settings', name: 'settings', component: SettingsView },
     { path: '/quiz', name: 'quiz', component: QuizView },
+    { path: '/dictation', name: 'dictation', component: DictationView },
     { path: '/game', name: 'game', component: GameView },
     { path: '/result', name: 'result', component: ResultView },
   ],

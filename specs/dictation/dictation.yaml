@@ -1,0 +1,77 @@
+feature: 書き取りモード
+action: dictation
+page: "#/dictation"
+
+scenarios:
+  - id: DICTATION-001
+    category: normal
+    status: done
+    scenario: 書き取り画面を開くと問題文と入力欄が表示される
+    precondition: 書き取り用 session が保存されている状態
+    steps:
+      - 書き取り session を localStorage に保存してページを開く
+    expect:
+      - 問題文が表示される
+      - テキスト入力欄が表示される
+      - プログレスバーが表示される
+
+  - id: DICTATION-002
+    category: normal
+    status: done
+    scenario: 正しい英単語を入力して Enter を押すと「正解」が表示される
+    precondition: 書き取り用 session が保存されている状態
+    steps:
+      - 書き取り session を localStorage に保存してページを開く
+      - 入力欄に正解の英単語を入力する
+      - Enter キーを押す
+    expect:
+      - 「正解」のラベルが表示される
+      - 入力した値が表示される
+      - 「次の問題へ」ボタンが表示される
+
+  - id: DICTATION-003
+    category: normal
+    status: done
+    scenario: 誤った英単語を入力して Enter を押すと「不正解」が表示される
+    precondition: 書き取り用 session が保存されている状態
+    steps:
+      - 書き取り session を localStorage に保存してページを開く
+      - 入力欄に誤った英単語を入力する
+      - Enter キーを押す
+    expect:
+      - 「不正解」のラベルが表示される
+      - 入力した値が表示される
+
+  - id: DICTATION-004
+    category: normal
+    status: done
+    scenario: 「次の問題へ」を押すと次の問題が表示される
+    precondition: 2問ある書き取り session が保存されている状態
+    steps:
+      - 書き取り session を localStorage に保存してページを開く
+      - 1問目に回答して Enter を押す
+      - 「次の問題へ」ボタンをクリックする
+    expect:
+      - 2問目の問題文が表示される
+      - 入力欄がリセットされている
+
+  - id: DICTATION-005
+    category: normal
+    status: done
+    scenario: 最後の問題に回答すると「結果を見る」ボタンが表示される
+    precondition: 1問のみの書き取り session が保存されている状態
+    steps:
+      - 1問のみの書き取り session を localStorage に保存してページを開く
+      - 入力欄に英単語を入力して Enter を押す
+    expect:
+      - 「結果を見る」ボタンが表示される
+
+  - id: DICTATION-101
+    category: error
+    status: done
+    scenario: sessionType が dictation でない session で /dictation にアクセスするとトップへリダイレクトする
+    precondition: sessionType が quiz の session が存在する状態
+    steps:
+      - quiz 用 session を localStorage に保存して /dictation に直接アクセスする
+    expect:
+      - トップページ（/#/）にリダイレクトされる
