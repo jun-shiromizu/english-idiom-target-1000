@@ -149,6 +149,17 @@
               単語帳
             </v-btn>
             <v-btn
+              color="secondary"
+              variant="elevated"
+              size="large"
+              :loading="startingRoute === 'dictation'"
+              :disabled="!isValid || startingRoute !== null || isDictationDisabled"
+              @click="startSession('dictation')"
+            >
+              <v-icon start>mdi-pencil-outline</v-icon>
+              書き取り
+            </v-btn>
+            <v-btn
               color="primary"
               variant="outlined"
               size="large"
@@ -314,7 +325,14 @@ const difficultyItems = [
   { label: 'ハード', value: 'hard' },
 ]
 
-const startingRoute = ref<'quiz' | 'game' | null>(null)
+const startingRoute = ref<'quiz' | 'dictation' | 'game' | null>(null)
+
+const isDictationDisabled = computed(
+  () =>
+    settings.value.bookId !== 'word-target-1900' ||
+    settings.value.mode !== 'idiom' ||
+    settings.value.direction !== 'ja-to-en',
+)
 const errorMessage = ref('')
 const showClearDialog = ref(false)
 const savedSession = ref(loadSession())
@@ -348,7 +366,7 @@ watch(gameDifficulty, (value) => {
   saveGameDifficulty(value)
 })
 
-async function startSession(routeName: 'quiz' | 'game') {
+async function startSession(routeName: 'quiz' | 'dictation' | 'game') {
   startingRoute.value = routeName
   errorMessage.value = ''
   try {
@@ -375,6 +393,7 @@ async function startSession(routeName: 'quiz' | 'game') {
       items,
       currentIndex: 0,
       results: {},
+      sessionType: routeName === 'dictation' ? ('dictation' as const) : ('quiz' as const),
     }
     saveSession(session)
     router.push({ name: routeName })
@@ -391,7 +410,8 @@ function getBookTitle(bookId: QuizSettings['bookId']) {
 }
 
 function resumeSession() {
-  router.push({ name: 'quiz' })
+  const type = savedSession.value?.sessionType
+  router.push({ name: type === 'dictation' ? 'dictation' : 'quiz' })
 }
 
 function discardSession() {

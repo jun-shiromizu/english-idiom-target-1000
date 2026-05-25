@@ -110,6 +110,10 @@ onMounted(() => {
     router.replace({ name: 'home' })
     return
   }
+  if (loaded.sessionType === 'dictation') {
+    router.replace({ name: 'dictation' })
+    return
+  }
   session.value = loaded
 })
 
