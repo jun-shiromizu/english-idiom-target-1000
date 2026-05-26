@@ -168,7 +168,7 @@
               @click="startSession('game')"
             >
               <v-icon start>mdi-gamepad-variant-outline</v-icon>
-              落ち物ゲーム
+              ゲーム
             </v-btn>
           </v-card-actions>
         </v-card>
