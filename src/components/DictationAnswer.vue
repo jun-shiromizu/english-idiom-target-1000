@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import type { QuizItem } from '@/types'
 import SupplementContent from './SupplementContent.vue'
 
@@ -97,15 +97,26 @@ const emit = defineEmits<{
 }>()
 
 const nextButton = ref<{ focus?: () => void; $el?: HTMLElement } | null>(null)
+let focusTimerId: number | null = null
 
-onMounted(async () => {
-  await nextTick()
+function focusNextButton() {
   nextButton.value?.focus?.()
 
   const root = nextButton.value?.$el
   if (root && document.activeElement !== root) {
     const target = root.matches('button') ? root : root.querySelector('button')
     ;(target as HTMLElement | null)?.focus()
+  }
+}
+
+onMounted(() => {
+  // Enter キーで解答確定した直後の誤クリックを防ぐため、次のタスクでフォーカスする
+  focusTimerId = window.setTimeout(focusNextButton, 0)
+})
+
+onUnmounted(() => {
+  if (focusTimerId !== null) {
+    clearTimeout(focusTimerId)
   }
 })
 </script>

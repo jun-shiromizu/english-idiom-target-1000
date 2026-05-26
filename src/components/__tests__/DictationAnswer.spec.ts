@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
-import { nextTick } from 'vue'
 import DictationAnswer from '../DictationAnswer.vue'
 import type { QuizItem, IdiomData } from '@/types'
 
@@ -50,6 +49,10 @@ function mountComponent(props: {
   })
 }
 
+async function waitForFocus() {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
 describe('DictationAnswer', () => {
   it('正解のとき「正解」と入力した値が表示される', () => {
     const wrapper = mountComponent({ userInput: 'create', isCorrect: true })
@@ -87,7 +90,7 @@ describe('DictationAnswer', () => {
 
   it('表示時に「次の問題へ」ボタンへフォーカスが当たる', async () => {
     const wrapper = mountComponent({ userInput: 'create', isCorrect: true, attachToBody: true })
-    await nextTick()
+    await waitForFocus()
     const btn = wrapper.findAll('button').find((b) => b.text().includes('次の問題へ'))
     expect(btn).toBeTruthy()
     expect(document.activeElement).toBe(btn!.element)
