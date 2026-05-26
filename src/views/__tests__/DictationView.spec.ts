@@ -55,6 +55,10 @@ function makeDictationSession(overrides: Partial<QuizSession> = {}): QuizSession
   }
 }
 
+async function waitForFocus() {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
 describe('DictationView', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -98,6 +102,38 @@ describe('DictationView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('正解')
+  })
+
+  it('解答確認時に「次の問題へ」ボタンへフォーカスが当たる', async () => {
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeDictationSession()))
+    const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })
+    await flushPromises()
+
+    const input = wrapper.find('input')
+    await input.setValue('create')
+    await input.trigger('keydown.enter')
+    await flushPromises()
+    await waitForFocus()
+
+    const nextBtn = wrapper.findAll('button').find((b) => b.text().includes('次の問題へ'))
+    expect(nextBtn).toBeTruthy()
+    expect(document.activeElement).toBe(nextBtn!.element)
+  })
+
+  it('Enter で解答確定後も解答確認画面が表示される', async () => {
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeDictationSession()))
+    const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })
+    await flushPromises()
+
+    const input = wrapper.find('input')
+    await input.setValue('create')
+    await input.trigger('keydown.enter')
+    await flushPromises()
+    await waitForFocus()
+
+    expect(wrapper.text()).toContain('正解')
+    expect(wrapper.text()).toContain('次の問題へ')
+    expect(wrapper.text()).not.toContain('を習得する')
   })
 
   it('先頭が大文字でも正解になる（大文字小文字区別なし）', async () => {

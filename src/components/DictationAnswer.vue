@@ -66,6 +66,7 @@
     <!-- 次の問題へ / 結果を見る -->
     <div class="d-flex justify-center mt-2">
       <v-btn
+        ref="nextButton"
         color="primary"
         variant="elevated"
         size="large"
@@ -80,6 +81,7 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted, ref } from 'vue'
 import type { QuizItem } from '@/types'
 import SupplementContent from './SupplementContent.vue'
 
@@ -93,4 +95,28 @@ defineProps<{
 const emit = defineEmits<{
   next: []
 }>()
+
+const nextButton = ref<{ focus?: () => void; $el?: HTMLElement } | null>(null)
+let focusTimerId: number | null = null
+
+function focusNextButton() {
+  nextButton.value?.focus?.()
+
+  const root = nextButton.value?.$el
+  if (root && document.activeElement !== root) {
+    const target = root.matches('button') ? root : root.querySelector('button')
+    ;(target as HTMLElement | null)?.focus()
+  }
+}
+
+onMounted(() => {
+  // Enter キーで解答確定した直後の誤クリックを防ぐため、次のタスクでフォーカスする
+  focusTimerId = window.setTimeout(focusNextButton, 0)
+})
+
+onUnmounted(() => {
+  if (focusTimerId !== null) {
+    clearTimeout(focusTimerId)
+  }
+})
 </script>
