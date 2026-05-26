@@ -100,6 +100,19 @@ describe('DictationView', () => {
     expect(wrapper.text()).toContain('正解')
   })
 
+  it('先頭が大文字でも正解になる（大文字小文字区別なし）', async () => {
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeDictationSession()))
+    const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })
+    await flushPromises()
+
+    const input = wrapper.find('input')
+    await input.setValue('Create')
+    await input.trigger('keydown.enter')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('正解')
+  })
+
   it('Enter を押すと正誤判定結果が表示される（不正解）', async () => {
     localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeDictationSession()))
     const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })

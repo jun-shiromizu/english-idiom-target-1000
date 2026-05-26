@@ -71,7 +71,7 @@ const correctAnswer = computed(
   () => currentItem.value.idiomData.idioms[currentItem.value.idiomIndex],
 )
 const isCorrect = computed(
-  () => userInput.value.trim() === correctAnswer.value.trim(),
+  () => userInput.value.trim().toLowerCase() === correctAnswer.value.trim().toLowerCase(),
 )
 
 onMounted(() => {
