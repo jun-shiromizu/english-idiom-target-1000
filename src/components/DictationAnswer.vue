@@ -66,6 +66,7 @@
     <!-- 次の問題へ / 結果を見る -->
     <div class="d-flex justify-center mt-2">
       <v-btn
+        ref="nextButton"
         color="primary"
         variant="elevated"
         size="large"
@@ -80,6 +81,7 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick, onMounted, ref } from 'vue'
 import type { QuizItem } from '@/types'
 import SupplementContent from './SupplementContent.vue'
 
@@ -93,4 +95,17 @@ defineProps<{
 const emit = defineEmits<{
   next: []
 }>()
+
+const nextButton = ref<{ focus?: () => void; $el?: HTMLElement } | null>(null)
+
+onMounted(async () => {
+  await nextTick()
+  nextButton.value?.focus?.()
+
+  const root = nextButton.value?.$el
+  if (root && document.activeElement !== root) {
+    const target = root.matches('button') ? root : root.querySelector('button')
+    ;(target as HTMLElement | null)?.focus()
+  }
+})
 </script>

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
+import { nextTick } from 'vue'
 import DictationAnswer from '../DictationAnswer.vue'
 import type { QuizItem, IdiomData } from '@/types'
 
@@ -32,8 +33,10 @@ function mountComponent(props: {
   userInput: string
   isCorrect: boolean
   isLast?: boolean
+  attachToBody?: boolean
 }) {
   return mount(DictationAnswer, {
+    attachTo: props.attachToBody ? document.body : undefined,
     props: {
       item: props.item ?? mockItem,
       userInput: props.userInput,
@@ -80,6 +83,15 @@ describe('DictationAnswer', () => {
     const btn = wrapper.findAll('button').find((b) => b.text().includes('次の問題へ'))
     await btn!.trigger('click')
     expect(wrapper.emitted('next')).toBeTruthy()
+  })
+
+  it('表示時に「次の問題へ」ボタンへフォーカスが当たる', async () => {
+    const wrapper = mountComponent({ userInput: 'create', isCorrect: true, attachToBody: true })
+    await nextTick()
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('次の問題へ'))
+    expect(btn).toBeTruthy()
+    expect(document.activeElement).toBe(btn!.element)
+    wrapper.unmount()
   })
 
   it('正解には英単語と意味が表示される', () => {
