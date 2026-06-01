@@ -8,7 +8,12 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium',
+      use: process.env.CI
+        ? { ...devices['Desktop Chrome'], channel: 'chrome' }
+        : { ...devices['Desktop Chrome'] },
+    },
   ],
   webServer: process.env.BASE_URL
     ? undefined
