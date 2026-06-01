@@ -16,7 +16,7 @@
     "@mdi/font": "^7.4.47",
     "marked": "^18.0.4",
     "vue": "^3.5.35",
-    "vue-router": "^5.0.7",
+    "vue-router": "^5.1.0",
     "vuetify": "^4.0.8"
   },
   "devDependencies": {
@@ -34,4 +34,3 @@
     "vue-tsc": "^3.3.3"
   }
 }
-
