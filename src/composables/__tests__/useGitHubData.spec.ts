@@ -169,6 +169,55 @@ describe('useGitHubData', () => {
       expect(dataMap.get('0001')?.idioms).toEqual(['first'])
       expect(dataMap.get('0002')?.idioms).toEqual(['second'])
     })
+
+    // リグレッションテスト: Issue #65 大量件数（同時実行上限を超える件数）でもエラーにならない
+    it('同時実行上限（20件）を超える件数でも全データを正常に取得できる', async () => {
+      const count = 25
+      const fileNames = Array.from({ length: count }, (_, i) => `${String(i + 1).padStart(4, '0')}.json`)
+      const mockDataMap = new Map(
+        fileNames.map((name, i) => [
+          name,
+          {
+            idioms: [`idiom-${i + 1}`],
+            means: [{ 'idiom-jp': `意味${i + 1}`, 'example-sentence': 'ex', 'sentence-jp': '例' }],
+            notes: [],
+          },
+        ]),
+      )
+
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.endsWith('/contents/idiom-target-1000/target')) {
+          return {
+            ok: true,
+            json: () => Promise.resolve([{ name: '0001-0100', type: 'dir' }]),
+          }
+        }
+
+        if (url.endsWith('/contents/idiom-target-1000/target/0001-0100')) {
+          return {
+            ok: true,
+            json: () => Promise.resolve(fileNames.map((name) => ({ name, type: 'file' }))),
+          }
+        }
+
+        const matched = fileNames.find((name) => url.endsWith(`/target/0001-0100/${name}`))
+        if (matched) {
+          return {
+            ok: true,
+            text: () => Promise.resolve(JSON.stringify(mockDataMap.get(matched))),
+          }
+        }
+
+        throw new Error(`Unexpected fetch URL: ${url}`)
+      })
+
+      const { fetchRangeData } = useGitHubData()
+      const { dataMap } = await fetchRangeData('idiom-target-1000', 1, count)
+
+      expect(dataMap.size).toBe(count)
+      expect(dataMap.get('0001')?.idioms).toEqual(['idiom-1'])
+      expect(dataMap.get('0025')?.idioms).toEqual(['idiom-25'])
+    })
   })
 
   describe('fetchSupplementHtml', () => {
