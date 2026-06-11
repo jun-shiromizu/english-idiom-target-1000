@@ -170,27 +170,24 @@ describe('useGitHubData', () => {
       expect(dataMap.get('0002')?.idioms).toEqual(['second'])
     })
 
-    // リグレッションテスト: Issue #65 大量件数（同時実行上限を超える件数）でもエラーにならない
-    it('同時実行上限（20件）を超える件数でも全データを正常に取得できる', async () => {
+    // リグレッションテスト: Issue #65 大量件数で同時実行数が上限以下に抑えられ、かつ全データを取得できる
+    it('同時実行上限（20件）を超える件数でも全データを正常に取得でき、同時実行数が上限以下に抑えられる', async () => {
+      const LIMIT = 20
       const count = 25
       const fileNames = Array.from({ length: count }, (_, i) => `${String(i + 1).padStart(4, '0')}.json`)
-      const mockDataMap = new Map(
-        fileNames.map((name, i) => [
-          name,
-          {
-            idioms: [`idiom-${i + 1}`],
-            means: [{ 'idiom-jp': `意味${i + 1}`, 'example-sentence': 'ex', 'sentence-jp': '例' }],
-            notes: [],
-          },
-        ]),
-      )
+      const mockJsonData = {
+        idioms: ['test'],
+        means: [{ 'idiom-jp': 'テスト', 'example-sentence': 'ex', 'sentence-jp': '例' }],
+        notes: [],
+      }
+
+      let currentInflight = 0
+      let maxInflight = 0
+      const pendingResolves: (() => void)[] = []
 
       mockFetch.mockImplementation(async (url: string) => {
         if (url.endsWith('/contents/idiom-target-1000/target')) {
-          return {
-            ok: true,
-            json: () => Promise.resolve([{ name: '0001-0100', type: 'dir' }]),
-          }
+          return { ok: true, json: () => Promise.resolve([{ name: '0001-0100', type: 'dir' }]) }
         }
 
         if (url.endsWith('/contents/idiom-target-1000/target/0001-0100')) {
@@ -200,23 +197,33 @@ describe('useGitHubData', () => {
           }
         }
 
-        const matched = fileNames.find((name) => url.endsWith(`/target/0001-0100/${name}`))
-        if (matched) {
-          return {
-            ok: true,
-            text: () => Promise.resolve(JSON.stringify(mockDataMap.get(matched))),
-          }
+        if (fileNames.some((name) => url.endsWith(`/target/0001-0100/${name}`))) {
+          currentInflight++
+          maxInflight = Math.max(maxInflight, currentInflight)
+          await new Promise<void>((resolve) => pendingResolves.push(resolve))
+          currentInflight--
+          return { ok: true, text: () => Promise.resolve(JSON.stringify(mockJsonData)) }
         }
 
         throw new Error(`Unexpected fetch URL: ${url}`)
       })
 
       const { fetchRangeData } = useGitHubData()
-      const { dataMap } = await fetchRangeData('idiom-target-1000', 1, count)
+      const fetchPromise = fetchRangeData('idiom-target-1000', 1, count)
+
+      // macrotask まで進め、全ワーカーが最初のリクエストを開始するのを待つ
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+      // 保留中のリクエストをすべて解決し、残りのリクエストが完了するまで繰り返す
+      while (pendingResolves.length > 0) {
+        pendingResolves.splice(0).forEach((r) => r())
+        await new Promise<void>((resolve) => setTimeout(resolve, 0))
+      }
+
+      const { dataMap } = await fetchPromise
 
       expect(dataMap.size).toBe(count)
-      expect(dataMap.get('0001')?.idioms).toEqual(['idiom-1'])
-      expect(dataMap.get('0025')?.idioms).toEqual(['idiom-25'])
+      expect(maxInflight).toBeLessThanOrEqual(LIMIT)
     })
   })
 

@@ -12,6 +12,9 @@ async function fetchWithConcurrencyLimit<T>(
   tasks: (() => Promise<T>)[],
   limit: number,
 ): Promise<T[]> {
+  if (!Number.isFinite(limit) || limit < 1) {
+    throw new Error(`Concurrency limit must be >= 1 (got: ${limit})`)
+  }
   const results: T[] = new Array(tasks.length)
   let index = 0
 
