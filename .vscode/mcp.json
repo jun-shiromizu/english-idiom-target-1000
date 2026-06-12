@@ -2,7 +2,9 @@
   "servers": {
     "chrome-devtools": {
       "command": "npx",
-      "args": ["chrome-devtools-mcp@latest"]
+      "args": [
+        "chrome-devtools-mcp@latest"
+      ]
     },
     "serena": {
       "command": "uvx",
@@ -17,6 +19,9 @@
         "${workspaceFolder}"
       ],
       "type": "stdio"
+    },
+    "context-mode": {
+      "command": "context-mode",
     }
   }
 }

@@ -22,3 +22,7 @@ Thumbs.db
 
 # serena
 .serena/*
+
+# context-mode runtime data
+.github/context-mode/content/
+.github/context-mode/sessions/
