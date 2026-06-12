@@ -2,6 +2,34 @@ import { buildGitHubApiBase, buildGitHubRawBase, getBookConfig } from '@/config'
 import { marked } from 'marked'
 import type { BookId, IdiomData } from '@/types'
 
+/** 並列 fetch の同時実行上限 */
+const FETCH_CONCURRENCY_LIMIT = 20
+
+/**
+ * タスク配列を最大 limit 件ずつ並列実行し、結果を元の順序で返す。
+ */
+async function fetchWithConcurrencyLimit<T>(
+  tasks: (() => Promise<T>)[],
+  limit: number,
+): Promise<T[]> {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error(`Concurrency limit must be an integer >= 1 (got: ${limit})`)
+  }
+  const results: T[] = new Array(tasks.length)
+  let index = 0
+
+  async function worker() {
+    while (index < tasks.length) {
+      const currentIndex = index++
+      results[currentIndex] = await tasks[currentIndex]()
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, worker)
+  await Promise.all(workers)
+  return results
+}
+
 const supplementHtmlCache = new Map<string, string | null>()
 const pendingSupplementRequests = new Map<string, Promise<string | null>>()
 const targetFileIndexCache = new Map<BookId, Map<string, string>>()
@@ -183,12 +211,13 @@ export function useGitHubData() {
       }
     }
 
-    // 各JSONを並列取得
-    const entries = await Promise.all(
-      numbersInRange.map(async (num) => {
+    // 各JSONを同時実行数を制限して取得（大量件数でもレート制限エラーを防ぐ）
+    const entries = await fetchWithConcurrencyLimit(
+      numbersInRange.map((num) => async () => {
         const data = await fetchIdiomData(bookId, num)
         return [num, data] as [string, IdiomData]
       }),
+      FETCH_CONCURRENCY_LIMIT,
     )
 
     return { dataMap: new Map(entries) }
