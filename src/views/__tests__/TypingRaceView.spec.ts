@@ -148,6 +148,10 @@ describe('TypingRaceView', () => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_SESSION) ?? '{}') as QuizSession
     expect(saved.currentIndex).toBe(1)
     expect(saved.results).toEqual({ 0: true })
+    expect(saved.typingRaceStats).toEqual({
+      correctChars: 'I am looking forward to hearing from you.'.length,
+      mistypedChars: 0,
+    })
   })
 
   it('和訳を英文の上に表示する', async () => {
@@ -183,6 +187,12 @@ describe('TypingRaceView', () => {
     await flushPromises()
 
     expect((input.element as HTMLInputElement).value).toBe('I')
+
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_SESSION) ?? '{}') as QuizSession
+    expect(saved.typingRaceStats).toEqual({
+      correctChars: 0,
+      mistypedChars: 1,
+    })
   })
 
   it('入力済みの文字をガイド表示で薄く見せる', async () => {
@@ -242,6 +252,43 @@ describe('TypingRaceView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('60秒チャレンジ結果')
-    expect(wrapper.text()).toContain('0 文に挑戦')
+    expect(wrapper.text()).toContain('正解した文字数')
+    expect(wrapper.text()).toContain('ミスタイプ 0 文字')
+    expect(wrapper.text()).toContain('続ける')
+  })
+
+  it('タイムアップ後に「続ける」で次の60秒を開始する', async () => {
+    localStorage.setItem(
+      STORAGE_KEY_SESSION,
+      JSON.stringify(
+        makeSession({
+          currentIndex: 1,
+          results: { 0: true },
+          typingRaceStats: { correctChars: 40, mistypedChars: 2 },
+          endsAt: Date.now() + 1_000,
+        }),
+      ),
+    )
+
+    const wrapper = mount(TypingRaceView, {
+      global: { plugins: [vuetify] },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    vi.advanceTimersByTime(1_500)
+    await flushPromises()
+
+    const continueButton = wrapper.findAll('button').find((button) => button.text().includes('続ける'))
+    expect(continueButton).toBeTruthy()
+    await continueButton!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('She keeps in touch with her mentor every week.')
+    expect(wrapper.text()).not.toContain('60秒チャレンジ結果')
+
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_SESSION) ?? '{}') as QuizSession
+    expect(saved.currentIndex).toBe(1)
+    expect(saved.typingRaceStats).toEqual({ correctChars: 40, mistypedChars: 2 })
   })
 })

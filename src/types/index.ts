@@ -83,4 +83,9 @@ export interface QuizSession {
   timeLimitSeconds?: number
   /** タイピングレースの終了予定時刻（UNIX ms） */
   endsAt?: number
+  /** タイピングレースの文字数統計 */
+  typingRaceStats?: {
+    correctChars: number
+    mistypedChars: number
+  }
 }

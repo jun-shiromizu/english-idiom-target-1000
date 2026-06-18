@@ -12,10 +12,10 @@
 
       <v-card class="race-score-card mb-5" color="primary" variant="tonal">
         <v-card-text class="py-8 text-center">
-          <p class="text-h2 font-weight-bold">{{ correctCount }}</p>
-          <p class="text-h6">正解した例文</p>
+          <p class="text-h2 font-weight-bold">{{ correctCharCount }}</p>
+          <p class="text-h6">正解した文字数</p>
           <p class="text-body-1 mt-3">
-            {{ attemptedCount }} 文に挑戦 / 正答率 {{ accuracy }}%
+            ミスタイプ {{ mistypedCharCount }} 文字
           </p>
         </v-card-text>
       </v-card>
@@ -31,34 +31,43 @@
             </template>
           </v-list-item>
           <v-divider />
-          <v-list-item title="正解数">
+          <v-list-item title="正解した文字数">
             <template #prepend>
               <v-icon color="success">mdi-check-circle-outline</v-icon>
             </template>
             <template #append>
-              <span class="font-weight-bold text-success">{{ correctCount }} 文</span>
+              <span class="font-weight-bold text-success">{{ correctCharCount }} 文字</span>
             </template>
           </v-list-item>
           <v-divider />
-          <v-list-item title="ミス">
+          <v-list-item title="ミスタイプ">
             <template #prepend>
               <v-icon color="error">mdi-close-circle-outline</v-icon>
             </template>
             <template #append>
-              <span class="font-weight-bold text-error">{{ attemptedCount - correctCount }} 文</span>
+              <span class="font-weight-bold text-error">{{ mistypedCharCount }} 文字</span>
+            </template>
+          </v-list-item>
+          <v-divider />
+          <v-list-item title="今回進んだ位置">
+            <template #prepend>
+              <v-icon color="info">mdi-format-list-numbered</v-icon>
+            </template>
+            <template #append>
+              <span class="font-weight-bold">{{ currentIndex }} / {{ session.items.length }} 文</span>
             </template>
           </v-list-item>
         </v-list>
       </v-card>
 
       <v-row>
-        <v-col cols="12" md="6">
-          <v-btn block color="primary" variant="elevated" size="large" @click="restartRace">
+        <v-col v-if="canContinueRace" cols="12" md="6">
+          <v-btn block color="primary" variant="elevated" size="large" @click="continueRace">
             <v-icon start>mdi-refresh</v-icon>
-            もう一度挑戦
+            続ける
           </v-btn>
         </v-col>
-        <v-col cols="12" md="6">
+        <v-col cols="12" :md="canContinueRace ? 6 : 12">
           <v-btn block variant="outlined" size="large" @click="goHome">
             <v-icon start>mdi-home</v-icon>
             トップページへ
@@ -179,6 +188,7 @@ const session = ref<QuizSession | null>(null)
 const userInput = ref('')
 const remainingSeconds = ref(DEFAULT_TIME_LIMIT_SECONDS)
 const raceFinished = ref(false)
+const raceFinishedReason = ref<'timeup' | 'completed' | null>(null)
 const lastOutcome = ref<RaceOutcome>(null)
 const showQuitDialog = ref(false)
 const inputRef = ref()
@@ -198,12 +208,14 @@ const typedPrefix = computed(() => userInput.value)
 const remainingSuffix = computed(() => getExpectedSentence().slice(userInput.value.length))
 const timeLimitSeconds = computed(() => session.value?.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS)
 const attemptedCount = computed(() => (session.value ? Object.keys(session.value.results).length : 0))
+const correctCharCount = computed(() => session.value?.typingRaceStats?.correctChars ?? 0)
+const mistypedCharCount = computed(() => session.value?.typingRaceStats?.mistypedChars ?? 0)
 const correctCount = computed(() => {
   if (!session.value) return 0
   return Object.values(session.value.results).filter(Boolean).length
 })
-const accuracy = computed(() =>
-  attemptedCount.value === 0 ? 0 : Math.round((correctCount.value / attemptedCount.value) * 100),
+const canContinueRace = computed(
+  () => raceFinishedReason.value === 'timeup' && currentIndex.value < (session.value?.items.length ?? 0),
 )
 
 function normalizeTypingText(value: string): string {
@@ -227,13 +239,28 @@ function findValidPrefix(input: string, expected: string): string {
   return ''
 }
 
+function ensureTypingRaceStats() {
+  if (!session.value) return
+  session.value.typingRaceStats ??= {
+    correctChars: 0,
+    mistypedChars: 0,
+  }
+}
+
 function onNativeInput(event: Event) {
   if (!session.value || raceFinished.value) return
 
   const target = event.target
   if (!(target instanceof HTMLInputElement)) return
 
-  const nextValue = findValidPrefix(target.value, getExpectedSentence())
+  const rawValue = target.value
+  const nextValue = findValidPrefix(rawValue, getExpectedSentence())
+  const rejectedCount = Math.max(rawValue.length - nextValue.length, 0)
+  if (rejectedCount > 0) {
+    ensureTypingRaceStats()
+    session.value.typingRaceStats!.mistypedChars += rejectedCount
+    saveCurrentSession()
+  }
   userInput.value = nextValue
 
   if (target.value !== nextValue) {
@@ -313,7 +340,7 @@ function syncRemainingSeconds() {
   remainingSeconds.value = secondsLeft
 
   if (secondsLeft === 0) {
-    finishRace()
+    finishRace('timeup')
   }
 }
 
@@ -327,10 +354,11 @@ function startTimer() {
   }, 250)
 }
 
-function finishRace() {
+function finishRace(reason: 'timeup' | 'completed') {
   if (raceFinished.value) return
 
   raceFinished.value = true
+  raceFinishedReason.value = reason
   stopTimer()
   saveCurrentSession()
 }
@@ -352,6 +380,7 @@ function submitCurrent() {
   const totalMeans = item.idiomData.means.length
   const answer = getExpectedSentence()
   const correct = normalizeTypingText(userInput.value) === normalizeTypingText(answer)
+  ensureTypingRaceStats()
 
   setResult(
     session.value.settings.bookId,
@@ -365,6 +394,7 @@ function submitCurrent() {
   session.value.results[currentIndex.value] = correct
   lastOutcome.value = correct ? 'correct' : 'incorrect'
   if (correct) {
+    session.value.typingRaceStats!.correctChars += answer.length
     triggerSuccessEffect()
   } else {
     stopSuccessEffect()
@@ -376,27 +406,26 @@ function submitCurrent() {
   saveCurrentSession()
 
   if (nextIndex >= session.value.items.length) {
-    finishRace()
+    finishRace('completed')
     return
   }
 
   focusInput()
 }
 
-function restartRace() {
+function continueRace() {
   if (!session.value) return
 
   const nextEndsAt = Date.now() + timeLimitSeconds.value * 1000
   session.value = {
     ...session.value,
-    currentIndex: 0,
-    results: {},
     endsAt: nextEndsAt,
   }
   userInput.value = ''
   lastOutcome.value = null
   remainingSeconds.value = timeLimitSeconds.value
   raceFinished.value = false
+  raceFinishedReason.value = null
   stopSuccessEffect()
   saveCurrentSession()
   startTimer()
@@ -424,6 +453,10 @@ onMounted(() => {
     ...loaded,
     timeLimitSeconds: loaded.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS,
     endsAt: loaded.endsAt ?? Date.now() + (loaded.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS) * 1000,
+    typingRaceStats: {
+      correctChars: loaded.typingRaceStats?.correctChars ?? 0,
+      mistypedChars: loaded.typingRaceStats?.mistypedChars ?? 0,
+    },
   }
 
   session.value = normalizedSession
@@ -434,6 +467,7 @@ onMounted(() => {
       Math.ceil(((normalizedSession.endsAt ?? Date.now()) - Date.now()) / 1000),
     )
     raceFinished.value = true
+    raceFinishedReason.value = 'completed'
     saveCurrentSession()
     return
   }

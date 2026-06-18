@@ -49,9 +49,14 @@ async function mockTypingRaceRequests(
 async function seedTypingRaceSession(
   page: Parameters<typeof test.beforeEach>[0] extends (args: infer T) => any ? T['page'] : never,
   endsAt: number,
+  overrides?: {
+    currentIndex?: number
+    results?: Record<number, boolean>
+    typingRaceStats?: { correctChars: number; mistypedChars: number }
+  },
 ) {
   await page.evaluate(
-    ({ endsAt, item }) => {
+    ({ endsAt, item, overrides }) => {
       localStorage.setItem(
         'idiom-app-session',
         JSON.stringify({
@@ -65,16 +70,18 @@ async function seedTypingRaceSession(
             order: 'sequential',
           },
           items: [item],
-          currentIndex: 0,
-          results: {},
+          currentIndex: overrides?.currentIndex ?? 0,
+          results: overrides?.results ?? {},
           sessionType: 'typing-race',
           timeLimitSeconds: 60,
           endsAt,
+          typingRaceStats: overrides?.typingRaceStats,
         }),
       )
     },
     {
       endsAt,
+      overrides,
       item: {
         number: '0001',
         idiomData: typingRaceData,
@@ -118,7 +125,9 @@ test.describe('タイピングレース', () => {
     await page.getByRole('button', { name: '採点して次へ' }).click()
 
     await expect(page.getByRole('heading', { name: '60秒チャレンジ結果' })).toBeVisible()
-    await expect(page.getByText('1 文に挑戦 / 正答率 100%')).toBeVisible()
+    await expect(page.locator('.race-score-card')).toContainText('正解した文字数')
+    await expect(page.locator('.race-score-card')).toContainText('41')
+    await expect(page.getByText('ミスタイプ 0 文字')).toBeVisible()
   })
 
   test('TYPING-003: 誤った文字をタイプしても入力欄に反映されない', async ({ page }) => {
@@ -158,5 +167,28 @@ test.describe('タイピングレース', () => {
     await page.goto('./#/typing-race')
 
     await expect(page).toHaveURL(/#\/$/)
+  })
+
+  test('TYPING-102: タイムアップ後に「続ける」を押すと続きから再開できる', async ({ page }) => {
+    await page.addInitScript(() => {
+      const fixedNow = new Date('2026-06-18T12:00:00Z').valueOf()
+      Date.now = () => fixedNow
+    })
+    await page.goto('./')
+    await page.evaluate(() => localStorage.clear())
+
+    await seedTypingRaceSession(page, new Date('2026-06-18T11:59:59Z').valueOf(), {
+      currentIndex: 0,
+      results: {},
+      typingRaceStats: { correctChars: 12, mistypedChars: 3 },
+    })
+    await page.goto('./#/typing-race')
+
+    await expect(page.getByRole('heading', { name: '60秒チャレンジ結果' })).toBeVisible()
+    await expect(page.getByText('ミスタイプ 3 文字')).toBeVisible()
+    await page.getByRole('button', { name: '続ける' }).click()
+
+    await expect(page.getByRole('heading', { name: '60秒チャレンジ結果' })).toHaveCount(0)
+    await expect(page.locator('.race-sentence')).toHaveText('I am looking forward to hearing from you.')
   })
 })
