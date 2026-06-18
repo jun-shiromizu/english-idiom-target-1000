@@ -403,7 +403,7 @@ async function startSession(routeName: 'quiz' | 'dictation' | 'typing-race' | 'g
     }
 
     const isTypingRace = routeName === 'typing-race'
-    const timeLimitSeconds = 60
+    const timeLimitSeconds = 90
     const session = {
       settings: settings.value,
       items,

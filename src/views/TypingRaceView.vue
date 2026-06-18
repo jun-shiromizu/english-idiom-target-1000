@@ -7,7 +7,7 @@
     <template v-else-if="raceFinished">
       <div class="text-center mb-6">
         <p class="text-overline text-medium-emphasis mb-2">Typing Race</p>
-        <h1 class="text-h4 font-weight-bold">60秒チャレンジ結果</h1>
+        <h1 class="text-h4 font-weight-bold">{{ timeLimitSeconds }}秒チャレンジ結果</h1>
       </div>
 
       <v-card class="race-score-card mb-5" color="primary" variant="tonal">
@@ -177,7 +177,7 @@ import type { QuizSession } from '@/types'
 
 type RaceOutcome = 'correct' | 'incorrect' | null
 
-const DEFAULT_TIME_LIMIT_SECONDS = 60
+const DEFAULT_TIME_LIMIT_SECONDS = 90
 const SUCCESS_EFFECT_DURATION_MS = 520
 
 const router = useRouter()
@@ -186,6 +186,7 @@ const { setResult } = useHistory()
 
 const session = ref<QuizSession | null>(null)
 const userInput = ref('')
+const lastAcceptedInput = ref('')
 const remainingSeconds = ref(DEFAULT_TIME_LIMIT_SECONDS)
 const raceFinished = ref(false)
 const raceFinishedReason = ref<'timeup' | 'completed' | null>(null)
@@ -254,14 +255,20 @@ function onNativeInput(event: Event) {
   if (!(target instanceof HTMLInputElement)) return
 
   const rawValue = target.value
+  const previousValue = lastAcceptedInput.value
   const nextValue = findValidPrefix(rawValue, getExpectedSentence())
   const rejectedCount = Math.max(rawValue.length - nextValue.length, 0)
+  const acceptedCount = Math.max(nextValue.length - previousValue.length, 0)
   if (rejectedCount > 0) {
     ensureTypingRaceStats()
     session.value.typingRaceStats!.mistypedChars += rejectedCount
     saveCurrentSession()
   }
+  if (acceptedCount > 0) {
+    playSuccessSound()
+  }
   userInput.value = nextValue
+  lastAcceptedInput.value = nextValue
 
   if (target.value !== nextValue) {
     target.value = nextValue
@@ -326,7 +333,6 @@ function playSuccessSound() {
 function triggerSuccessEffect() {
   stopSuccessEffect()
   successEffectActive.value = true
-  playSuccessSound()
   successEffectTimerId = window.setTimeout(() => {
     successEffectActive.value = false
     successEffectTimerId = null
@@ -400,6 +406,7 @@ function submitCurrent() {
     stopSuccessEffect()
   }
   userInput.value = ''
+  lastAcceptedInput.value = ''
 
   const nextIndex = currentIndex.value + 1
   session.value.currentIndex = nextIndex
@@ -422,6 +429,7 @@ function continueRace() {
     endsAt: nextEndsAt,
   }
   userInput.value = ''
+  lastAcceptedInput.value = ''
   lastOutcome.value = null
   remainingSeconds.value = timeLimitSeconds.value
   raceFinished.value = false
@@ -473,6 +481,7 @@ onMounted(() => {
   }
 
   startTimer()
+  lastAcceptedInput.value = ''
   focusInput()
 })
 
@@ -545,6 +554,7 @@ onBeforeUnmount(() => {
 }
 
 .race-translation {
+  font-size: clamp(1.2rem, 2.8vw, 1.7rem);
   line-height: 1.7;
 }
 

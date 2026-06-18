@@ -89,8 +89,8 @@ function makeSession(overrides: Partial<QuizSession> = {}): QuizSession {
     currentIndex: 0,
     results: {},
     sessionType: 'typing-race',
-    timeLimitSeconds: 60,
-    endsAt: Date.now() + 60_000,
+    timeLimitSeconds: 90,
+    endsAt: Date.now() + 90_000,
     ...overrides,
   }
 }
@@ -213,7 +213,7 @@ describe('TypingRaceView', () => {
     expect(wrapper.find('.race-progress').text()).toContain('looking forward to hearing from you.')
   })
 
-  it('正解時に演出クラスと効果音が発火する', async () => {
+  it('正解タイプ時に効果音が鳴り、正解時に演出クラスが発火する', async () => {
     localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeSession()))
 
     const wrapper = mount(TypingRaceView, {
@@ -223,12 +223,17 @@ describe('TypingRaceView', () => {
     await flushPromises()
 
     const input = wrapper.find('input')
+    await input.setValue('I')
+    await flushPromises()
+
+    expect(mockCreateOscillator).toHaveBeenCalledTimes(2)
+
     await input.setValue('I am looking forward to hearing from you.')
     await input.trigger('keydown.enter')
     await flushPromises()
 
     expect(wrapper.find('.race-card').classes()).toContain('race-card--celebrate')
-    expect(mockCreateOscillator).toHaveBeenCalledTimes(2)
+    expect(mockCreateOscillator).toHaveBeenCalledTimes(4)
 
     vi.advanceTimersByTime(600)
     await flushPromises()
@@ -251,13 +256,13 @@ describe('TypingRaceView', () => {
     vi.advanceTimersByTime(1_500)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('60秒チャレンジ結果')
+    expect(wrapper.text()).toContain('90秒チャレンジ結果')
     expect(wrapper.text()).toContain('正解した文字数')
     expect(wrapper.text()).toContain('ミスタイプ 0 文字')
     expect(wrapper.text()).toContain('続ける')
   })
 
-  it('タイムアップ後に「続ける」で次の60秒を開始する', async () => {
+  it('タイムアップ後に「続ける」で次の90秒を開始する', async () => {
     localStorage.setItem(
       STORAGE_KEY_SESSION,
       JSON.stringify(
@@ -285,7 +290,7 @@ describe('TypingRaceView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('She keeps in touch with her mentor every week.')
-    expect(wrapper.text()).not.toContain('60秒チャレンジ結果')
+    expect(wrapper.text()).not.toContain('90秒チャレンジ結果')
 
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_SESSION) ?? '{}') as QuizSession
     expect(saved.currentIndex).toBe(1)

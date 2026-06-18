@@ -73,7 +73,7 @@ async function seedTypingRaceSession(
           currentIndex: overrides?.currentIndex ?? 0,
           results: overrides?.results ?? {},
           sessionType: 'typing-race',
-          timeLimitSeconds: 60,
+          timeLimitSeconds: 90,
           endsAt,
           typingRaceStats: overrides?.typingRaceStats,
         }),
@@ -114,24 +114,24 @@ test.describe('タイピングレース', () => {
     await expect(page).toHaveURL(/#\/typing-race/)
     await expect(page.getByText('あなたからの連絡を楽しみにしています。')).toBeVisible()
     await expect(page.locator('.race-sentence')).toHaveText('I am looking forward to hearing from you.')
-    await expect(page.getByText(/残り 60 秒/)).toBeVisible()
+    await expect(page.getByText(/残り 90 秒/)).toBeVisible()
   })
 
   test('TYPING-002: 正しい例文を入力して送信すると結果が表示される', async ({ page }) => {
-    await seedTypingRaceSession(page, Date.now() + 60_000)
+    await seedTypingRaceSession(page, Date.now() + 90_000)
     await page.goto('./#/typing-race')
 
     await page.getByLabel('例文を入力').fill('I am looking forward to hearing from you.')
     await page.getByRole('button', { name: '採点して次へ' }).click()
 
-    await expect(page.getByRole('heading', { name: '60秒チャレンジ結果' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '90秒チャレンジ結果' })).toBeVisible()
     await expect(page.locator('.race-score-card')).toContainText('正解した文字数')
     await expect(page.locator('.race-score-card')).toContainText('41')
     await expect(page.getByText('ミスタイプ 0 文字')).toBeVisible()
   })
 
   test('TYPING-003: 誤った文字をタイプしても入力欄に反映されない', async ({ page }) => {
-    await seedTypingRaceSession(page, Date.now() + 60_000)
+    await seedTypingRaceSession(page, Date.now() + 90_000)
     await page.goto('./#/typing-race')
 
     const input = page.getByLabel('例文を入力')
@@ -184,11 +184,11 @@ test.describe('タイピングレース', () => {
     })
     await page.goto('./#/typing-race')
 
-    await expect(page.getByRole('heading', { name: '60秒チャレンジ結果' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '90秒チャレンジ結果' })).toBeVisible()
     await expect(page.getByText('ミスタイプ 3 文字')).toBeVisible()
     await page.getByRole('button', { name: '続ける' }).click()
 
-    await expect(page.getByRole('heading', { name: '60秒チャレンジ結果' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: '90秒チャレンジ結果' })).toHaveCount(0)
     await expect(page.locator('.race-sentence')).toHaveText('I am looking forward to hearing from you.')
   })
 })
