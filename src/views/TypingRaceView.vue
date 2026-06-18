@@ -173,6 +173,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useHistory } from '@/composables/useHistory'
 import { useQuizSession } from '@/composables/useQuizSession'
+import typingRaceKeypressUrl from '@/assets/audio/typing-race-keypress.mp3'
 import type { QuizSession } from '@/types'
 
 type RaceOutcome = 'correct' | 'incorrect' | null
@@ -197,7 +198,8 @@ const successEffectActive = ref(false)
 
 let timerId: number | null = null
 let successEffectTimerId: number | null = null
-let audioContext: AudioContext | null = null
+let successAudioPool: HTMLAudioElement[] = []
+let successAudioPoolIndex = 0
 
 const currentIndex = computed(() => session.value?.currentIndex ?? 0)
 const currentItem = computed(() => session.value!.items[currentIndex.value])
@@ -290,41 +292,27 @@ function stopSuccessEffect() {
   successEffectActive.value = false
 }
 
-function playSuccessSound() {
-  if (typeof window === 'undefined') return
+function createSuccessAudio() {
+  const audio = new Audio(typingRaceKeypressUrl)
+  audio.preload = 'auto'
+  audio.volume = 0.45
+  return audio
+}
 
-  const AudioContextCtor = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-  if (!AudioContextCtor) return
+function playSuccessSound() {
+  if (typeof window === 'undefined' || typeof Audio === 'undefined') return
 
   try {
-    audioContext ??= new AudioContextCtor()
-    if (audioContext.state === 'suspended') {
-      void audioContext.resume()
+    if (successAudioPool.length === 0) {
+      successAudioPool = Array.from({ length: 3 }, () => createSuccessAudio())
     }
 
-    const now = audioContext.currentTime
-    const gain = audioContext.createGain()
-    gain.connect(audioContext.destination)
-    gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.01)
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16)
+    const audio =
+      successAudioPool.find((candidate) => candidate.paused || candidate.ended) ??
+      successAudioPool[successAudioPoolIndex++ % successAudioPool.length]
 
-    const lowOsc = audioContext.createOscillator()
-    lowOsc.type = 'square'
-    lowOsc.frequency.setValueAtTime(320, now)
-    lowOsc.frequency.exponentialRampToValueAtTime(540, now + 0.08)
-    lowOsc.connect(gain)
-
-    const highOsc = audioContext.createOscillator()
-    highOsc.type = 'triangle'
-    highOsc.frequency.setValueAtTime(760, now)
-    highOsc.frequency.exponentialRampToValueAtTime(1180, now + 0.1)
-    highOsc.connect(gain)
-
-    lowOsc.start(now)
-    highOsc.start(now)
-    lowOsc.stop(now + 0.16)
-    highOsc.stop(now + 0.14)
+    audio.currentTime = 0
+    void audio.play().catch(() => undefined)
   } catch {
     // Audio feedback is optional.
   }
@@ -488,8 +476,12 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stopTimer()
   stopSuccessEffect()
-  void audioContext?.close().catch(() => undefined)
-  audioContext = null
+  successAudioPool.forEach((audio) => {
+    audio.pause()
+    audio.currentTime = 0
+  })
+  successAudioPool = []
+  successAudioPoolIndex = 0
 })
 </script>
 

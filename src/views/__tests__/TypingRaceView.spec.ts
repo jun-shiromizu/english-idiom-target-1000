@@ -7,35 +7,25 @@ import { STORAGE_KEY_SESSION } from '@/config'
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
-const mockResume = vi.fn().mockResolvedValue(undefined)
-const mockClose = vi.fn().mockResolvedValue(undefined)
-const mockCreateOscillator = vi.fn(() => ({
-  type: 'square',
-  frequency: {
-    setValueAtTime: vi.fn(),
-    exponentialRampToValueAtTime: vi.fn(),
-  },
-  connect: vi.fn(),
-  start: vi.fn(),
-  stop: vi.fn(),
-}))
-const mockCreateGain = vi.fn(() => ({
-  connect: vi.fn(),
-  gain: {
-    setValueAtTime: vi.fn(),
-    exponentialRampToValueAtTime: vi.fn(),
-  },
-}))
+const mockAudioPlay = vi.fn().mockResolvedValue(undefined)
+const mockAudioPause = vi.fn()
 
-class MockAudioContext {
-  state: AudioContextState = 'running'
+class MockAudio {
   currentTime = 0
-  destination = {}
+  volume = 1
+  preload = ''
+  paused = true
+  ended = false
 
-  resume = mockResume
-  close = mockClose
-  createOscillator = mockCreateOscillator
-  createGain = mockCreateGain
+  constructor(_src?: string) {}
+
+  play = mockAudioPlay.mockImplementation(async () => {
+    this.paused = false
+  })
+
+  pause = mockAudioPause.mockImplementation(() => {
+    this.paused = true
+  })
 }
 
 vi.mock('vue-router', () => ({
@@ -102,11 +92,9 @@ describe('TypingRaceView', () => {
     localStorage.clear()
     mockPush.mockReset()
     mockReplace.mockReset()
-    mockResume.mockClear()
-    mockClose.mockClear()
-    mockCreateOscillator.mockClear()
-    mockCreateGain.mockClear()
-    vi.stubGlobal('AudioContext', MockAudioContext)
+    mockAudioPlay.mockClear()
+    mockAudioPause.mockClear()
+    vi.stubGlobal('Audio', MockAudio)
   })
 
   afterEach(() => {
@@ -226,14 +214,14 @@ describe('TypingRaceView', () => {
     await input.setValue('I')
     await flushPromises()
 
-    expect(mockCreateOscillator).toHaveBeenCalledTimes(2)
+    expect(mockAudioPlay).toHaveBeenCalledTimes(1)
 
     await input.setValue('I am looking forward to hearing from you.')
     await input.trigger('keydown.enter')
     await flushPromises()
 
     expect(wrapper.find('.race-card').classes()).toContain('race-card--celebrate')
-    expect(mockCreateOscillator).toHaveBeenCalledTimes(4)
+    expect(mockAudioPlay).toHaveBeenCalledTimes(2)
 
     vi.advanceTimersByTime(600)
     await flushPromises()
