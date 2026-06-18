@@ -123,6 +123,10 @@ onMounted(() => {
     router.replace({ name: 'home' })
     return
   }
+  if (loaded.sessionType === 'typing-race') {
+    router.replace({ name: 'typing-race' })
+    return
+  }
   session.value = loaded
 })
 

@@ -163,6 +163,17 @@
               color="primary"
               variant="outlined"
               size="large"
+              :loading="startingRoute === 'typing-race'"
+              :disabled="!isValid || startingRoute !== null || isTypingRaceDisabled"
+              @click="startSession('typing-race')"
+            >
+              <v-icon start>mdi-keyboard-outline</v-icon>
+              タイピングレース
+            </v-btn>
+            <v-btn
+              color="primary"
+              variant="outlined"
+              size="large"
               :loading="startingRoute === 'game'"
               :disabled="!isValid || startingRoute !== null"
               @click="startSession('game')"
@@ -325,13 +336,16 @@ const difficultyItems = [
   { label: 'ハード', value: 'hard' },
 ]
 
-const startingRoute = ref<'quiz' | 'dictation' | 'game' | null>(null)
+const startingRoute = ref<'quiz' | 'dictation' | 'typing-race' | 'game' | null>(null)
 
 const isDictationDisabled = computed(
   () =>
     settings.value.bookId !== 'word-target-1900' ||
     settings.value.mode !== 'idiom' ||
     settings.value.direction !== 'ja-to-en',
+)
+const isTypingRaceDisabled = computed(
+  () => settings.value.mode !== 'sentence' || settings.value.direction !== 'en-to-ja',
 )
 const errorMessage = ref('')
 const showClearDialog = ref(false)
@@ -366,7 +380,7 @@ watch(gameDifficulty, (value) => {
   saveGameDifficulty(value)
 })
 
-async function startSession(routeName: 'quiz' | 'dictation' | 'game') {
+async function startSession(routeName: 'quiz' | 'dictation' | 'typing-race' | 'game') {
   startingRoute.value = routeName
   errorMessage.value = ''
   try {
@@ -388,12 +402,21 @@ async function startSession(routeName: 'quiz' | 'dictation' | 'game') {
       return
     }
 
+    const isTypingRace = routeName === 'typing-race'
+    const timeLimitSeconds = 90
     const session = {
       settings: settings.value,
       items,
       currentIndex: 0,
       results: {},
-      sessionType: routeName === 'dictation' ? ('dictation' as const) : ('quiz' as const),
+      sessionType:
+        routeName === 'dictation'
+          ? ('dictation' as const)
+          : isTypingRace
+            ? ('typing-race' as const)
+            : ('quiz' as const),
+      timeLimitSeconds: isTypingRace ? timeLimitSeconds : undefined,
+      endsAt: isTypingRace ? Date.now() + timeLimitSeconds * 1000 : undefined,
     }
     saveSession(session)
     router.push({ name: routeName })
@@ -411,7 +434,7 @@ function getBookTitle(bookId: QuizSettings['bookId']) {
 
 function resumeSession() {
   const type = savedSession.value?.sessionType
-  router.push({ name: type === 'dictation' ? 'dictation' : 'quiz' })
+  router.push({ name: type === 'dictation' ? 'dictation' : type === 'typing-race' ? 'typing-race' : 'quiz' })
 }
 
 function discardSession() {
