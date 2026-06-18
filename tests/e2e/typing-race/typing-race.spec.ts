@@ -105,6 +105,7 @@ test.describe('タイピングレース', () => {
     await page.getByRole('button', { name: 'タイピングレース' }).click()
 
     await expect(page).toHaveURL(/#\/typing-race/)
+    await expect(page.getByText('あなたからの連絡を楽しみにしています。')).toBeVisible()
     await expect(page.getByText('I am looking forward to hearing from you.')).toBeVisible()
     await expect(page.getByText(/残り 60 秒/)).toBeVisible()
   })
@@ -118,6 +119,18 @@ test.describe('タイピングレース', () => {
 
     await expect(page.getByRole('heading', { name: '60秒チャレンジ結果' })).toBeVisible()
     await expect(page.getByText('1 文に挑戦 / 正答率 100%')).toBeVisible()
+  })
+
+  test('TYPING-003: 誤った文字をタイプしても入力欄に反映されない', async ({ page }) => {
+    await seedTypingRaceSession(page, Date.now() + 60_000)
+    await page.goto('./#/typing-race')
+
+    const input = page.getByLabel('例文を入力')
+    await input.fill('I')
+    await expect(input).toHaveValue('I')
+
+    await input.type('x')
+    await expect(input).toHaveValue('I')
   })
 
   test('TYPING-101: typing-race 以外の session で /typing-race にアクセスするとトップへ戻る', async ({ page }) => {

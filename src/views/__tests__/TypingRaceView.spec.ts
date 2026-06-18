@@ -114,6 +114,41 @@ describe('TypingRaceView', () => {
     expect(saved.results).toEqual({ 0: true })
   })
 
+  it('和訳を英文の上に表示する', async () => {
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeSession()))
+
+    const wrapper = mount(TypingRaceView, {
+      global: { plugins: [vuetify] },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('あなたからの連絡を楽しみにしています。')
+    expect(text.indexOf('あなたからの連絡を楽しみにしています。')).toBeLessThan(
+      text.indexOf('I am looking forward to hearing from you.'),
+    )
+  })
+
+  it('誤った文字は入力されない', async () => {
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeSession()))
+
+    const wrapper = mount(TypingRaceView, {
+      global: { plugins: [vuetify] },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    const input = wrapper.find('input')
+    await input.setValue('I')
+    expect((input.element as HTMLInputElement).value).toBe('I')
+
+    await input.setValue('Ix')
+    await flushPromises()
+
+    expect((input.element as HTMLInputElement).value).toBe('I')
+  })
+
   it('制限時間を過ぎると結果画面に切り替わる', async () => {
     localStorage.setItem(
       STORAGE_KEY_SESSION,

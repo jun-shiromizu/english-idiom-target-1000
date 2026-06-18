@@ -91,6 +91,9 @@
           <div class="text-overline text-medium-emphasis mb-3">
             表示された英文をそのまま入力
           </div>
+          <p class="race-translation text-body-2 text-medium-emphasis mb-2">
+            {{ currentTranslation }}
+          </p>
           <p class="race-sentence mb-6">
             {{ currentItem.questionText }}
           </p>
@@ -103,6 +106,7 @@
             density="comfortable"
             hide-details="auto"
             autofocus
+            @input="onNativeInput"
             @keydown.enter.prevent="submitCurrent"
           />
 
@@ -171,6 +175,10 @@ let timerId: number | null = null
 
 const currentIndex = computed(() => session.value?.currentIndex ?? 0)
 const currentItem = computed(() => session.value!.items[currentIndex.value])
+const currentTranslation = computed(() => {
+  const meanIndex = currentItem.value.meanIndex ?? 0
+  return currentItem.value.idiomData.means[meanIndex]?.['sentence-jp'] ?? ''
+})
 const timeLimitSeconds = computed(() => session.value?.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS)
 const attemptedCount = computed(() => (session.value ? Object.keys(session.value.results).length : 0))
 const correctCount = computed(() => {
@@ -183,6 +191,37 @@ const accuracy = computed(() =>
 
 function normalizeTypingText(value: string): string {
   return value.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+function getExpectedSentence(): string {
+  const item = currentItem.value
+  const meanIndex = item.meanIndex ?? 0
+  return item.idiomData.means[meanIndex]?.['example-sentence'] ?? item.questionText
+}
+
+function findValidPrefix(input: string, expected: string): string {
+  const trimmed = input.slice(0, expected.length)
+  for (let length = trimmed.length; length >= 0; length -= 1) {
+    const candidate = trimmed.slice(0, length)
+    if (expected.startsWith(candidate)) {
+      return candidate
+    }
+  }
+  return ''
+}
+
+function onNativeInput(event: Event) {
+  if (!session.value || raceFinished.value) return
+
+  const target = event.target
+  if (!(target instanceof HTMLInputElement)) return
+
+  const nextValue = findValidPrefix(target.value, getExpectedSentence())
+  userInput.value = nextValue
+
+  if (target.value !== nextValue) {
+    target.value = nextValue
+  }
 }
 
 function stopTimer() {
@@ -236,7 +275,7 @@ function submitCurrent() {
   const item = currentItem.value
   const meanIndex = item.meanIndex ?? 0
   const totalMeans = item.idiomData.means.length
-  const answer = item.idiomData.means[meanIndex]?.['example-sentence'] ?? item.questionText
+  const answer = getExpectedSentence()
   const correct = normalizeTypingText(userInput.value) === normalizeTypingText(answer)
 
   setResult(
@@ -357,6 +396,10 @@ onBeforeUnmount(() => {
   font-size: clamp(1.5rem, 3.5vw, 2.3rem);
   line-height: 1.45;
   letter-spacing: 0.01em;
+}
+
+.race-translation {
+  line-height: 1.7;
 }
 
 .race-actions {
