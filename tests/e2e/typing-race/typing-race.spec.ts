@@ -106,7 +106,7 @@ test.describe('タイピングレース', () => {
 
     await expect(page).toHaveURL(/#\/typing-race/)
     await expect(page.getByText('あなたからの連絡を楽しみにしています。')).toBeVisible()
-    await expect(page.getByText('I am looking forward to hearing from you.')).toBeVisible()
+    await expect(page.locator('.race-sentence')).toHaveText('I am looking forward to hearing from you.')
     await expect(page.getByText(/残り 60 秒/)).toBeVisible()
   })
 

@@ -74,7 +74,11 @@
             <v-icon start>mdi-timer-sand</v-icon>
             残り {{ remainingSeconds }} 秒
           </v-chip>
-          <v-chip color="success" variant="tonal">
+          <v-chip
+            color="success"
+            variant="tonal"
+            :class="{ 'race-chip--celebrate': successEffectActive }"
+          >
             <v-icon start>mdi-check</v-icon>
             {{ correctCount }} 正解
           </v-chip>
@@ -86,7 +90,11 @@
         <v-btn variant="text" size="small" @click="showQuitDialog = true">中断</v-btn>
       </div>
 
-      <v-card class="race-card" variant="elevated">
+      <v-card
+        class="race-card"
+        :class="{ 'race-card--celebrate': successEffectActive }"
+        variant="elevated"
+      >
         <v-card-text class="pa-6 pa-sm-8">
           <div class="text-overline text-medium-emphasis mb-3">
             表示された英文をそのまま入力
@@ -96,6 +104,9 @@
           </p>
           <p class="race-sentence mb-6">
             {{ currentItem.questionText }}
+          </p>
+          <p class="race-progress mb-4" aria-hidden="true">
+            <span class="race-progress__typed">{{ typedPrefix }}</span><span>{{ remainingSuffix }}</span>
           </p>
 
           <v-text-field
@@ -158,6 +169,7 @@ import type { QuizSession } from '@/types'
 type RaceOutcome = 'correct' | 'incorrect' | null
 
 const DEFAULT_TIME_LIMIT_SECONDS = 60
+const SUCCESS_EFFECT_DURATION_MS = 520
 
 const router = useRouter()
 const { loadSession, saveSession, clearSession } = useQuizSession()
@@ -170,8 +182,11 @@ const raceFinished = ref(false)
 const lastOutcome = ref<RaceOutcome>(null)
 const showQuitDialog = ref(false)
 const inputRef = ref()
+const successEffectActive = ref(false)
 
 let timerId: number | null = null
+let successEffectTimerId: number | null = null
+let audioContext: AudioContext | null = null
 
 const currentIndex = computed(() => session.value?.currentIndex ?? 0)
 const currentItem = computed(() => session.value!.items[currentIndex.value])
@@ -179,6 +194,8 @@ const currentTranslation = computed(() => {
   const meanIndex = currentItem.value.meanIndex ?? 0
   return currentItem.value.idiomData.means[meanIndex]?.['sentence-jp'] ?? ''
 })
+const typedPrefix = computed(() => userInput.value)
+const remainingSuffix = computed(() => getExpectedSentence().slice(userInput.value.length))
 const timeLimitSeconds = computed(() => session.value?.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS)
 const attemptedCount = computed(() => (session.value ? Object.keys(session.value.results).length : 0))
 const correctCount = computed(() => {
@@ -229,6 +246,64 @@ function stopTimer() {
     window.clearInterval(timerId)
     timerId = null
   }
+}
+
+function stopSuccessEffect() {
+  if (successEffectTimerId !== null) {
+    window.clearTimeout(successEffectTimerId)
+    successEffectTimerId = null
+  }
+  successEffectActive.value = false
+}
+
+function playSuccessSound() {
+  if (typeof window === 'undefined') return
+
+  const AudioContextCtor = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  if (!AudioContextCtor) return
+
+  try {
+    audioContext ??= new AudioContextCtor()
+    if (audioContext.state === 'suspended') {
+      void audioContext.resume()
+    }
+
+    const now = audioContext.currentTime
+    const gain = audioContext.createGain()
+    gain.connect(audioContext.destination)
+    gain.gain.setValueAtTime(0.0001, now)
+    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16)
+
+    const lowOsc = audioContext.createOscillator()
+    lowOsc.type = 'square'
+    lowOsc.frequency.setValueAtTime(320, now)
+    lowOsc.frequency.exponentialRampToValueAtTime(540, now + 0.08)
+    lowOsc.connect(gain)
+
+    const highOsc = audioContext.createOscillator()
+    highOsc.type = 'triangle'
+    highOsc.frequency.setValueAtTime(760, now)
+    highOsc.frequency.exponentialRampToValueAtTime(1180, now + 0.1)
+    highOsc.connect(gain)
+
+    lowOsc.start(now)
+    highOsc.start(now)
+    lowOsc.stop(now + 0.16)
+    highOsc.stop(now + 0.14)
+  } catch {
+    // Audio feedback is optional.
+  }
+}
+
+function triggerSuccessEffect() {
+  stopSuccessEffect()
+  successEffectActive.value = true
+  playSuccessSound()
+  successEffectTimerId = window.setTimeout(() => {
+    successEffectActive.value = false
+    successEffectTimerId = null
+  }, SUCCESS_EFFECT_DURATION_MS)
 }
 
 function syncRemainingSeconds() {
@@ -289,6 +364,11 @@ function submitCurrent() {
   )
   session.value.results[currentIndex.value] = correct
   lastOutcome.value = correct ? 'correct' : 'incorrect'
+  if (correct) {
+    triggerSuccessEffect()
+  } else {
+    stopSuccessEffect()
+  }
   userInput.value = ''
 
   const nextIndex = currentIndex.value + 1
@@ -317,6 +397,7 @@ function restartRace() {
   lastOutcome.value = null
   remainingSeconds.value = timeLimitSeconds.value
   raceFinished.value = false
+  stopSuccessEffect()
   saveCurrentSession()
   startTimer()
   focusInput()
@@ -363,6 +444,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopTimer()
+  stopSuccessEffect()
+  void audioContext?.close().catch(() => undefined)
+  audioContext = null
 })
 </script>
 
@@ -381,11 +465,39 @@ onBeforeUnmount(() => {
 }
 
 .race-card {
+  position: relative;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   background:
     radial-gradient(circle at top right, rgba(var(--v-theme-primary), 0.12), transparent 30%),
     linear-gradient(180deg, rgba(var(--v-theme-primary), 0.04), transparent 45%),
     rgb(var(--v-theme-surface));
+  overflow: hidden;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.race-card::after {
+  content: '';
+  position: absolute;
+  inset: -35%;
+  background:
+    radial-gradient(circle, rgba(var(--v-theme-success), 0.28), transparent 42%);
+  opacity: 0;
+  transform: scale(0.72);
+  pointer-events: none;
+}
+
+.race-card--celebrate {
+  border-color: rgba(var(--v-theme-success), 0.42);
+  box-shadow: 0 22px 38px rgba(var(--v-theme-success), 0.16);
+  transform: translateY(-2px) scale(1.01);
+}
+
+.race-card--celebrate::after {
+  opacity: 1;
+  animation: raceSpark 520ms ease-out forwards;
 }
 
 .race-score-card {
@@ -402,9 +514,61 @@ onBeforeUnmount(() => {
   line-height: 1.7;
 }
 
+.race-progress {
+  min-height: 1.8em;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.98rem;
+  letter-spacing: 0.02em;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  word-break: break-word;
+}
+
+.race-progress__typed {
+  color: rgba(var(--v-theme-success), 0.42);
+}
+
+.race-chip--celebrate {
+  animation: raceChipBounce 520ms ease-out;
+}
+
 .race-actions {
   display: flex;
   justify-content: flex-end;
+}
+
+@keyframes raceSpark {
+  0% {
+    opacity: 0.05;
+    transform: scale(0.55);
+  }
+
+  35% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.28);
+  }
+}
+
+@keyframes raceChipBounce {
+  0% {
+    transform: scale(1);
+  }
+
+  34% {
+    transform: scale(1.14) rotate(-2deg);
+  }
+
+  60% {
+    transform: scale(0.96) rotate(1deg);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 @media (max-width: 600px) {

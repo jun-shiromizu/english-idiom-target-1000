@@ -7,6 +7,36 @@ import { STORAGE_KEY_SESSION } from '@/config'
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
+const mockResume = vi.fn().mockResolvedValue(undefined)
+const mockClose = vi.fn().mockResolvedValue(undefined)
+const mockCreateOscillator = vi.fn(() => ({
+  type: 'square',
+  frequency: {
+    setValueAtTime: vi.fn(),
+    exponentialRampToValueAtTime: vi.fn(),
+  },
+  connect: vi.fn(),
+  start: vi.fn(),
+  stop: vi.fn(),
+}))
+const mockCreateGain = vi.fn(() => ({
+  connect: vi.fn(),
+  gain: {
+    setValueAtTime: vi.fn(),
+    exponentialRampToValueAtTime: vi.fn(),
+  },
+}))
+
+class MockAudioContext {
+  state: AudioContextState = 'running'
+  currentTime = 0
+  destination = {}
+
+  resume = mockResume
+  close = mockClose
+  createOscillator = mockCreateOscillator
+  createGain = mockCreateGain
+}
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
@@ -72,9 +102,15 @@ describe('TypingRaceView', () => {
     localStorage.clear()
     mockPush.mockReset()
     mockReplace.mockReset()
+    mockResume.mockClear()
+    mockClose.mockClear()
+    mockCreateOscillator.mockClear()
+    mockCreateGain.mockClear()
+    vi.stubGlobal('AudioContext', MockAudioContext)
   })
 
   afterEach(() => {
+    vi.unstubAllGlobals()
     vi.useRealTimers()
   })
 
@@ -147,6 +183,47 @@ describe('TypingRaceView', () => {
     await flushPromises()
 
     expect((input.element as HTMLInputElement).value).toBe('I')
+  })
+
+  it('入力済みの文字をガイド表示で薄く見せる', async () => {
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeSession()))
+
+    const wrapper = mount(TypingRaceView, {
+      global: { plugins: [vuetify] },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    const input = wrapper.find('input')
+    await input.setValue('I am')
+    await flushPromises()
+
+    const typed = wrapper.find('.race-progress__typed')
+    expect(typed.text()).toBe('I am')
+    expect(wrapper.find('.race-progress').text()).toContain('looking forward to hearing from you.')
+  })
+
+  it('正解時に演出クラスと効果音が発火する', async () => {
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeSession()))
+
+    const wrapper = mount(TypingRaceView, {
+      global: { plugins: [vuetify] },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    const input = wrapper.find('input')
+    await input.setValue('I am looking forward to hearing from you.')
+    await input.trigger('keydown.enter')
+    await flushPromises()
+
+    expect(wrapper.find('.race-card').classes()).toContain('race-card--celebrate')
+    expect(mockCreateOscillator).toHaveBeenCalledTimes(2)
+
+    vi.advanceTimersByTime(600)
+    await flushPromises()
+
+    expect(wrapper.find('.race-card').classes()).not.toContain('race-card--celebrate')
   })
 
   it('制限時間を過ぎると結果画面に切り替わる', async () => {
