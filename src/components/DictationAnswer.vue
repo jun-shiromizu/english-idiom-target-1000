@@ -10,10 +10,23 @@
         <v-icon>{{ isCorrect ? 'mdi-check-circle' : 'mdi-close-circle' }}</v-icon>
         <span class="font-weight-bold">{{ isCorrect ? '正解' : '不正解' }}</span>
         <span class="text-body-2">
-          あなたの回答：<strong>{{ userInput || '（未入力）' }}</strong>
+          あなたの選択：<strong>{{ userInput || '（未選択）' }}</strong>
         </span>
       </div>
     </v-alert>
+
+    <div class="d-flex justify-center mb-4">
+      <v-btn
+        color="primary"
+        variant="elevated"
+        size="large"
+        min-width="180"
+        @click="emit('next')"
+      >
+        <v-icon start>{{ isLast ? 'mdi-flag-checkered' : 'mdi-arrow-right' }}</v-icon>
+        {{ isLast ? '結果を見る' : '次の問題へ' }}
+      </v-btn>
+    </div>
 
     <!-- 回答内容 -->
     <v-card class="mx-auto mb-4" max-width="700">
@@ -21,6 +34,11 @@
         No.{{ item.number }}
       </v-card-title>
       <v-card-text>
+        <section class="mb-4">
+          <h3 class="text-subtitle-1 font-weight-bold mb-2">正解</h3>
+          <p class="text-body-1">{{ item.cloze?.answerSurface ?? item.idiomData.idioms[item.idiomIndex] }}</p>
+        </section>
+
         <section class="mb-4">
           <h3 class="text-subtitle-1 font-weight-bold mb-2">英単語／英熟語</h3>
           <p v-for="idiom in item.idiomData.idioms" :key="idiom" class="text-body-1">
@@ -59,7 +77,7 @@
           </ul>
         </section>
 
-        <SupplementContent :number="item.number" />
+        <SupplementContent :book-id="item.bookId" :number="item.number" />
       </v-card-text>
     </v-card>
 

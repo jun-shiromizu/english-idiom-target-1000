@@ -156,8 +156,8 @@
               :disabled="!isValid || startingRoute !== null || isDictationDisabled"
               @click="startSession('dictation')"
             >
-              <v-icon start>mdi-pencil-outline</v-icon>
-              書き取り
+              <v-icon start>mdi-format-letter-case</v-icon>
+              例文穴埋め
             </v-btn>
             <v-btn
               color="primary"
@@ -244,7 +244,7 @@ import { useHistory } from '@/composables/useHistory'
 
 const router = useRouter()
 const { fetchRangeData } = useGitHubData()
-const { buildItems, saveSession, loadSession, clearSession } = useQuizSession()
+const { buildItems, buildDictationItems, saveSession, loadSession, clearSession } = useQuizSession()
 const { clearAll } = useHistory()
 
 function createDefaultSettings(): QuizSettings {
@@ -339,10 +339,7 @@ const difficultyItems = [
 const startingRoute = ref<'quiz' | 'dictation' | 'typing-race' | 'game' | null>(null)
 
 const isDictationDisabled = computed(
-  () =>
-    settings.value.bookId !== 'word-target-1900' ||
-    settings.value.mode !== 'idiom' ||
-    settings.value.direction !== 'ja-to-en',
+  () => settings.value.mode !== 'sentence' || settings.value.direction !== 'en-to-ja',
 )
 const isTypingRaceDisabled = computed(
   () => settings.value.mode !== 'sentence' || settings.value.direction !== 'en-to-ja',
@@ -390,10 +387,16 @@ async function startSession(routeName: 'quiz' | 'dictation' | 'typing-race' | 'g
       settings.value.endNumber,
     )
 
-    const items = buildItems(settings.value, dataMap)
+    const items =
+      routeName === 'dictation'
+        ? buildDictationItems(settings.value, dataMap)
+        : buildItems(settings.value, dataMap)
 
     if (items.length === 0) {
-      errorMessage.value = '出題できる問題がありません。設定を確認してください。'
+      errorMessage.value =
+        routeName === 'dictation'
+          ? '例文穴埋めを出題できる問題がありません。例文データと出題設定を確認してください。'
+          : '出題できる問題がありません。設定を確認してください。'
       return
     }
 

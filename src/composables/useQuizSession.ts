@@ -1,5 +1,5 @@
 import { DEFAULT_BOOK_ID, LEGACY_BOOK_ID, STORAGE_KEY_SESSION } from '@/config'
-import type { IdiomData, QuizItem, QuizSession, QuizSettings } from '@/types'
+import type { ClozeData, IdiomData, Mean, QuizItem, QuizSession, QuizSettings } from '@/types'
 import { useHistory } from './useHistory'
 import { formatNumber } from './useGitHubData'
 
@@ -63,6 +63,7 @@ export function useQuizSession() {
 
             items.push({
               number,
+              bookId: normalizedSettings.bookId,
               idiomData: data,
               mode: 'idiom',
               direction: normalizedSettings.direction,
@@ -90,6 +91,7 @@ export function useQuizSession() {
 
             items.push({
               number,
+              bookId: normalizedSettings.bookId,
               idiomData: data,
               mode: 'idiom',
               direction: normalizedSettings.direction,
@@ -119,6 +121,7 @@ export function useQuizSession() {
 
           items.push({
             number,
+            bookId: normalizedSettings.bookId,
             idiomData: data,
             mode: 'sentence',
             direction: normalizedSettings.direction,
@@ -131,6 +134,54 @@ export function useQuizSession() {
           })
         })
       }
+    }
+
+    return normalizedSettings.order === 'random' ? shuffle(items) : items
+  }
+
+  function buildDictationItems(settings: QuizSettings, dataMap: Map<string, IdiomData>): QuizItem[] {
+    const normalizedSettings = normalizeSettings(settings)
+
+    if (normalizedSettings.mode !== 'sentence') {
+      return []
+    }
+
+    const items: QuizItem[] = []
+
+    for (let i = normalizedSettings.startNumber; i <= normalizedSettings.endNumber; i++) {
+      const number = formatNumber(i)
+      const data = dataMap.get(number)
+      if (!data) continue
+
+      data.means.forEach((mean, meanIndex) => {
+        if (!hasValidCloze(mean.cloze)) return
+
+        if (
+          normalizedSettings.target === 'incorrect' &&
+          !isIncorrect(
+            normalizedSettings.bookId,
+            number,
+            meanIndex,
+            data.means.length,
+            normalizedSettings.mode,
+            normalizedSettings.direction,
+          )
+        ) {
+          return
+        }
+
+        items.push({
+          number,
+          bookId: normalizedSettings.bookId,
+          idiomData: data,
+          mode: 'sentence',
+          direction: normalizedSettings.direction,
+          questionText: mean.cloze.maskedText,
+          idiomIndex: 0,
+          meanIndex,
+          cloze: mean.cloze,
+        })
+      })
     }
 
     return normalizedSettings.order === 'random' ? shuffle(items) : items
@@ -165,5 +216,17 @@ export function useQuizSession() {
     localStorage.removeItem(STORAGE_KEY_SESSION)
   }
 
-  return { buildItems, saveSession, loadSession, clearSession }
+  return { buildItems, buildDictationItems, saveSession, loadSession, clearSession }
+}
+
+function hasValidCloze(cloze: Mean['cloze']): cloze is ClozeData {
+  return Boolean(
+    cloze &&
+      cloze.maskedText.trim() &&
+      cloze.answerBase.trim() &&
+      cloze.answerSurface.trim() &&
+      Array.isArray(cloze.choices) &&
+      cloze.choices.length === 4 &&
+      cloze.choices.every((choice) => choice.trim().length > 0),
+  )
 }

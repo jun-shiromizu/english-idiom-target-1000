@@ -11,9 +11,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import type { BookId } from '@/types'
 import { useGitHubData } from '@/composables/useGitHubData'
 
 const props = defineProps<{
+  bookId?: BookId
   number: string
 }>()
 
@@ -22,12 +24,13 @@ const html = ref<string | null>(null)
 let requestId = 0
 
 watch(
-  () => props.number,
-  async (number) => {
+  () => [props.bookId, props.number] as const,
+  async ([bookId, number]) => {
     const currentRequestId = ++requestId
     html.value = null
+    if (!bookId) return
     try {
-      const nextHtml = await fetchSupplementHtml(number)
+      const nextHtml = await fetchSupplementHtml(bookId, number)
       if (currentRequestId === requestId) {
         html.value = nextHtml
       }

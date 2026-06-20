@@ -8,6 +8,12 @@ const mockWordData = {
       'idiom-jp': 'を創り出す',
       'example-sentence': 'Technological change will create new ways of living.',
       'sentence-jp': '技術の変化は新たな生活様式を創り出す。',
+      cloze: {
+        maskedText: 'Technological change will ____ new ways of living.',
+        answerBase: 'create',
+        answerSurface: 'create',
+        choices: ['create', 'build', 'change', 'shape'],
+      },
     },
   ],
   notes: [],
@@ -20,6 +26,12 @@ const mockWordData2 = {
       'idiom-jp': 'を習得する',
       'example-sentence': 'She acquired a new skill.',
       'sentence-jp': '彼女は新しいスキルを習得した。',
+      cloze: {
+        maskedText: 'She ____ a new skill.',
+        answerBase: 'acquire',
+        answerSurface: 'acquired',
+        choices: ['acquired', 'created', 'changed', 'handled'],
+      },
     },
   ],
   notes: [],
@@ -37,8 +49,8 @@ async function seedDictationSession(
           bookId: 'word-target-1900',
           startNumber: 1,
           endNumber: items.length,
-          mode: 'idiom',
-          direction: 'ja-to-en',
+          mode: 'sentence',
+          direction: 'en-to-ja',
           target: 'all',
           order: 'sequential',
         },
@@ -54,78 +66,84 @@ async function seedDictationSession(
   await page.goto('./#/dictation')
 }
 
-function makeItem(number: string, questionText: string, idiomData: typeof mockWordData, idiom: string) {
+function makeItem(
+  number: string,
+  questionText: string,
+  idiomData: typeof mockWordData,
+  answerSurface: string,
+) {
   return {
     number,
     idiomData,
-    mode: 'idiom',
-    direction: 'ja-to-en',
+    mode: 'sentence',
+    direction: 'en-to-ja',
     questionText,
     idiomIndex: 0,
-    answer: idiom,
+    meanIndex: 0,
+    cloze: {
+      maskedText: questionText,
+      answerBase: idiomData.idioms[0],
+      answerSurface,
+      choices: idiomData.means[0].cloze.choices,
+    },
   }
 }
 
-test.describe('書き取りモード', () => {
+test.describe('例文穴埋めモード', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => localStorage.clear())
     await page.goto('./')
   })
 
-  test('DICTATION-001: 書き取り画面を開くと問題文と入力欄が表示される', async ({ page }) => {
-    const items = [makeItem('0001', 'を創り出す', mockWordData, 'create')]
+  test('DICTATION-001: 画面を開くと穴埋め問題文と4択が表示される', async ({ page }) => {
+    const items = [makeItem('0001', 'Technological change will ____ new ways of living.', mockWordData, 'create')]
     await seedDictationSession(page, items)
 
-    await expect(page.getByText('を創り出す')).toBeVisible()
-    await expect(page.getByLabel('英単語を入力')).toBeVisible()
+    await expect(page.getByText('Technological change will ____ new ways of living.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'create' })).toBeVisible()
     await expect(page.getByRole('progressbar')).toBeVisible()
   })
 
-  test('DICTATION-002: 正しい英単語を入力して Enter を押すと「正解」が表示される', async ({ page }) => {
-    const items = [makeItem('0001', 'を創り出す', mockWordData, 'create')]
+  test('DICTATION-002: 正しい選択肢を押すと「正解」が表示される', async ({ page }) => {
+    const items = [makeItem('0001', 'Technological change will ____ new ways of living.', mockWordData, 'create')]
     await seedDictationSession(page, items)
 
-    await page.getByLabel('英単語を入力').fill('create')
-    await page.getByLabel('英単語を入力').press('Enter')
+    await page.getByRole('button', { name: 'create' }).click()
 
-    await expect(page.getByText('正解')).toBeVisible()
+    await expect(page.getByRole('alert').getByText('正解')).toBeVisible()
     await expect(page.getByRole('strong').filter({ hasText: 'create' })).toBeVisible()
-    // 1問のみの場合は「結果を見る」ボタン
     await expect(page.getByRole('button', { name: '結果を見る' })).toBeVisible()
   })
 
-  test('DICTATION-003: 誤った英単語を入力して Enter を押すと「不正解」が表示される', async ({ page }) => {
-    const items = [makeItem('0001', 'を創り出す', mockWordData, 'create')]
+  test('DICTATION-003: 誤った選択肢を押すと「不正解」が表示される', async ({ page }) => {
+    const items = [makeItem('0001', 'Technological change will ____ new ways of living.', mockWordData, 'create')]
     await seedDictationSession(page, items)
 
-    await page.getByLabel('英単語を入力').fill('creat')
-    await page.getByLabel('英単語を入力').press('Enter')
+    await page.getByRole('button', { name: 'build' }).click()
 
     await expect(page.getByText('不正解')).toBeVisible()
-    await expect(page.getByText('creat', { exact: true })).toBeVisible()
+    await expect(page.getByText('build', { exact: true })).toBeVisible()
   })
 
   test('DICTATION-004: 「次の問題へ」を押すと次の問題が表示される', async ({ page }) => {
     const items = [
-      makeItem('0001', 'を創り出す', mockWordData, 'create'),
-      makeItem('0002', 'を習得する', mockWordData2, 'acquire'),
+      makeItem('0001', 'Technological change will ____ new ways of living.', mockWordData, 'create'),
+      makeItem('0002', 'She ____ a new skill.', mockWordData2, 'acquired'),
     ]
     await seedDictationSession(page, items)
 
-    await page.getByLabel('英単語を入力').fill('create')
-    await page.getByLabel('英単語を入力').press('Enter')
+    await page.getByRole('button', { name: 'create' }).click()
     await page.getByRole('button', { name: '次の問題へ' }).click()
 
-    await expect(page.getByText('を習得する')).toBeVisible()
-    await expect(page.getByLabel('英単語を入力')).toHaveValue('')
+    await expect(page.getByText('She ____ a new skill.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'acquired' })).toBeVisible()
   })
 
   test('DICTATION-005: 最後の問題に回答すると「結果を見る」ボタンが表示される', async ({ page }) => {
-    const items = [makeItem('0001', 'を創り出す', mockWordData, 'create')]
+    const items = [makeItem('0001', 'Technological change will ____ new ways of living.', mockWordData, 'create')]
     await seedDictationSession(page, items)
 
-    await page.getByLabel('英単語を入力').fill('create')
-    await page.getByLabel('英単語を入力').press('Enter')
+    await page.getByRole('button', { name: 'create' }).click()
 
     await expect(page.getByRole('button', { name: '結果を見る' })).toBeVisible()
   })
@@ -139,7 +157,7 @@ test.describe('書き取りモード', () => {
             bookId: 'word-target-1900',
             startNumber: 1,
             endNumber: 1,
-            mode: 'idiom',
+            mode: 'sentence',
             direction: 'en-to-ja',
             target: 'all',
             order: 'sequential',

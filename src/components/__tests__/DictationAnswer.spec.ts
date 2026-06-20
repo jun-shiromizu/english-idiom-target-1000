@@ -13,6 +13,12 @@ const mockIdiomData: IdiomData = {
       'idiom-jp': 'を創り出す',
       'example-sentence': 'Technological change will create new ways of living.',
       'sentence-jp': '技術の変化は新たな生活様式を創り出す。',
+      cloze: {
+        maskedText: 'Technological change will ____ new ways of living.',
+        answerBase: 'create',
+        answerSurface: 'create',
+        choices: ['create', 'change', 'build', 'shape'],
+      },
     },
   ],
   notes: [],
@@ -25,6 +31,7 @@ const mockItem: QuizItem = {
   direction: 'ja-to-en',
   questionText: 'を創り出す',
   idiomIndex: 0,
+  cloze: mockIdiomData.means[0].cloze,
 }
 
 function mountComponent(props: {
@@ -68,30 +75,40 @@ describe('DictationAnswer', () => {
 
   it('未入力のとき「（未入力）」が表示される', () => {
     const wrapper = mountComponent({ userInput: '', isCorrect: false })
-    expect(wrapper.text()).toContain('（未入力）')
+    expect(wrapper.text()).toContain('（未選択）')
   })
 
   it('最後の問題でないとき「次の問題へ」ボタンが表示される', () => {
     const wrapper = mountComponent({ userInput: 'create', isCorrect: true, isLast: false })
-    expect(wrapper.text()).toContain('次の問題へ')
+    const buttons = wrapper.findAll('button').filter((button) => button.text().includes('次の問題へ'))
+    expect(buttons).toHaveLength(2)
   })
 
   it('最後の問題のとき「結果を見る」ボタンが表示される', () => {
     const wrapper = mountComponent({ userInput: 'create', isCorrect: true, isLast: true })
-    expect(wrapper.text()).toContain('結果を見る')
+    const buttons = wrapper.findAll('button').filter((button) => button.text().includes('結果を見る'))
+    expect(buttons).toHaveLength(2)
   })
 
-  it('「次の問題へ」をクリックすると next イベントを発行する', async () => {
+  it('上部の「次の問題へ」をクリックすると next イベントを発行する', async () => {
     const wrapper = mountComponent({ userInput: 'create', isCorrect: true })
-    const btn = wrapper.findAll('button').find((b) => b.text().includes('次の問題へ'))
-    await btn!.trigger('click')
+    const buttons = wrapper.findAll('button').filter((button) => button.text().includes('次の問題へ'))
+    await buttons[0].trigger('click')
+    expect(wrapper.emitted('next')).toBeTruthy()
+  })
+
+  it('下部の「次の問題へ」をクリックすると next イベントを発行する', async () => {
+    const wrapper = mountComponent({ userInput: 'create', isCorrect: true })
+    const buttons = wrapper.findAll('button').filter((button) => button.text().includes('次の問題へ'))
+    await buttons[1].trigger('click')
     expect(wrapper.emitted('next')).toBeTruthy()
   })
 
   it('表示時に「次の問題へ」ボタンへフォーカスが当たる', async () => {
     const wrapper = mountComponent({ userInput: 'create', isCorrect: true, attachToBody: true })
     await waitForFocus()
-    const btn = wrapper.findAll('button').find((b) => b.text().includes('次の問題へ'))
+    const buttons = wrapper.findAll('button').filter((button) => button.text().includes('次の問題へ'))
+    const btn = buttons[1]
     expect(btn).toBeTruthy()
     expect(document.activeElement).toBe(btn!.element)
     wrapper.unmount()
@@ -101,5 +118,11 @@ describe('DictationAnswer', () => {
     const wrapper = mountComponent({ userInput: 'create', isCorrect: true })
     expect(wrapper.text()).toContain('create')
     expect(wrapper.text()).toContain('を創り出す')
+  })
+
+  it('正解欄に cloze の表層形が表示される', () => {
+    const wrapper = mountComponent({ userInput: 'change', isCorrect: false })
+    expect(wrapper.text()).toContain('正解')
+    expect(wrapper.text()).toContain('create')
   })
 })

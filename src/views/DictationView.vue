@@ -16,7 +16,9 @@
       <DictationQuestion
         v-if="!revealed"
         :key="currentIndex"
-        :question-text="currentItem.questionText"
+        :question-text="currentCloze.maskedText"
+        :sentence-jp="currentSentenceJp"
+        :choices="currentCloze.choices"
         @submit="onSubmit"
       />
 
@@ -57,7 +59,7 @@ import { useHistory } from '@/composables/useHistory'
 import type { QuizSession } from '@/types'
 
 const router = useRouter()
-const { loadSession, saveSession, clearSession } = useQuizSession()
+const { loadSession, saveSession } = useQuizSession()
 const { setResult } = useHistory()
 
 const session = ref<QuizSession | null>(null)
@@ -67,16 +69,24 @@ const showQuitDialog = ref(false)
 
 const currentIndex = computed(() => session.value?.currentIndex ?? 0)
 const currentItem = computed(() => session.value!.items[currentIndex.value])
-const correctAnswer = computed(
-  () => currentItem.value.idiomData.idioms[currentItem.value.idiomIndex],
-)
+const currentCloze = computed(() => currentItem.value.cloze!)
+const currentSentenceJp = computed(() => {
+  const meanIndex = currentItem.value.meanIndex ?? 0
+  return currentItem.value.idiomData.means[meanIndex]?.['sentence-jp'] ?? ''
+})
+const correctAnswer = computed(() => currentCloze.value.answerSurface)
 const isCorrect = computed(
-  () => userInput.value.trim().toLowerCase() === correctAnswer.value.trim().toLowerCase(),
+  () => userInput.value.trim() === correctAnswer.value.trim(),
 )
 
 onMounted(() => {
   const loaded = loadSession()
-  if (!loaded || loaded.sessionType !== 'dictation') {
+  if (
+    !loaded ||
+    loaded.sessionType !== 'dictation' ||
+    loaded.items.length === 0 ||
+    loaded.items.some((item) => !item.cloze)
+  ) {
     router.replace({ name: 'home' })
     return
   }
