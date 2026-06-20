@@ -66,6 +66,13 @@ async function seedDictationSession(
   await page.goto('./#/dictation')
 }
 
+function getDictationActionButton(
+  page: Parameters<typeof test.beforeEach>[0] extends (args: infer T) => any ? T['page'] : never,
+  label: string,
+) {
+  return page.getByRole('button', { name: label }).first()
+}
+
 function makeItem(
   number: string,
   questionText: string,
@@ -112,7 +119,7 @@ test.describe('例文穴埋めモード', () => {
 
     await expect(page.getByRole('alert').getByText('正解')).toBeVisible()
     await expect(page.getByRole('strong').filter({ hasText: 'create' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '結果を見る' })).toBeVisible()
+    await expect(getDictationActionButton(page, '結果を見る')).toBeVisible()
   })
 
   test('DICTATION-003: 誤った選択肢を押すと「不正解」が表示される', async ({ page }) => {
@@ -133,7 +140,7 @@ test.describe('例文穴埋めモード', () => {
     await seedDictationSession(page, items)
 
     await page.getByRole('button', { name: 'create' }).click()
-    await page.getByRole('button', { name: '次の問題へ' }).click()
+    await getDictationActionButton(page, '次の問題へ').click()
 
     await expect(page.getByText('She ____ a new skill.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'acquired' })).toBeVisible()
@@ -145,7 +152,7 @@ test.describe('例文穴埋めモード', () => {
 
     await page.getByRole('button', { name: 'create' }).click()
 
-    await expect(page.getByRole('button', { name: '結果を見る' })).toBeVisible()
+    await expect(getDictationActionButton(page, '結果を見る')).toBeVisible()
   })
 
   test('DICTATION-101: sessionType が dictation でない session で /dictation にアクセスするとトップへリダイレクトする', async ({ page }) => {
