@@ -81,7 +81,7 @@
         </section>
 
         <!-- 補足データ (Markdown→HTML) -->
-        <SupplementContent :number="item.number" />
+        <SupplementContent :book-id="item.bookId" :number="item.number" />
       </v-card-text>
     </v-card>
 

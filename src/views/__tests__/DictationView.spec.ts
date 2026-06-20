@@ -20,19 +20,32 @@ const mockIdiomData: IdiomData = {
       'idiom-jp': 'を創り出す',
       'example-sentence': 'Technological change will create new ways of living.',
       'sentence-jp': '技術の変化は新たな生活様式を創り出す。',
+      cloze: {
+        maskedText: 'Technological change will ____ new ways of living.',
+        answerBase: 'create',
+        answerSurface: 'create',
+        choices: ['create', 'build', 'change', 'shape'],
+      },
     },
   ],
   notes: [],
 }
 
-function makeItem(number: string, questionText: string): QuizItem {
+function makeItem(number: string, questionText: string, answerSurface = 'create'): QuizItem {
   return {
     number,
     idiomData: mockIdiomData,
-    mode: 'idiom',
-    direction: 'ja-to-en',
+    mode: 'sentence',
+    direction: 'en-to-ja',
     questionText,
     idiomIndex: 0,
+    meanIndex: 0,
+    cloze: {
+      maskedText: questionText,
+      answerBase: 'create',
+      answerSurface,
+      choices: [answerSurface, 'build', 'change', 'shape'],
+    },
   }
 }
 
@@ -42,21 +55,20 @@ function makeDictationSession(overrides: Partial<QuizSession> = {}): QuizSession
       bookId: 'word-target-1900',
       startNumber: 1,
       endNumber: 2,
-      mode: 'idiom',
-      direction: 'ja-to-en',
+      mode: 'sentence',
+      direction: 'en-to-ja',
       target: 'all',
       order: 'sequential',
     },
-    items: [makeItem('0001', 'を創り出す'), makeItem('0002', '一方で')],
+    items: [
+      makeItem('0001', 'Technological change will ____ new ways of living.'),
+      makeItem('0002', 'On the other hand, she can ____ quickly.', 'adapt'),
+    ],
     currentIndex: 0,
     results: {},
     sessionType: 'dictation',
     ...overrides,
   }
-}
-
-async function waitForFocus() {
-  await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
 describe('DictationView', () => {
@@ -83,84 +95,52 @@ describe('DictationView', () => {
     expect(mockReplace).toHaveBeenCalledWith({ name: 'home' })
   })
 
-  it('問題文と入力欄が表示される', async () => {
+  it('問題文と4択が表示される', async () => {
     localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeDictationSession()))
-    const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })
+    const wrapper = mount(DictationView, { global: { plugins: [vuetify] } })
     await flushPromises()
-    expect(wrapper.text()).toContain('を創り出す')
-    expect(wrapper.find('input').exists()).toBe(true)
+    expect(wrapper.text()).toContain('技術の変化は新たな生活様式を創り出す。')
+    expect(wrapper.text()).toContain('Technological change will ____ new ways of living.')
+    expect(wrapper.findAll('button').some((button) => button.text().includes('create'))).toBe(true)
   })
 
-  it('Enter を押すと正誤判定結果が表示される（正解）', async () => {
+  it('正しい選択肢を押すと正誤判定結果が表示される（正解）', async () => {
     localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeDictationSession()))
     const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })
     await flushPromises()
 
-    const input = wrapper.find('input')
-    await input.setValue('create')
-    await input.trigger('keydown.enter')
+    const choice = wrapper.findAll('button').find((button) => button.text().includes('create'))
+    await choice!.trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('正解')
   })
 
-  it('解答確認時に「次の問題へ」ボタンへフォーカスが当たる', async () => {
+  it('選択後も解答確認画面が表示される', async () => {
     localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeDictationSession()))
     const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })
     await flushPromises()
 
-    const input = wrapper.find('input')
-    await input.setValue('create')
-    await input.trigger('keydown.enter')
+    const choice = wrapper.findAll('button').find((button) => button.text().includes('create'))
+    await choice!.trigger('click')
     await flushPromises()
-    await waitForFocus()
-
-    const nextBtn = wrapper.findAll('button').find((b) => b.text().includes('次の問題へ'))
-    expect(nextBtn).toBeTruthy()
-    expect(document.activeElement).toBe(nextBtn!.element)
-  })
-
-  it('Enter で解答確定後も解答確認画面が表示される', async () => {
-    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeDictationSession()))
-    const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })
-    await flushPromises()
-
-    const input = wrapper.find('input')
-    await input.setValue('create')
-    await input.trigger('keydown.enter')
-    await flushPromises()
-    await waitForFocus()
 
     expect(wrapper.text()).toContain('正解')
     expect(wrapper.text()).toContain('次の問題へ')
-    expect(wrapper.text()).not.toContain('を習得する')
+    expect(wrapper.text()).not.toContain('On the other hand')
   })
 
-  it('先頭が大文字でも正解になる（大文字小文字区別なし）', async () => {
+  it('誤った選択肢を押すと正誤判定結果が表示される（不正解）', async () => {
     localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeDictationSession()))
     const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })
     await flushPromises()
 
-    const input = wrapper.find('input')
-    await input.setValue('Create')
-    await input.trigger('keydown.enter')
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('正解')
-  })
-
-  it('Enter を押すと正誤判定結果が表示される（不正解）', async () => {
-    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeDictationSession()))
-    const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })
-    await flushPromises()
-
-    const input = wrapper.find('input')
-    await input.setValue('creat')
-    await input.trigger('keydown.enter')
+    const choice = wrapper.findAll('button').find((button) => button.text().includes('build'))
+    await choice!.trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('不正解')
-    expect(wrapper.text()).toContain('creat')
+    expect(wrapper.text()).toContain('build')
   })
 
   it('最後の問題で「次の問題へ」を押すと result 画面に遷移する', async () => {
@@ -172,8 +152,8 @@ describe('DictationView', () => {
     const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })
     await flushPromises()
 
-    await wrapper.find('input').setValue('create')
-    await wrapper.find('input').trigger('keydown.enter')
+    const choice = wrapper.findAll('button').find((button) => button.text().includes('adapt'))
+    await choice!.trigger('click')
     await flushPromises()
 
     const nextBtn = wrapper.findAll('button').find((b) => b.text().includes('結果を見る'))
@@ -188,16 +168,16 @@ describe('DictationView', () => {
     const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })
     await flushPromises()
 
-    await wrapper.find('input').setValue('create')
-    await wrapper.find('input').trigger('keydown.enter')
+    const choice = wrapper.findAll('button').find((button) => button.text().includes('create'))
+    await choice!.trigger('click')
     await flushPromises()
 
     const nextBtn = wrapper.findAll('button').find((b) => b.text().includes('次の問題へ'))
     await nextBtn!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('一方で')
-    expect(wrapper.find('input').exists()).toBe(true)
+    expect(wrapper.text()).toContain('On the other hand, she can ____ quickly.')
+    expect(wrapper.findAll('button').some((button) => button.text().includes('adapt'))).toBe(true)
   })
 
   it('中断ボタンをクリックすると確認ダイアログが開く', async () => {

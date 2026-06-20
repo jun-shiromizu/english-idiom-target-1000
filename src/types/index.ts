@@ -11,6 +11,14 @@ export interface Mean {
   choiceType?: ChoiceType
   'example-sentence': string
   'sentence-jp': string
+  cloze?: ClozeData
+}
+
+export interface ClozeData {
+  maskedText: string
+  answerBase: string
+  answerSurface: string
+  choices: string[]
 }
 
 export type PartOfSpeech =
@@ -58,6 +66,8 @@ export interface QuizSettings {
 export interface QuizItem {
   /** 4桁ゼロ埋め熟語番号 e.g. "0001" */
   number: string
+  /** 教材ID（補足データ取得用） */
+  bookId?: BookId
   idiomData: IdiomData
   /** 出題形式 */
   mode: QuizMode
@@ -69,6 +79,8 @@ export interface QuizItem {
   idiomIndex: number
   /** 例文出題時の means インデックス */
   meanIndex?: number
+  /** 例文穴埋め用データ */
+  cloze?: ClozeData
 }
 
 export interface QuizSession {

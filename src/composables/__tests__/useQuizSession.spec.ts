@@ -15,14 +15,36 @@ vi.mock('../useHistory', () => ({
 
 const mockIdiom1: IdiomData = {
   idioms: ['a piece of ~'],
-  means: [{ 'idiom-jp': '１つの～', 'example-sentence': 'example 1', 'sentence-jp': '例文訳1' }],
+  means: [
+    {
+      'idiom-jp': '１つの～',
+      'example-sentence': 'example 1',
+      'sentence-jp': '例文訳1',
+      cloze: {
+        maskedText: 'cloze 1 ____',
+        answerBase: 'a piece of ~',
+        answerSurface: 'piece of',
+        choices: ['piece of', 'lot of', 'pair of', 'kind of'],
+      },
+    },
+  ],
   notes: [],
 }
 
 const mockIdiom2: IdiomData = {
   idioms: ['a couple of ~'],
   means: [
-    { 'idiom-jp': '２つの～', 'example-sentence': 'example 2a', 'sentence-jp': '例文訳2a' },
+    {
+      'idiom-jp': '２つの～',
+      'example-sentence': 'example 2a',
+      'sentence-jp': '例文訳2a',
+      cloze: {
+        maskedText: 'cloze 2a ____',
+        answerBase: 'a couple of ~',
+        answerSurface: 'a couple of',
+        choices: ['a couple of', 'a lot of', 'a pair of', 'a kind of'],
+      },
+    },
     { 'idiom-jp': '２、３の～', 'example-sentence': 'example 2b', 'sentence-jp': '例文訳2b' },
   ],
   notes: [],
@@ -102,6 +124,30 @@ describe('useQuizSession', () => {
       const items = buildItems(sentenceSettings, dataMap)
       const item0002 = items.find((i) => i.number === '0002' && i.meanIndex === 0)
       expect(item0002?.questionText).toBe('例文訳2a')
+    })
+  })
+
+  describe('buildDictationItems', () => {
+    it('cloze を持つ means ごとに穴埋め問題を作成する', () => {
+      const sentenceSettings: QuizSettings = { ...baseSettings, mode: 'sentence' }
+      const { buildDictationItems } = useQuizSession()
+      const items = buildDictationItems(sentenceSettings, dataMap)
+
+      expect(items).toHaveLength(2)
+      expect(items[0].questionText).toBe('cloze 1 ____')
+      expect(items[0].cloze?.answerSurface).toBe('piece of')
+      expect(items[1].questionText).toBe('cloze 2a ____')
+      expect(items[1].cloze?.choices).toEqual([
+        'a couple of',
+        'a lot of',
+        'a pair of',
+        'a kind of',
+      ])
+    })
+
+    it('sentence 以外のモードでは穴埋め問題を作成しない', () => {
+      const { buildDictationItems } = useQuizSession()
+      expect(buildDictationItems(baseSettings, dataMap)).toEqual([])
     })
   })
 
