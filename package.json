@@ -23,7 +23,7 @@
     "@playwright/test": "^1.49.1",
     "@tsconfig/node22": "^22.0.5",
     "@vitejs/plugin-vue": "^6.0.7",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.9",
     "@vue/test-utils": "^2.4.11",
     "@vue/tsconfig": "^0.9.1",
     "jsdom": "^25.0.1",
