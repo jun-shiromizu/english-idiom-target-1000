@@ -137,12 +137,29 @@ describe('useQuizSession', () => {
       expect(items[0].questionText).toBe('cloze 1 ____')
       expect(items[0].cloze?.answerSurface).toBe('piece of')
       expect(items[1].questionText).toBe('cloze 2a ____')
-      expect(items[1].cloze?.choices).toEqual([
+      expect(items[1].cloze?.choices).toHaveLength(4)
+      expect(items[1].cloze?.choices).toEqual(expect.arrayContaining([
         'a couple of',
         'a lot of',
         'a pair of',
         'a kind of',
-      ])
+      ]))
+    })
+
+    it('穴埋めの選択肢を毎回シャッフルし、元データは変更しない', () => {
+      const sentenceSettings: QuizSettings = { ...baseSettings, mode: 'sentence' }
+      const randomSpy = vi.spyOn(Math, 'random')
+      randomSpy.mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValueOnce(0)
+
+      try {
+        const { buildDictationItems } = useQuizSession()
+        const items = buildDictationItems(sentenceSettings, dataMap)
+
+        expect(items[0].cloze?.choices).toEqual(['lot of', 'pair of', 'kind of', 'piece of'])
+        expect(mockIdiom1.means[0].cloze?.choices).toEqual(['piece of', 'lot of', 'pair of', 'kind of'])
+      } finally {
+        randomSpy.mockRestore()
+      }
     })
 
     it('sentence 以外のモードでは穴埋め問題を作成しない', () => {
