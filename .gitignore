@@ -26,3 +26,6 @@ Thumbs.db
 # context-mode runtime data
 .github/context-mode/content/
 .github/context-mode/sessions/
+
+# local-only Copilot hook configuration
+.github/hooks/context-mode.json
