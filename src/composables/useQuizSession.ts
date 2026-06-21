@@ -179,7 +179,10 @@ export function useQuizSession() {
           questionText: mean.cloze.maskedText,
           idiomIndex: 0,
           meanIndex,
-          cloze: mean.cloze,
+          cloze: {
+            ...mean.cloze,
+            choices: shuffle(mean.cloze.choices),
+          },
         })
       })
     }
