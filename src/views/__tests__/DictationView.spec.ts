@@ -82,6 +82,37 @@ describe('DictationView', () => {
     expect(mockReplace).toHaveBeenCalledWith({ name: 'home' })
   })
 
+  it('items が空のとき home へリダイレクトする', async () => {
+    const session = makeDictationSession({ items: [] })
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session))
+    mount(DictationView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(mockReplace).toHaveBeenCalledWith({ name: 'home' })
+  })
+
+  it('currentIndex が範囲外のとき home へリダイレクトする', async () => {
+    const session = makeDictationSession({ currentIndex: 2 })
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session))
+    mount(DictationView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(mockReplace).toHaveBeenCalledWith({ name: 'home' })
+  })
+
+  it('idiomIndex が範囲外の item を含むとき home へリダイレクトする', async () => {
+    const session = makeDictationSession({
+      items: [
+        {
+          ...makeItem('0001', 'を創り出す'),
+          idiomIndex: 1,
+        },
+      ],
+    })
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session))
+    mount(DictationView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(mockReplace).toHaveBeenCalledWith({ name: 'home' })
+  })
+
   it('問題文と入力欄が表示される', async () => {
     localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeDictationSession()))
     const wrapper = mount(DictationView, { global: { plugins: [vuetify] }, attachTo: document.body })

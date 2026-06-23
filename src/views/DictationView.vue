@@ -78,12 +78,24 @@ const isCorrect = computed(
 
 onMounted(() => {
   const loaded = loadSession()
-  if (!loaded || loaded.sessionType !== 'dictation') {
+  if (!isValidDictationSession(loaded)) {
     router.replace({ name: 'home' })
     return
   }
   session.value = loaded
 })
+
+function isValidDictationSession(loaded: QuizSession | null): loaded is QuizSession {
+  if (!loaded || loaded.sessionType !== 'dictation') return false
+  if (!Array.isArray(loaded.items) || loaded.items.length === 0) return false
+  if (loaded.currentIndex < 0 || loaded.currentIndex >= loaded.items.length) return false
+
+  return loaded.items.every((item) => (
+    Number.isInteger(item.idiomIndex) &&
+    item.idiomIndex >= 0 &&
+    item.idiomIndex < item.idiomData.idioms.length
+  ))
+}
 
 function onSubmit(value: string) {
   userInput.value = value
