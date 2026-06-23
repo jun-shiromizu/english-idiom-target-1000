@@ -1,0 +1,41 @@
+feature: 例文穴埋めモード
+action: cloze
+page: "#/cloze"
+
+scenarios:
+  - id: CLOZE-001
+    category: normal
+    status: done
+    scenario: 画面を開くと穴埋め問題文と4択が表示される
+    precondition: 例文穴埋め用 session が保存されている状態
+    steps:
+      - 例文穴埋め session を localStorage に保存してページを開く
+    expect:
+      - 穴埋め問題文が表示される
+      - 4択ボタンが表示される
+      - プログレスバーが表示される
+
+  - id: CLOZE-002
+    category: normal
+    status: done
+    scenario: 正しい選択肢を押すと「正解」が表示される
+    precondition: 例文穴埋め用 session が保存されている状態
+    steps:
+      - 例文穴埋め session を localStorage に保存してページを開く
+      - 正しい選択肢を押す
+    expect:
+      - 「正解」のラベルが表示される
+      - 選択した値が表示される
+      - 「次の問題へ」または「結果を見る」ボタンが表示される
+
+  - id: CLOZE-003
+    category: normal
+    status: done
+    scenario: 誤った選択肢を押すと「不正解」が表示される
+    precondition: 例文穴埋め用 session が保存されている状態
+    steps:
+      - 例文穴埋め session を localStorage に保存してページを開く
+      - 誤った選択肢を押す
+    expect:
+      - 「不正解」のラベルが表示される
+      - 選択した値が表示される

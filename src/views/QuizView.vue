@@ -114,6 +114,10 @@ onMounted(() => {
     router.replace({ name: 'dictation' })
     return
   }
+  if (loaded.sessionType === 'cloze') {
+    router.replace({ name: 'cloze' })
+    return
+  }
   if (loaded.sessionType === 'typing-race') {
     router.replace({ name: 'typing-race' })
     return
