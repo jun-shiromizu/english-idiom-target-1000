@@ -87,9 +87,9 @@ test.describe('書き取りモード', () => {
     await page.getByLabel('英単語を入力').fill('create')
     await page.getByLabel('英単語を入力').press('Enter')
 
-    await expect(page.getByText('正解')).toBeVisible()
+    await expect(page.getByRole('alert').getByText('正解')).toBeVisible()
     await expect(page.getByRole('strong').filter({ hasText: 'create' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '結果を見る' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '結果を見る' }).first()).toBeVisible()
   })
 
   test('DICTATION-003: 誤った英単語を入力して Enter を押すと「不正解」が表示される', async ({ page }) => {
@@ -112,7 +112,7 @@ test.describe('書き取りモード', () => {
 
     await page.getByLabel('英単語を入力').fill('create')
     await page.getByLabel('英単語を入力').press('Enter')
-    await page.getByRole('button', { name: '次の問題へ' }).click()
+    await page.getByRole('button', { name: '次の問題へ' }).first().click()
 
     await expect(page.getByText('を習得する')).toBeVisible()
     await expect(page.getByLabel('英単語を入力')).toHaveValue('')
@@ -125,7 +125,7 @@ test.describe('書き取りモード', () => {
     await page.getByLabel('英単語を入力').fill('create')
     await page.getByLabel('英単語を入力').press('Enter')
 
-    await expect(page.getByRole('button', { name: '結果を見る' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '結果を見る' }).first()).toBeVisible()
   })
 
   test('DICTATION-101: sessionType が dictation でない session で /dictation にアクセスするとトップへリダイレクトする', async ({ page }) => {
