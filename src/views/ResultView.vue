@@ -146,7 +146,7 @@ function retryIncorrect() {
     results: {},
   }
   saveSession(retrySession)
-  router.push({ name: 'quiz' })
+  router.push({ name: getResumeRouteName() })
 }
 
 function clearAndRetry() {
@@ -160,6 +160,12 @@ function clearAndRetry() {
   }
   saveSession(retrySession)
   showClearAndRetryDialog.value = false
-  router.push({ name: 'quiz' })
+  router.push({ name: getResumeRouteName() })
+}
+
+function getResumeRouteName() {
+  if (session.value?.sessionType === 'dictation') return 'dictation'
+  if (session.value?.sessionType === 'cloze') return 'cloze'
+  return 'quiz'
 }
 </script>

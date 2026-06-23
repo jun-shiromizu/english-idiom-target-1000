@@ -90,7 +90,7 @@ export interface QuizSession {
   /** QuizItem インデックス → 正解(true)/不正解(false) */
   results: Record<number, boolean>
   /** セッション種別（未定義時は 'quiz' 扱い） */
-  sessionType?: 'quiz' | 'dictation' | 'typing-race'
+  sessionType?: 'quiz' | 'dictation' | 'cloze' | 'typing-race'
   /** タイピングレースの制限時間（秒） */
   timeLimitSeconds?: number
   /** タイピングレースの終了予定時刻（UNIX ms） */

@@ -7,36 +7,28 @@ const vuetify = createVuetify()
 
 function mountComponent(questionText: string) {
   return mount(DictationQuestion, {
-    props: {
-      questionText,
-      sentenceJp: '技術の変化は新たな生活様式を創り出す。',
-      choices: ['create', 'build', 'change', 'shape'],
-    },
+    props: { questionText },
     global: { plugins: [vuetify] },
     attachTo: document.body,
   })
 }
 
 describe('DictationQuestion', () => {
-  it('日本語訳が表示される', () => {
-    const wrapper = mountComponent('Technological change will ____ new ways of living.')
-    expect(wrapper.text()).toContain('技術の変化は新たな生活様式を創り出す。')
-  })
-
   it('問題文が表示される', () => {
-    const wrapper = mountComponent('Technological change will ____ new ways of living.')
-    expect(wrapper.text()).toContain('Technological change will ____ new ways of living.')
+    const wrapper = mountComponent('を創り出す')
+    expect(wrapper.text()).toContain('を創り出す')
   })
 
-  it('4択ボタンが表示される', () => {
-    const wrapper = mountComponent('Technological change will ____ new ways of living.')
-    expect(wrapper.findAll('button')).toHaveLength(4)
+  it('入力欄が表示される', () => {
+    const wrapper = mountComponent('を創り出す')
+    expect(wrapper.find('input').exists()).toBe(true)
   })
 
-  it('選択肢をクリックすると submit イベントとして発行する', async () => {
-    const wrapper = mountComponent('Technological change will ____ new ways of living.')
-    const button = wrapper.findAll('button').find((candidate) => candidate.text().includes('create'))
-    await button!.trigger('click')
+  it('Enter を押すと submit イベントとして発行する', async () => {
+    const wrapper = mountComponent('を創り出す')
+    const input = wrapper.find('input')
+    await input.setValue('create')
+    await input.trigger('keydown.enter')
     expect(wrapper.emitted('submit')).toBeTruthy()
     expect(wrapper.emitted('submit')![0]).toEqual(['create'])
   })

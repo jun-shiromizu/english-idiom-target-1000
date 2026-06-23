@@ -117,6 +117,9 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await expect(page.getByLabel('出題対象')).toBeVisible()
     await expect(page.getByLabel('出題順序')).toBeVisible()
     await expect(page.getByRole('button', { name: '単語帳' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '書き取り' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '例文穴埋め' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'タイピング' })).toBeVisible()
   })
 
   test('HOME-002: 不正解履歴のリセットセクションが表示される', async ({ page }) => {

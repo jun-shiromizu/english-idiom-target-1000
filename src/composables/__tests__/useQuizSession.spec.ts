@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useQuizSession } from '../useQuizSession'
 import type { IdiomData, QuizSettings } from '@/types'
 
-// useHistory の isIncorrect をモック
 vi.mock('../useHistory', () => ({
   useHistory: () => ({
     isIncorrect: vi.fn().mockReturnValue(false),
@@ -97,7 +96,6 @@ describe('useQuizSession', () => {
       const items = buildItems(baseSettings, dataMap)
       const items0006 = items.filter((i) => i.number === '0006')
       expect(items0006).toHaveLength(2)
-      // means が1つなので "(1)" は付かない（spec.md の例は便宜上の表記）
       expect(items0006[0].questionText).toBe('a great deal of ~')
       expect(items0006[1].questionText).toBe('a good deal of ~')
     })
@@ -128,10 +126,32 @@ describe('useQuizSession', () => {
   })
 
   describe('buildDictationItems', () => {
+    it('英単語ターゲット1900 / 単語熟語 / 日本語→英語で書き取り問題を作成する', () => {
+      const settings: QuizSettings = {
+        ...baseSettings,
+        bookId: 'word-target-1900',
+        mode: 'idiom',
+        direction: 'ja-to-en',
+      }
+      const { buildDictationItems } = useQuizSession()
+      const items = buildDictationItems(settings, dataMap)
+
+      expect(items).toHaveLength(4)
+      expect(items[0].questionText).toBe('１つの～')
+      expect(items[0].cloze).toBeUndefined()
+    })
+
+    it('条件が合わないときは書き取り問題を作成しない', () => {
+      const { buildDictationItems } = useQuizSession()
+      expect(buildDictationItems(baseSettings, dataMap)).toEqual([])
+    })
+  })
+
+  describe('buildClozeItems', () => {
     it('cloze を持つ means ごとに穴埋め問題を作成する', () => {
       const sentenceSettings: QuizSettings = { ...baseSettings, mode: 'sentence' }
-      const { buildDictationItems } = useQuizSession()
-      const items = buildDictationItems(sentenceSettings, dataMap)
+      const { buildClozeItems } = useQuizSession()
+      const items = buildClozeItems(sentenceSettings, dataMap)
 
       expect(items).toHaveLength(2)
       expect(items[0].questionText).toBe('cloze 1 ____')
@@ -152,8 +172,8 @@ describe('useQuizSession', () => {
       randomSpy.mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValueOnce(0)
 
       try {
-        const { buildDictationItems } = useQuizSession()
-        const items = buildDictationItems(sentenceSettings, dataMap)
+        const { buildClozeItems } = useQuizSession()
+        const items = buildClozeItems(sentenceSettings, dataMap)
 
         expect(items[0].cloze?.choices).toEqual(['lot of', 'pair of', 'kind of', 'piece of'])
         expect(mockIdiom1.means[0].cloze?.choices).toEqual(['piece of', 'lot of', 'pair of', 'kind of'])
@@ -163,8 +183,8 @@ describe('useQuizSession', () => {
     })
 
     it('sentence 以外のモードでは穴埋め問題を作成しない', () => {
-      const { buildDictationItems } = useQuizSession()
-      expect(buildDictationItems(baseSettings, dataMap)).toEqual([])
+      const { buildClozeItems } = useQuizSession()
+      expect(buildClozeItems(baseSettings, dataMap)).toEqual([])
     })
   })
 

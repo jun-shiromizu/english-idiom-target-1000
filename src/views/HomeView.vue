@@ -156,6 +156,17 @@
               :disabled="!isValid || startingRoute !== null || isDictationDisabled"
               @click="startSession('dictation')"
             >
+              <v-icon start>mdi-pencil-outline</v-icon>
+              書き取り
+            </v-btn>
+            <v-btn
+              color="secondary"
+              variant="outlined"
+              size="large"
+              :loading="startingRoute === 'cloze'"
+              :disabled="!isValid || startingRoute !== null || isClozeDisabled"
+              @click="startSession('cloze')"
+            >
               <v-icon start>mdi-format-letter-case</v-icon>
               例文穴埋め
             </v-btn>
@@ -168,7 +179,7 @@
               @click="startSession('typing-race')"
             >
               <v-icon start>mdi-keyboard-outline</v-icon>
-              タイピングレース
+              タイピング
             </v-btn>
             <v-btn
               color="primary"
@@ -244,7 +255,7 @@ import { useHistory } from '@/composables/useHistory'
 
 const router = useRouter()
 const { fetchRangeData } = useGitHubData()
-const { buildItems, buildDictationItems, saveSession, loadSession, clearSession } = useQuizSession()
+const { buildItems, buildDictationItems, buildClozeItems, saveSession, loadSession, clearSession } = useQuizSession()
 const { clearAll } = useHistory()
 
 function createDefaultSettings(): QuizSettings {
@@ -336,9 +347,15 @@ const difficultyItems = [
   { label: 'ハード', value: 'hard' },
 ]
 
-const startingRoute = ref<'quiz' | 'dictation' | 'typing-race' | 'game' | null>(null)
+const startingRoute = ref<'quiz' | 'dictation' | 'cloze' | 'typing-race' | 'game' | null>(null)
 
 const isDictationDisabled = computed(
+  () =>
+    settings.value.bookId !== 'word-target-1900' ||
+    settings.value.mode !== 'idiom' ||
+    settings.value.direction !== 'ja-to-en',
+)
+const isClozeDisabled = computed(
   () => settings.value.mode !== 'sentence' || settings.value.direction !== 'en-to-ja',
 )
 const isTypingRaceDisabled = computed(
@@ -377,7 +394,7 @@ watch(gameDifficulty, (value) => {
   saveGameDifficulty(value)
 })
 
-async function startSession(routeName: 'quiz' | 'dictation' | 'typing-race' | 'game') {
+async function startSession(routeName: 'quiz' | 'dictation' | 'cloze' | 'typing-race' | 'game') {
   startingRoute.value = routeName
   errorMessage.value = ''
   try {
@@ -390,11 +407,15 @@ async function startSession(routeName: 'quiz' | 'dictation' | 'typing-race' | 'g
     const items =
       routeName === 'dictation'
         ? buildDictationItems(settings.value, dataMap)
+        : routeName === 'cloze'
+          ? buildClozeItems(settings.value, dataMap)
         : buildItems(settings.value, dataMap)
 
     if (items.length === 0) {
       errorMessage.value =
         routeName === 'dictation'
+          ? '書き取りを出題できる問題がありません。英単語ターゲット1900 / 単語・熟語 / 日本語→英語の設定を確認してください。'
+          : routeName === 'cloze'
           ? '例文穴埋めを出題できる問題がありません。例文データと出題設定を確認してください。'
           : '出題できる問題がありません。設定を確認してください。'
       return
@@ -415,6 +436,8 @@ async function startSession(routeName: 'quiz' | 'dictation' | 'typing-race' | 'g
       sessionType:
         routeName === 'dictation'
           ? ('dictation' as const)
+          : routeName === 'cloze'
+            ? ('cloze' as const)
           : isTypingRace
             ? ('typing-race' as const)
             : ('quiz' as const),
@@ -437,7 +460,16 @@ function getBookTitle(bookId: QuizSettings['bookId']) {
 
 function resumeSession() {
   const type = savedSession.value?.sessionType
-  router.push({ name: type === 'dictation' ? 'dictation' : type === 'typing-race' ? 'typing-race' : 'quiz' })
+  router.push({
+    name:
+      type === 'dictation'
+        ? 'dictation'
+        : type === 'cloze'
+          ? 'cloze'
+          : type === 'typing-race'
+            ? 'typing-race'
+            : 'quiz',
+  })
 }
 
 function discardSession() {

@@ -1,40 +1,37 @@
 <template>
   <v-container class="py-4" max-width="700">
-    <!-- ローディング -->
     <div v-if="!session" class="text-center py-16">
       <v-progress-circular indeterminate color="primary" />
     </div>
 
     <template v-else>
-      <!-- ヘッダー: 進捗 + 中断ボタン -->
       <div class="d-flex align-center justify-space-between mb-4">
         <ProgressBar :current="currentIndex + 1" :total="session.items.length" class="flex-grow-1 mr-4" />
         <v-btn variant="text" size="small" @click="showQuitDialog = true">中断</v-btn>
       </div>
 
-      <!-- 入力フェーズ -->
-      <DictationQuestion
+      <ClozeQuestion
         v-if="!revealed"
         :key="currentIndex"
-        :question-text="currentItem.questionText"
+        :question-text="currentCloze.maskedText"
+        :sentence-jp="currentSentenceJp"
+        :choices="currentCloze.choices"
         @submit="onSubmit"
       />
 
-      <!-- 回答表示フェーズ -->
       <DictationAnswer
         v-else
         :item="currentItem"
         :user-input="userInput"
         :is-correct="isCorrect"
         :is-last="currentIndex + 1 >= session.items.length"
-        response-label="あなたの入力"
-        empty-label="（未入力）"
+        response-label="あなたの選択"
+        empty-label="（未選択）"
         @next="onNext"
       />
     </template>
   </v-container>
 
-  <!-- 中断確認ダイアログ -->
   <v-dialog v-model="showQuitDialog" max-width="360">
     <v-card>
       <v-card-title>セッションを中断しますか？</v-card-title>
@@ -49,10 +46,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ProgressBar from '@/components/ProgressBar.vue'
-import DictationQuestion from '@/components/DictationQuestion.vue'
+import ClozeQuestion from '@/components/ClozeQuestion.vue'
 import DictationAnswer from '@/components/DictationAnswer.vue'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { useHistory } from '@/composables/useHistory'
@@ -69,16 +66,24 @@ const showQuitDialog = ref(false)
 
 const currentIndex = computed(() => session.value?.currentIndex ?? 0)
 const currentItem = computed(() => session.value!.items[currentIndex.value])
-const correctAnswer = computed(
-  () => currentItem.value.idiomData.idioms[currentItem.value.idiomIndex],
-)
+const currentCloze = computed(() => currentItem.value.cloze!)
+const currentSentenceJp = computed(() => {
+  const meanIndex = currentItem.value.meanIndex ?? 0
+  return currentItem.value.idiomData.means[meanIndex]?.['sentence-jp'] ?? ''
+})
+const correctAnswer = computed(() => currentCloze.value.answerSurface)
 const isCorrect = computed(
-  () => userInput.value.trim().toLowerCase() === correctAnswer.value.trim().toLowerCase(),
+  () => userInput.value.trim() === correctAnswer.value.trim(),
 )
 
 onMounted(() => {
   const loaded = loadSession()
-  if (!loaded || loaded.sessionType !== 'dictation') {
+  if (
+    !loaded ||
+    loaded.sessionType !== 'cloze' ||
+    loaded.items.length === 0 ||
+    loaded.items.some((item) => !item.cloze)
+  ) {
     router.replace({ name: 'home' })
     return
   }

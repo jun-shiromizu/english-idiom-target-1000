@@ -31,7 +31,6 @@ const mockItem: QuizItem = {
   direction: 'ja-to-en',
   questionText: 'を創り出す',
   idiomIndex: 0,
-  cloze: mockIdiomData.means[0].cloze,
 }
 
 function mountComponent(props: {
@@ -40,6 +39,8 @@ function mountComponent(props: {
   isCorrect: boolean
   isLast?: boolean
   attachToBody?: boolean
+  responseLabel?: string
+  emptyLabel?: string
 }) {
   return mount(DictationAnswer, {
     attachTo: props.attachToBody ? document.body : undefined,
@@ -48,6 +49,8 @@ function mountComponent(props: {
       userInput: props.userInput,
       isCorrect: props.isCorrect,
       isLast: props.isLast ?? false,
+      responseLabel: props.responseLabel,
+      emptyLabel: props.emptyLabel,
     },
     global: {
       plugins: [vuetify],
@@ -73,9 +76,14 @@ describe('DictationAnswer', () => {
     expect(wrapper.text()).toContain('creat')
   })
 
-  it('未入力のとき「（未入力）」が表示される', () => {
-    const wrapper = mountComponent({ userInput: '', isCorrect: false })
-    expect(wrapper.text()).toContain('（未選択）')
+  it('未入力時に指定された空ラベルが表示される', () => {
+    const wrapper = mountComponent({
+      userInput: '',
+      isCorrect: false,
+      responseLabel: 'あなたの入力',
+      emptyLabel: '（未入力）',
+    })
+    expect(wrapper.text()).toContain('（未入力）')
   })
 
   it('最後の問題でないとき「次の問題へ」ボタンが表示される', () => {
@@ -120,8 +128,12 @@ describe('DictationAnswer', () => {
     expect(wrapper.text()).toContain('を創り出す')
   })
 
-  it('正解欄に cloze の表層形が表示される', () => {
-    const wrapper = mountComponent({ userInput: 'change', isCorrect: false })
+  it('cloze の表層形が正解欄に表示される', () => {
+    const wrapper = mountComponent({
+      userInput: 'change',
+      isCorrect: false,
+      item: { ...mockItem, cloze: mockIdiomData.means[0].cloze },
+    })
     expect(wrapper.text()).toContain('正解')
     expect(wrapper.text()).toContain('create')
   })

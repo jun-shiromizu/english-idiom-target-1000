@@ -142,6 +142,20 @@ export function useQuizSession() {
   function buildDictationItems(settings: QuizSettings, dataMap: Map<string, IdiomData>): QuizItem[] {
     const normalizedSettings = normalizeSettings(settings)
 
+    if (
+      normalizedSettings.bookId !== 'word-target-1900' ||
+      normalizedSettings.mode !== 'idiom' ||
+      normalizedSettings.direction !== 'ja-to-en'
+    ) {
+      return []
+    }
+
+    return buildItems(normalizedSettings, dataMap)
+  }
+
+  function buildClozeItems(settings: QuizSettings, dataMap: Map<string, IdiomData>): QuizItem[] {
+    const normalizedSettings = normalizeSettings(settings)
+
     if (normalizedSettings.mode !== 'sentence') {
       return []
     }
@@ -219,7 +233,7 @@ export function useQuizSession() {
     localStorage.removeItem(STORAGE_KEY_SESSION)
   }
 
-  return { buildItems, buildDictationItems, saveSession, loadSession, clearSession }
+  return { buildItems, buildDictationItems, buildClozeItems, saveSession, loadSession, clearSession }
 }
 
 function hasValidCloze(cloze: Mean['cloze']): cloze is ClozeData {

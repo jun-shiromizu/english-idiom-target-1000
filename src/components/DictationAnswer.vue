@@ -10,7 +10,7 @@
         <v-icon>{{ isCorrect ? 'mdi-check-circle' : 'mdi-close-circle' }}</v-icon>
         <span class="font-weight-bold">{{ isCorrect ? '正解' : '不正解' }}</span>
         <span class="text-body-2">
-          あなたの選択：<strong>{{ userInput || '（未選択）' }}</strong>
+          {{ responseLabel }}：<strong>{{ userInput || emptyLabel }}</strong>
         </span>
       </div>
     </v-alert>
@@ -103,12 +103,17 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import type { QuizItem } from '@/types'
 import SupplementContent from './SupplementContent.vue'
 
-defineProps<{
+withDefaults(defineProps<{
   item: QuizItem
   userInput: string
   isCorrect: boolean
   isLast: boolean
-}>()
+  responseLabel?: string
+  emptyLabel?: string
+}>(), {
+  responseLabel: 'あなたの回答',
+  emptyLabel: '（未回答）',
+})
 
 const emit = defineEmits<{
   next: []

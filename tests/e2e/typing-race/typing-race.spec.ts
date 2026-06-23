@@ -109,7 +109,7 @@ test.describe('タイピングレース', () => {
     await page.getByRole('option', { name: '例文' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
-    await page.getByRole('button', { name: 'タイピングレース' }).click()
+    await page.getByRole('button', { name: 'タイピング' }).click()
 
     await expect(page).toHaveURL(/#\/typing-race/)
     await expect(page.getByText('あなたからの連絡を楽しみにしています。')).toBeVisible()
