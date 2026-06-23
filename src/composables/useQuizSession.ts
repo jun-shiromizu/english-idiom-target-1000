@@ -156,7 +156,10 @@ export function useQuizSession() {
   function buildClozeItems(settings: QuizSettings, dataMap: Map<string, IdiomData>): QuizItem[] {
     const normalizedSettings = normalizeSettings(settings)
 
-    if (normalizedSettings.mode !== 'sentence') {
+    if (
+      normalizedSettings.mode !== 'sentence' ||
+      normalizedSettings.direction !== 'en-to-ja'
+    ) {
       return []
     }
 

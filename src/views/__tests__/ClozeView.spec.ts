@@ -87,6 +87,29 @@ describe('ClozeView', () => {
     expect(mockReplace).toHaveBeenCalledWith({ name: 'home' })
   })
 
+  it('currentIndex が範囲外のとき home へリダイレクトする', async () => {
+    const session = makeClozeSession({ currentIndex: 2 })
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session))
+    mount(ClozeView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(mockReplace).toHaveBeenCalledWith({ name: 'home' })
+  })
+
+  it('cloze を持たない item を含むとき home へリダイレクトする', async () => {
+    const session = makeClozeSession({
+      items: [
+        {
+          ...makeItem('0001', 'Technological change will ____ new ways of living.'),
+          cloze: undefined,
+        },
+      ],
+    })
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session))
+    mount(ClozeView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(mockReplace).toHaveBeenCalledWith({ name: 'home' })
+  })
+
   it('問題文と4択が表示される', async () => {
     localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeClozeSession()))
     const wrapper = mount(ClozeView, { global: { plugins: [vuetify] } })

@@ -186,6 +186,16 @@ describe('useQuizSession', () => {
       const { buildClozeItems } = useQuizSession()
       expect(buildClozeItems(baseSettings, dataMap)).toEqual([])
     })
+
+    it('日本語→英語では穴埋め問題を作成しない', () => {
+      const sentenceSettings: QuizSettings = {
+        ...baseSettings,
+        mode: 'sentence',
+        direction: 'ja-to-en',
+      }
+      const { buildClozeItems } = useQuizSession()
+      expect(buildClozeItems(sentenceSettings, dataMap)).toEqual([])
+    })
   })
 
   describe('buildItems - 日本語→英語', () => {

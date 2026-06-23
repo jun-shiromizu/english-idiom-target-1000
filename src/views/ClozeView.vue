@@ -78,17 +78,29 @@ const isCorrect = computed(
 
 onMounted(() => {
   const loaded = loadSession()
-  if (
-    !loaded ||
-    loaded.sessionType !== 'cloze' ||
-    loaded.items.length === 0 ||
-    loaded.items.some((item) => !item.cloze)
-  ) {
+  if (!isValidClozeSession(loaded)) {
     router.replace({ name: 'home' })
     return
   }
   session.value = loaded
 })
+
+function isValidClozeSession(loaded: QuizSession | null): loaded is QuizSession {
+  if (!loaded || loaded.sessionType !== 'cloze') return false
+  if (!Array.isArray(loaded.items) || loaded.items.length === 0) return false
+  if (loaded.currentIndex < 0 || loaded.currentIndex >= loaded.items.length) return false
+
+  return loaded.items.every((item) => {
+    if (!item.cloze || item.meanIndex === undefined) return false
+    if (!Number.isInteger(item.meanIndex) || item.meanIndex < 0 || item.meanIndex >= item.idiomData.means.length) {
+      return false
+    }
+    if (!Number.isInteger(item.idiomIndex) || item.idiomIndex < 0 || item.idiomIndex >= item.idiomData.idioms.length) {
+      return false
+    }
+    return true
+  })
+}
 
 function onSubmit(value: string) {
   userInput.value = value
