@@ -9,6 +9,15 @@ function getCharacter(characters: BattleCharacter[], characterId: string): Battl
   return character
 }
 
+function getHpMultiplier(session: BattleSession): number {
+  return session.activeEffects
+    .filter((effect) => effect.effectType === 'hp-multiplier')
+    .reduce((multiplier, effect) => {
+      if (typeof effect.value !== 'number') return multiplier
+      return multiplier * effect.value
+    }, 1)
+}
+
 function addTimedEffects(
   session: BattleSession,
   sourceSkillId: string,
@@ -65,15 +74,19 @@ export function applyActiveSkill(
 
   for (const effect of user.activeSkill.effects) {
     if (effect.effectType === 'heal' && typeof effect.value === 'number') {
+      const hpMultiplier = getHpMultiplier(nextSession)
       nextSession = {
         ...nextSession,
         party: nextSession.party.map((member, index) => {
           const character = characters.find((entry) => entry.id === member.characterId)
           if (!character) return member
+          const memberMaxHp = Math.round(character.hp * hpMultiplier)
           const healAmount = effect.value > 0 && effect.value <= 1
-            ? Math.round(character.hp * effect.value)
+            ? Math.round(memberMaxHp * effect.value)
             : Math.round(effect.value)
-          const nextHp = index === memberIndex ? member.currentHp + healAmount : member.currentHp
+          const nextHp = index === memberIndex
+            ? Math.min(memberMaxHp, member.currentHp + healAmount)
+            : member.currentHp
           return { ...member, currentHp: nextHp }
         }),
       }

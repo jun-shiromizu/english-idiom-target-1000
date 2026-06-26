@@ -278,6 +278,10 @@ describe('BattleView', () => {
   })
 
   it('通常攻撃では失敗するまで続き、失敗時に累積落ち物スコアでダメージ計算する', async () => {
+    const randomSpy = vi.spyOn(Math, 'random')
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0.5)
+
     mockLoadSession.mockReturnValue(createSession())
     mockFetchRangeData.mockResolvedValue({ dataMap: new Map([['0001', idiomData]]) })
     mockFetchCharacters.mockResolvedValue(characters)
@@ -335,6 +339,8 @@ describe('BattleView', () => {
     expect(wrapper.text()).toContain('問題: idiom 0003')
     expect(wrapper.text()).toContain('正しい答え: 正しい答え')
     expect(mockSaveSession).toHaveBeenLastCalledWith(expect.objectContaining({ lastFallingGameScore: 110 }))
+
+    randomSpy.mockRestore()
   })
 
   it('敵を倒したら次の敵に進むメッセージを表示してコマンド画面へ戻る', async () => {

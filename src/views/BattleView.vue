@@ -561,7 +561,8 @@ async function resolveTurn(correct: boolean): Promise<void> {
   if (nextSession.status === 'defeated') {
     session.value = nextSession
     saveSession(nextSession)
-    router.push({ name: 'battle-result' })
+    isResolving.value = false
+    await router.push({ name: 'battle-result' })
     return
   }
 

@@ -78,6 +78,16 @@ describe('useBattleSkills', () => {
     expect(next.party[0].skillCooldownRemaining).toBe(5)
   })
 
+  it('回復スキルは HP 倍率込みの最大 HP を基準にし、上限を超えない', () => {
+    const session = createSession()
+    session.party[0].currentHp = 1400
+    session.activeEffects = [{ sourceId: 'leader', effectType: 'hp-multiplier', value: 1.5, remainingTurns: -1 }]
+
+    const next = applyActiveSkill(session, characters, 'hero-001', true)
+
+    expect(next.party[0].currentHp).toBe(1500)
+  })
+
   it('skill-boost 成功時に全員のクールダウンを短縮する', () => {
     const session = createSession()
     session.party[1].skillCooldownRemaining = 0
