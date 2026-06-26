@@ -15,6 +15,10 @@ import SettingsView from './views/SettingsView.vue'
 import DictationView from './views/DictationView.vue'
 import ClozeView from './views/ClozeView.vue'
 import TypingRaceView from './views/TypingRaceView.vue'
+import BattleDeckView from './views/BattleDeckView.vue'
+import BattleDungeonView from './views/BattleDungeonView.vue'
+import BattleView from './views/BattleView.vue'
+import BattleResultView from './views/BattleResultView.vue'
 import { DEFAULT_THEME_ID, VUETIFY_THEMES, loadStoredThemeId } from './theme'
 
 const vuetify = createVuetify({
@@ -37,6 +41,10 @@ const router = createRouter({
     { path: '/typing-race', name: 'typing-race', component: TypingRaceView },
     { path: '/game', name: 'game', component: GameView },
     { path: '/result', name: 'result', component: ResultView },
+    { path: '/battle/deck', name: 'battle-deck', component: BattleDeckView },
+    { path: '/battle/dungeons', name: 'battle-dungeons', component: BattleDungeonView },
+    { path: '/battle/play', name: 'battle-play', component: BattleView },
+    { path: '/battle/result', name: 'battle-result', component: BattleResultView },
   ],
 })
 
