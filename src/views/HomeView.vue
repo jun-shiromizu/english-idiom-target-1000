@@ -31,6 +31,25 @@
           </div>
         </v-alert>
 
+        <v-alert
+          v-if="savedBattleSession"
+          type="warning"
+          variant="tonal"
+          class="mb-6"
+          closable
+          @click:close="discardBattleSession"
+        >
+          <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+            <span>
+              バトルの中断データがあります
+              （{{ savedBattleSession.status }} / {{ savedBattleSession.dungeonId ?? 'ダンジョン未選択' }}）
+            </span>
+            <v-btn size="small" color="warning" variant="elevated" @click="resumeBattleSession">
+              再開する
+            </v-btn>
+          </div>
+        </v-alert>
+
         <!-- 出題設定フォーム -->
         <v-card>
           <v-card-title class="pa-4 pb-2 text-subtitle-1">出題設定</v-card-title>
@@ -192,6 +211,17 @@
               <v-icon start>mdi-gamepad-variant-outline</v-icon>
               ゲーム
             </v-btn>
+            <v-btn
+              color="warning"
+              variant="elevated"
+              size="large"
+              :loading="startingRoute === 'battle'"
+              :disabled="startingRoute !== null"
+              @click="openBattleMode"
+            >
+              <v-icon start>mdi-sword-cross</v-icon>
+              バトル
+            </v-btn>
           </v-card-actions>
         </v-card>
 
@@ -252,11 +282,17 @@ import {
 import { useGitHubData } from '@/composables/useGitHubData'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { useHistory } from '@/composables/useHistory'
+import { useBattleSession } from '@/composables/useBattleSession'
+import type { BattleSession } from '@/types'
 
 const router = useRouter()
 const { fetchRangeData } = useGitHubData()
 const { buildItems, buildDictationItems, buildClozeItems, saveSession, loadSession, clearSession } = useQuizSession()
 const { clearAll } = useHistory()
+const {
+  loadSession: loadBattleSession,
+  clearSession: clearBattleSession,
+} = useBattleSession()
 
 function createDefaultSettings(): QuizSettings {
   return {
@@ -347,7 +383,7 @@ const difficultyItems = [
   { label: 'ハード', value: 'hard' },
 ]
 
-const startingRoute = ref<'quiz' | 'dictation' | 'cloze' | 'typing-race' | 'game' | null>(null)
+const startingRoute = ref<'quiz' | 'dictation' | 'cloze' | 'typing-race' | 'game' | 'battle' | null>(null)
 
 const isDictationDisabled = computed(
   () =>
@@ -364,6 +400,7 @@ const isTypingRaceDisabled = computed(
 const errorMessage = ref('')
 const showClearDialog = ref(false)
 const savedSession = ref(loadSession())
+const savedBattleSession = ref<BattleSession | null>(loadBattleSession())
 const selectedBook = computed(() => getBookConfig(settings.value.bookId))
 
 const isValid = computed(
@@ -472,9 +509,33 @@ function resumeSession() {
   })
 }
 
+function resumeBattleSession() {
+  const status = savedBattleSession.value?.status
+  router.push({
+    name:
+      status === 'in-battle'
+        ? 'battle-play'
+        : status === 'cleared' || status === 'defeated'
+          ? 'battle-result'
+          : status === 'dungeon-select'
+            ? 'battle-dungeons'
+            : 'battle-deck',
+  })
+}
+
 function discardSession() {
   clearSession()
   savedSession.value = null
+}
+
+function discardBattleSession() {
+  clearBattleSession()
+  savedBattleSession.value = null
+}
+
+function openBattleMode() {
+  startingRoute.value = 'battle'
+  router.push({ name: 'battle-deck' })
 }
 
 function clearAllHistory() {
@@ -489,6 +550,7 @@ function openThemeSettings() {
 onMounted(() => {
   settings.value = loadSettings()
   savedSession.value = loadSession()
+  savedBattleSession.value = loadBattleSession()
 })
 </script>
 

@@ -75,6 +75,7 @@ describe('useGitHubData', () => {
       expect(mockFetch).toHaveBeenNthCalledWith(
         3,
         'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/target/0001-0100/0001.json',
+        { cache: 'no-store' },
       )
     })
 
@@ -240,6 +241,7 @@ describe('useGitHubData', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/supplement/0001-add.md',
+        { cache: 'no-store' },
       )
       expect(html).toContain(
         'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/img/bar-foo.jpeg"',
@@ -268,6 +270,7 @@ describe('useGitHubData', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/supplement/0001-add.md',
+        { cache: 'no-store' },
       )
       expect(html).toContain(
         'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/img/word.png"',

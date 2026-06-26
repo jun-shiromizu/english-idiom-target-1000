@@ -1,6 +1,9 @@
 import type { BookId } from '@/types'
 
 export const GITHUB_OWNER = 'jun-shiromizu'
+export const BATTLE_DATA_REPO = 'english-idiom-target-1000-data'
+export const BATTLE_DATA_BRANCH = 'main'
+export const BATTLE_DATA_PATH = 'battle'
 
 export interface BookConfig {
 	id: BookId
@@ -51,8 +54,18 @@ export function buildGitHubRawBase(bookId: BookId): string {
 	return `https://raw.githubusercontent.com/${GITHUB_OWNER}/${book.dataRepo}/${book.dataBranch}`
 }
 
+export function buildBattleGitHubApiBase(): string {
+	return `https://api.github.com/repos/${GITHUB_OWNER}/${BATTLE_DATA_REPO}/contents`
+}
+
+export function buildBattleGitHubRawBase(): string {
+	return `https://raw.githubusercontent.com/${GITHUB_OWNER}/${BATTLE_DATA_REPO}/${BATTLE_DATA_BRANCH}`
+}
+
 export const STORAGE_KEY_HISTORY = 'idiom-app-history'
 export const STORAGE_KEY_SESSION = 'idiom-app-session'
+export const STORAGE_KEY_BATTLE_SESSION = 'idiom-app-battle-session'
+export const STORAGE_KEY_BATTLE_DECK = 'idiom-app-battle-deck'
 export const STORAGE_KEY_SETTINGS = 'idiom-app-settings'
 export const STORAGE_KEY_GAME_SETTINGS = 'idiom-app-game-settings'
 export const STORAGE_KEY_THEME = 'idiom-app-theme'

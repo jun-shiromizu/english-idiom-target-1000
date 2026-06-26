@@ -1,0 +1,72 @@
+feature: バトルモード - 基本導線
+action: battle-flow
+page: "#/battle/deck"
+
+scenarios:
+  - id: BATTLE-001
+    category: normal
+    status: done
+    scenario: トップページのバトルボタンからデッキ作成画面へ遷移できる
+    precondition: トップページを表示している状態
+    steps:
+      - 「バトル」ボタンをクリックする
+    expect:
+      - デッキ作成画面へ遷移する
+      - キャラクター一覧が表示される
+
+  - id: BATTLE-002
+    category: normal
+    status: done
+    scenario: デッキ作成とダンジョン選択を完了するとバトル画面が開始される
+    precondition: バトル用キャラクターとダンジョンデータが取得できる状態
+    steps:
+      - リーダー1人とメンバー4人を選択してデッキを確定する
+      - ダンジョンを選択して「ダンジョン決定」をクリックする
+    expect:
+      - バトル画面へ遷移する
+      - 現在の敵、味方パーティ、攻撃フェーズが表示される
+
+  - id: BATTLE-003
+    category: normal
+    status: done
+    scenario: 保存済みの中断データがある場合はホームからバトルを再開できる
+    precondition: localStorage に進行中 battle session が保存されている状態
+    steps:
+      - トップページの「バトルの中断データがあります」バナーで「再開する」をクリックする
+    expect:
+      - バトル画面へ遷移する
+      - 保存済みのダンジョンとバトル状態が表示される
+
+  - id: BATTLE-004
+    category: normal
+    status: done
+    scenario: 敵撃破で次 wave の敵へ切り替わる
+    precondition: 複数 wave のダンジョンで battle を開始している状態
+    steps:
+      - 現在の敵を倒せる問題に正解する
+    expect:
+      - バトル画面の wave 表示が次の wave に進む
+      - 現在の敵表示が次 wave の敵に切り替わる
+
+  - id: BATTLE-005
+    category: normal
+    status: done
+    scenario: 敵の反撃で全滅すると敗北画面へ遷移する
+    precondition: 敵の反撃で全滅する battle 状態を開始している状態
+    steps:
+      - 問題に失敗して敵の反撃を受ける
+    expect:
+      - バトル結果画面へ遷移する
+      - 結果画面に「バトル敗北」が表示される
+
+  - id: BATTLE-006
+    category: normal
+    status: done
+    scenario: スキル問題に正解すると効果が発動する
+    precondition: 使用可能なアクティブスキルを持つ battle 状態を開始している状態
+    steps:
+      - 味方のスキルボタンを押す
+      - 4択問題に正解する
+    expect:
+      - スキル成功メッセージが表示される
+      - スキル効果が battle 画面に反映される

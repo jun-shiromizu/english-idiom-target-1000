@@ -34,6 +34,9 @@ const supplementHtmlCache = new Map<string, string | null>()
 const pendingSupplementRequests = new Map<string, Promise<string | null>>()
 const targetFileIndexCache = new Map<BookId, Map<string, string>>()
 const pendingTargetFileIndexRequests = new Map<BookId, Promise<Map<string, string>>>()
+const GITHUB_FETCH_OPTIONS: RequestInit = {
+  cache: 'no-store',
+}
 
 export function resetGitHubDataCaches(): void {
   supplementHtmlCache.clear()
@@ -76,7 +79,7 @@ export function useGitHubData() {
   async function listFiles(bookId: BookId, path: string): Promise<string[]> {
     const apiBase = buildGitHubApiBase(bookId)
     const bookPath = joinBookPath(bookId, path)
-    const res = await fetch(`${apiBase}/${bookPath}`)
+    const res = await fetch(`${apiBase}/${bookPath}`, GITHUB_FETCH_OPTIONS)
     if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${path}`)
     const items: Array<{ name: string; type: string }> = await res.json()
     return items.filter((i) => i.type === 'file').map((i) => i.name)
@@ -86,7 +89,7 @@ export function useGitHubData() {
   async function listFilesRecursive(bookId: BookId, path: string): Promise<string[]> {
     const apiBase = buildGitHubApiBase(bookId)
     const bookPath = joinBookPath(bookId, path)
-    const res = await fetch(`${apiBase}/${bookPath}`)
+    const res = await fetch(`${apiBase}/${bookPath}`, GITHUB_FETCH_OPTIONS)
     if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${path}`)
 
     const items: Array<{ name: string; type: string }> = await res.json()
@@ -142,7 +145,7 @@ export function useGitHubData() {
   async function fetchRaw(bookId: BookId, path: string): Promise<string> {
     const rawBase = buildGitHubRawBase(bookId)
     const bookPath = joinBookPath(bookId, path)
-    const res = await fetch(`${rawBase}/${bookPath}`)
+    const res = await fetch(`${rawBase}/${bookPath}`, GITHUB_FETCH_OPTIONS)
     if (!res.ok) throw new Error(`GitHub Raw URL error: ${res.status} ${path}`)
     return res.text()
   }
@@ -168,7 +171,7 @@ export function useGitHubData() {
     const request = (async () => {
       const rawBase = buildGitHubRawBase(bookId)
       const path = joinBookPath(bookId, `supplement/${number}-add.md`)
-      const res = await fetch(`${rawBase}/${path}`)
+      const res = await fetch(`${rawBase}/${path}`, GITHUB_FETCH_OPTIONS)
 
       if (res.status === 404) {
         supplementHtmlCache.set(cacheKey, null)
