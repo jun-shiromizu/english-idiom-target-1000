@@ -151,7 +151,7 @@ describe('useGitHubData', () => {
       const data = await promise
 
       expect(data.idioms).toEqual(['recover'])
-      expect(mockFetch).toHaveBeenCalledTimes(4)
+      expect(mockFetch).toHaveBeenCalledTimes(3)
       vi.useRealTimers()
     })
 

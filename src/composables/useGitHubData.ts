@@ -178,7 +178,8 @@ export function useGitHubData() {
       const rawResponse = await fetchRawResponse(bookId, candidatePath)
 
       if (rawResponse.ok) {
-        resolvedTargetPathCache.set(cacheKey, candidatePath)
+        const data = JSON.parse(await rawResponse.text()) as IdiomData
+        cacheResolvedTarget(bookId, number, candidatePath, data)
         return candidatePath
       }
 

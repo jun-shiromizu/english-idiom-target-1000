@@ -242,7 +242,7 @@ const attackItems = ref<QuizItem[]>([])
 const currentAttackItem = ref<QuizItem | null>(null)
 const attackChoices = ref<GameChoice[]>([])
 const fallY = ref(24)
-const currentAttackRunScore = ref(0)
+const currentComboCount = ref(0)
 const lastIncorrectReview = ref<{ question: string; answer: string } | null>(null)
 const isLoading = ref(true)
 const isResolving = ref(false)
@@ -342,7 +342,6 @@ const fallingWordStyle = computed(() => ({
 }))
 const attackDifficulty = computed(() => getAttackDifficulty(session.value))
 const attackDifficultyLabel = computed(() => GAME_DIFFICULTIES[attackDifficulty.value].label)
-const currentComboCount = computed(() => currentAttackRunScore.value)
 const projectedDamage = computed(() => {
   if (!session.value) return 0
   return calculateBattleDamage(session.value, characters.value, currentComboCount.value)
@@ -527,9 +526,9 @@ async function resolveTurn(correct: boolean): Promise<void> {
   }
 
   if (correct) {
-    currentAttackRunScore.value += 1
+    currentComboCount.value += 1
     lastIncorrectReview.value = null
-    battleMessage.value = `正解。現在 ${currentAttackRunScore.value} コンボ、与ダメージは ${projectedDamage.value} です。失敗するまで続きます。`
+    battleMessage.value = `正解。現在 ${currentComboCount.value} コンボ、与ダメージは ${projectedDamage.value} です。失敗するまで続きます。`
     setNextAttackItem()
     isResolving.value = false
     return
@@ -542,7 +541,7 @@ async function resolveTurn(correct: boolean): Promise<void> {
     }
   }
 
-  const comboCount = currentAttackRunScore.value
+  const comboCount = currentComboCount.value
   const attackDamage = calculateBattleDamage(session.value, characters.value, comboCount)
   battleMessage.value = comboCount > 0
     ? `失敗。${comboCount} コンボで ${attackDamage} ダメージを与えます。`
@@ -613,7 +612,7 @@ function answerAttack(correct: boolean): void {
 
 function startAttackPhase(): void {
   if (isResolving.value) return
-  currentAttackRunScore.value = 0
+  currentComboCount.value = 0
   lastIncorrectReview.value = null
   battleMessage.value = '落ち物ゲームを開始します。失敗するまで続きます。'
   currentScreen.value = 'game'
@@ -639,7 +638,7 @@ function startSkillChallenge(characterId: string): void {
 
 function returnToCommandScreen(): void {
   currentScreen.value = 'command'
-  currentAttackRunScore.value = 0
+  currentComboCount.value = 0
   isPaused.value = false
   previousFrameTime = 0
   currentAttackItem.value = null

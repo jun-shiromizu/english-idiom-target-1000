@@ -9,6 +9,10 @@ import type {
   BattleSessionStatus,
 } from '@/types'
 
+type LegacyBattleSession = Partial<BattleSession> & {
+  lastFallingGameScore?: number
+}
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0
 }
@@ -105,7 +109,7 @@ export function useBattleSession() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_BATTLE_SESSION)
       if (!raw) return null
-      const session = JSON.parse(raw) as Partial<BattleSession>
+      const session = JSON.parse(raw) as LegacyBattleSession
       const deck = normalizeDeck(session.deck)
       if (!deck) return null
 
