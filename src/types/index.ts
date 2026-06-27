@@ -105,6 +105,7 @@ export interface QuizSession {
 
 export type BattleEffectType =
   | 'atk-multiplier'
+  | 'combo-constant'
   | 'hp-multiplier'
   | 'game-difficulty'
   | 'heal'

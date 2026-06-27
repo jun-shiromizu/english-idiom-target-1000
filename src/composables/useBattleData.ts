@@ -14,6 +14,18 @@ const GITHUB_FETCH_OPTIONS: RequestInit = {
   cache: 'no-store',
 }
 
+let battleCharactersCache: BattleCharacter[] | null = null
+let battleDungeonsCache: BattleDungeon[] | null = null
+let pendingCharactersRequest: Promise<BattleCharacter[]> | null = null
+let pendingDungeonsRequest: Promise<BattleDungeon[]> | null = null
+
+export function resetBattleDataCaches(): void {
+  battleCharactersCache = null
+  battleDungeonsCache = null
+  pendingCharactersRequest = null
+  pendingDungeonsRequest = null
+}
+
 export function useBattleData() {
   async function listBattleFiles(path = ''): Promise<string[]> {
     const apiBase = buildBattleGitHubApiBase()
@@ -34,11 +46,49 @@ export function useBattleData() {
   }
 
   async function fetchCharacters(): Promise<BattleCharacter[]> {
-    return JSON.parse(await fetchBattleRaw('characters.json')) as BattleCharacter[]
+    if (battleCharactersCache) {
+      return battleCharactersCache
+    }
+
+    if (pendingCharactersRequest) {
+      return pendingCharactersRequest
+    }
+
+    const request = (async () => {
+      const parsed = JSON.parse(await fetchBattleRaw('characters.json')) as BattleCharacter[]
+      battleCharactersCache = parsed
+      return parsed
+    })()
+
+    pendingCharactersRequest = request
+    try {
+      return await request
+    } finally {
+      pendingCharactersRequest = null
+    }
   }
 
   async function fetchDungeons(): Promise<BattleDungeon[]> {
-    return JSON.parse(await fetchBattleRaw('dungeons.json')) as BattleDungeon[]
+    if (battleDungeonsCache) {
+      return battleDungeonsCache
+    }
+
+    if (pendingDungeonsRequest) {
+      return pendingDungeonsRequest
+    }
+
+    const request = (async () => {
+      const parsed = JSON.parse(await fetchBattleRaw('dungeons.json')) as BattleDungeon[]
+      battleDungeonsCache = parsed
+      return parsed
+    })()
+
+    pendingDungeonsRequest = request
+    try {
+      return await request
+    } finally {
+      pendingDungeonsRequest = null
+    }
   }
 
   return { listBattleFiles, fetchBattleRaw, fetchCharacters, fetchDungeons }

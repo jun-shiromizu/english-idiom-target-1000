@@ -139,6 +139,12 @@ const waveDungeon: BattleDungeon = {
   ],
 }
 
+const enduranceDungeon: BattleDungeon = {
+  id: 'dungeon-003',
+  name: 'Endurance Dungeon',
+  enemies: [{ id: 'golem', name: 'Golem', icon: 'battle/icons/enemies/golem.png', atk: 30, hp: 9999 }],
+}
+
 const items: QuizItem[] = ['0001', '0002', '0003', '0004'].map((number) => ({
   number,
   idiomData,
@@ -250,6 +256,7 @@ describe('BattleView', () => {
     expect(wrapper.text()).toContain('スキルチャレンジ')
     expect(wrapper.text()).toContain('4択に正解するとスキルが発動します。')
     expect(wrapper.text()).not.toContain('味方パーティ')
+    expect(wrapper.find('.play-field-focus img[alt="Leader icon"]').exists()).toBe(true)
     expect(mockSaveSession).toHaveBeenCalledWith(expect.objectContaining({ pendingSkillCharacterId: 'hero-001' }))
   })
 
@@ -277,15 +284,19 @@ describe('BattleView', () => {
     expect(mockSaveSession).toHaveBeenCalledWith(expect.objectContaining({ enemyCurrentHp: 120 }))
   })
 
-  it('通常攻撃では失敗するまで続き、失敗時に累積落ち物スコアでダメージ計算する', async () => {
+  it('通常攻撃ではコンボに応じた与ダメージを表示し、失敗時にその値でダメージ計算する', async () => {
     const randomSpy = vi.spyOn(Math, 'random')
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(0.5)
 
-    mockLoadSession.mockReturnValue(createSession())
+    mockLoadSession.mockReturnValue({
+      ...createSession(),
+      dungeonId: 'dungeon-003',
+      enemyCurrentHp: 9999,
+    })
     mockFetchRangeData.mockResolvedValue({ dataMap: new Map([['0001', idiomData]]) })
     mockFetchCharacters.mockResolvedValue(characters)
-    mockFetchDungeons.mockResolvedValue([dungeon])
+    mockFetchDungeons.mockResolvedValue([enduranceDungeon])
     mockBuildItems.mockReturnValue(items)
     mockBuildGameChoices
       .mockReturnValueOnce([
@@ -325,7 +336,10 @@ describe('BattleView', () => {
     await correctButton!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('現在の累積スコアは 110')
+    expect(wrapper.text()).toContain('現在の与ダメージ')
+    expect(wrapper.text()).toContain('462')
+    expect(wrapper.text()).toContain('1 コンボ')
+    expect(wrapper.text()).toContain('現在 1 コンボ、与ダメージは 462')
     expect(wrapper.text()).toContain('落ち物ゲーム')
 
     const wrongButton = wrapper.findAll('button').find((button) => button.text().includes('答え1'))
@@ -334,11 +348,11 @@ describe('BattleView', () => {
     await wrongButton!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('累積落ち物スコア 110 をそのまま 110 ダメージに変換します。')
+    expect(wrapper.text()).toContain('1 コンボで 462 ダメージを与えます。 敵の反撃を受けました。')
     expect(wrapper.text()).toContain('直前に間違えた問題')
     expect(wrapper.text()).toContain('問題: idiom 0003')
     expect(wrapper.text()).toContain('正しい答え: 正しい答え')
-    expect(mockSaveSession).toHaveBeenLastCalledWith(expect.objectContaining({ lastFallingGameScore: 110 }))
+    expect(mockSaveSession).toHaveBeenLastCalledWith(expect.objectContaining({ lastFallingGameScore: 462 }))
 
     randomSpy.mockRestore()
   })
@@ -475,6 +489,7 @@ describe('BattleView', () => {
     await startButton!.trigger('click')
     await flushPromises()
 
+    expect(wrapper.find('.play-field-focus img[alt="Slime icon"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('落下速度 HARD')
   })
 

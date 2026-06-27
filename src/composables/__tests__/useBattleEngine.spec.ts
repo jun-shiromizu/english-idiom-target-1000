@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { applyEnemyAttack, applyPlayerAttack, createInitialBattleSession, getPartyCurrentHp, getPartyMaxHp } from '../useBattleEngine'
+import {
+  applyEnemyAttack,
+  applyPlayerAttack,
+  calculateBattleDamage,
+  createInitialBattleSession,
+  getComboConstant,
+  getPartyAttack,
+  getPartyCurrentHp,
+  getPartyMaxHp,
+} from '../useBattleEngine'
 import type { BattleCharacter, BattleDeck, BattleDungeon } from '@/types'
 
 const characters: BattleCharacter[] = [
@@ -72,16 +81,25 @@ describe('useBattleEngine', () => {
     expect(session.enemyCurrentHp).toBe(15)
     expect(session.party).toHaveLength(5)
     expect(session.party[0].currentHp).toBe(1500)
-    expect(session.party[0].skillCooldownRemaining).toBe(5)
+    expect(session.party[0].skillCooldownRemaining).toBe(4)
     expect(getPartyCurrentHp(session)).toBe(4500)
     expect(getPartyMaxHp(session, characters)).toBe(4500)
   })
 
-  it('攻撃力倍率を反映して敵を倒すと次 wave に進む', () => {
+  it('パーティATKとコンボ定数から battle ダメージを計算できる', () => {
     const session = createInitialBattleSession(deck, dungeon, characters)
-    const next = applyPlayerAttack(session, dungeon, 10)
 
-    expect(next.score).toBe(10)
+    expect(getPartyAttack(session, characters)).toBe(420)
+    expect(getComboConstant(session)).toBe(1.1)
+    expect(calculateBattleDamage(session, characters, 1)).toBe(924)
+    expect(calculateBattleDamage(session, characters, 2)).toBe(1016)
+  })
+
+  it('計算済みダメージで敵を倒すと次 wave に進む', () => {
+    const session = createInitialBattleSession(deck, dungeon, characters)
+    const next = applyPlayerAttack(session, dungeon, 15)
+
+    expect(next.score).toBe(15)
     expect(next.currentWaveIndex).toBe(1)
     expect(next.enemyCurrentHp).toBe(22)
     expect(next.status).toBe('in-battle')
@@ -94,11 +112,11 @@ describe('useBattleEngine', () => {
       enemies: [{ id: 'boss', name: 'Boss', atk: 50, hp: 18 }],
     }
     const session = createInitialBattleSession(deck, singleEnemyDungeon, characters)
-    const next = applyPlayerAttack(session, singleEnemyDungeon, 10)
+    const next = applyPlayerAttack(session, singleEnemyDungeon, 18)
 
     expect(next.status).toBe('cleared')
     expect(next.enemyCurrentHp).toBe(0)
-    expect(next.score).toBe(10)
+    expect(next.score).toBe(18)
   })
 
   it('敵ターンで party HP が減少する', () => {

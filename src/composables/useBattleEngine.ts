@@ -42,6 +42,17 @@ function getMultiplier(effects: BattleEffectState[], effectType: BattleEffectSta
     }, 1)
 }
 
+export function getPartyAttack(session: BattleSession, characters: BattleCharacter[]): number {
+  return session.party.reduce((total, member) => {
+    if (member.currentHp <= 0) {
+      return total
+    }
+
+    const character = characters.find((entry) => entry.id === member.characterId)
+    return total + (character?.atk ?? 0)
+  }, 0)
+}
+
 export function getPartyCurrentHp(session: BattleSession): number {
   return session.party.reduce((total, member) => total + Math.max(0, member.currentHp), 0)
 }
@@ -58,6 +69,30 @@ export function getPartyMaxHp(session: BattleSession, characters: BattleCharacte
 
 export function getAttackMultiplier(session: BattleSession): number {
   return getMultiplier(session.activeEffects, 'atk-multiplier')
+}
+
+export function getComboConstant(session: BattleSession): number {
+  const comboConstantEffect = [...session.activeEffects]
+    .reverse()
+    .find((effect) => effect.effectType === 'combo-constant' && typeof effect.value === 'number')
+
+  return comboConstantEffect?.value ?? 1.1
+}
+
+export function calculateBattleDamage(
+  session: BattleSession,
+  characters: BattleCharacter[],
+  comboCount: number,
+): number {
+  if (comboCount <= 0) {
+    return 0
+  }
+
+  const partyAttack = getPartyAttack(session, characters)
+  const comboConstant = getComboConstant(session)
+  const attackMultiplier = getAttackMultiplier(session)
+
+  return Math.max(0, Math.round(partyAttack * (comboConstant ** comboCount) * attackMultiplier))
 }
 
 export function createInitialBattleSession(
@@ -84,7 +119,7 @@ export function createInitialBattleSession(
     party: resolvedCharacters.map((character) => ({
       characterId: character.id,
       currentHp: Math.round(character.hp * hpMultiplier),
-      skillCooldownRemaining: character.activeSkill.cooldownTurns,
+      skillCooldownRemaining: Math.max(0, character.activeSkill.cooldownTurns - 1),
     })),
     enemyCurrentHp: dungeon.enemies[0].hp,
     activeEffects,
@@ -94,16 +129,15 @@ export function createInitialBattleSession(
 export function applyPlayerAttack(
   session: BattleSession,
   dungeon: BattleDungeon,
-  baseScore: number,
+  damage: number,
 ): BattleSession {
   const currentEnemy = getCurrentEnemy(session, dungeon)
   if (!currentEnemy || session.status !== 'in-battle') {
     return session
   }
 
-  const damage = Math.max(0, Math.round(baseScore * getAttackMultiplier(session)))
   const nextEnemyHp = session.enemyCurrentHp - damage
-  const nextScore = session.score + baseScore
+  const nextScore = session.score + damage
 
   if (nextEnemyHp > 0) {
     return {
