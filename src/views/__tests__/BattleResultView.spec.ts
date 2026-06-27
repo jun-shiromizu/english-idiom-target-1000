@@ -37,7 +37,7 @@ function createSession(): BattleSession {
     party: [],
     enemyCurrentHp: 0,
     activeEffects: [],
-    lastFallingGameScore: 110,
+    lastAttackDamage: 110,
   }
 }
 
@@ -57,14 +57,14 @@ describe('BattleResultView', () => {
     expect(mockReplace).toHaveBeenCalledWith({ name: 'battle-deck' })
   })
 
-  it('結果サマリーに直前の落ち物スコアを表示する', async () => {
+  it('結果サマリーに直前の与ダメージを表示する', async () => {
     mockLoadSession.mockReturnValue(createSession())
 
     const wrapper = mount(BattleResultView, { global: { plugins: [vuetify] } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('ダンジョンクリア')
-    expect(wrapper.text()).toContain('直前の落ち物スコア')
+    expect(wrapper.text()).toContain('直前の与ダメージ')
     expect(wrapper.text()).toContain('110')
   })
 

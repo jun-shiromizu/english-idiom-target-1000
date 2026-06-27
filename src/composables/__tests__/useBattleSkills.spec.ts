@@ -86,12 +86,12 @@ describe('useBattleSkills', () => {
     session.party[1].currentHp = 600
     const next = applyActiveSkill(session, characters, 'hero-001', true)
 
-    expect(next.party[0].currentHp).toBe(680)
+    expect(next.party[0].currentHp).toBe(600)
     expect(next.party[1].currentHp).toBe(600)
     expect(next.party[0].skillCooldownRemaining).toBe(5)
   })
 
-  it('回復スキルはパーティ合計の最大 HP を基準にし、戦闘不能メンバーを除いて不足HPへ配分する', () => {
+  it('回復スキルは対象キャラクターの最大 HP を基準にし、上限を超えない', () => {
     const session = createSession()
     session.party[0].currentHp = 1200
     session.party[1].currentHp = 0
@@ -99,7 +99,7 @@ describe('useBattleSkills', () => {
 
     const next = applyActiveSkill(session, characters, 'hero-001', true)
 
-    expect(next.party[0].currentHp).toBe(1470)
+    expect(next.party[0].currentHp).toBe(1350)
     expect(next.party[1].currentHp).toBe(0)
   })
 

@@ -215,9 +215,7 @@ import {
   applyEnemyAttack,
   applyPlayerAttack,
   calculateBattleDamage,
-  getComboConstant,
   getCurrentEnemy,
-  getPartyAttack,
   getPartyCurrentHp,
   getPartyMaxHp,
 } from '@/composables/useBattleEngine'
@@ -345,8 +343,6 @@ const fallingWordStyle = computed(() => ({
 const attackDifficulty = computed(() => getAttackDifficulty(session.value))
 const attackDifficultyLabel = computed(() => GAME_DIFFICULTIES[attackDifficulty.value].label)
 const currentComboCount = computed(() => currentAttackRunScore.value)
-const currentComboConstant = computed(() => (session.value ? getComboConstant(session.value) : 1.1))
-const partyAttack = computed(() => (session.value ? getPartyAttack(session.value, characters.value) : 0))
 const projectedDamage = computed(() => {
   if (!session.value) return 0
   return calculateBattleDamage(session.value, characters.value, currentComboCount.value)
@@ -558,7 +554,7 @@ async function resolveTurn(correct: boolean): Promise<void> {
   let nextSession = applyPlayerAttack(session.value, dungeon.value, attackDamage)
   nextSession = {
     ...nextSession,
-    lastFallingGameScore: attackDamage,
+    lastAttackDamage: attackDamage,
     lastIncorrectReview: lastIncorrectReview.value ?? undefined,
   }
 

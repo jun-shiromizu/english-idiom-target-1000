@@ -23,8 +23,8 @@
           <v-list-item title="スコア">
             <template #append>{{ session.score }}</template>
           </v-list-item>
-          <v-list-item title="直前の落ち物スコア">
-            <template #append>{{ session.lastFallingGameScore ?? 0 }}</template>
+          <v-list-item title="直前の与ダメージ">
+            <template #append>{{ session.lastAttackDamage ?? 0 }}</template>
           </v-list-item>
           <v-list-item title="リーダー">
             <template #append>{{ session.deck.leaderId }}</template>

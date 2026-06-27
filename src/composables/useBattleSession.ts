@@ -123,8 +123,10 @@ export function useBattleSession() {
         pendingSkillCharacterId: isNonEmptyString(session.pendingSkillCharacterId)
           ? session.pendingSkillCharacterId
           : undefined,
-        lastFallingGameScore: typeof session.lastFallingGameScore === 'number'
-          ? session.lastFallingGameScore
+        lastAttackDamage: typeof session.lastAttackDamage === 'number'
+          ? session.lastAttackDamage
+          : typeof session.lastFallingGameScore === 'number'
+            ? session.lastFallingGameScore
           : undefined,
         lastIncorrectReview:
           session.lastIncorrectReview

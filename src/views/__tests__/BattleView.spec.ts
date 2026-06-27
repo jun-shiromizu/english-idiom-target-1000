@@ -352,7 +352,7 @@ describe('BattleView', () => {
     expect(wrapper.text()).toContain('直前に間違えた問題')
     expect(wrapper.text()).toContain('問題: idiom 0003')
     expect(wrapper.text()).toContain('正しい答え: 正しい答え')
-    expect(mockSaveSession).toHaveBeenLastCalledWith(expect.objectContaining({ lastFallingGameScore: 462 }))
+    expect(mockSaveSession).toHaveBeenLastCalledWith(expect.objectContaining({ lastAttackDamage: 462 }))
 
     randomSpy.mockRestore()
   })

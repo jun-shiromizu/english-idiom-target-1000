@@ -89,25 +89,24 @@ export function applyActiveSkill(
   for (const effect of user.activeSkill.effects) {
     if (effect.effectType === 'heal' && typeof effect.value === 'number') {
       const hpMultiplier = getHpMultiplier(nextSession)
-      const partyMaxHp = nextSession.party.reduce(
-        (total, member) => total + getMemberMaxHp(characters, member.characterId, hpMultiplier),
-        0,
-      )
-      let remainingHeal = effect.value > 0 && effect.value <= 1
-        ? Math.round(partyMaxHp * effect.value)
+      const targetMember = nextSession.party[memberIndex]
+      const memberMaxHp = getMemberMaxHp(characters, targetMember.characterId, hpMultiplier)
+      const healAmount = effect.value > 0 && effect.value <= 1
+        ? Math.round(memberMaxHp * effect.value)
         : Math.round(effect.value)
 
       nextSession = {
         ...nextSession,
-        party: nextSession.party.map((member) => {
-          const memberMaxHp = getMemberMaxHp(characters, member.characterId, hpMultiplier)
-          if (member.currentHp <= 0 || memberMaxHp <= member.currentHp || remainingHeal <= 0) {
+        party: nextSession.party.map((member, index) => {
+          if (index !== memberIndex) {
             return member
           }
 
-          const recovered = Math.min(memberMaxHp - member.currentHp, remainingHeal)
-          remainingHeal -= recovered
-          const nextHp = member.currentHp + recovered
+          if (member.currentHp <= 0 || memberMaxHp <= member.currentHp) {
+            return member
+          }
+
+          const nextHp = Math.min(memberMaxHp, member.currentHp + healAmount)
           return { ...member, currentHp: nextHp }
         }),
       }

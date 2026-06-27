@@ -4,6 +4,22 @@ import { useGitHubData, formatNumber, resetGitHubDataCaches } from '../useGitHub
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
+function hasHost(url: string, host: string): boolean {
+  try {
+    return new URL(url).hostname === host
+  } catch {
+    return false
+  }
+}
+
+function hasPathSuffix(url: string, suffix: string): boolean {
+  try {
+    return new URL(url).pathname.endsWith(suffix)
+  } catch {
+    return false
+  }
+}
+
 describe('formatNumber', () => {
   it('1 → "0001"', () => expect(formatNumber(1)).toBe('0001'))
   it('100 → "0100"', () => expect(formatNumber(100)).toBe('0100'))
@@ -25,15 +41,15 @@ describe('useGitHubData', () => {
       }
 
       mockFetch.mockImplementation(async (url: string) => {
-        if (url.endsWith('/idiom-target-1000/target/0001.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001.json')) {
           return { ok: false, status: 404 }
         }
 
-        if (url.endsWith('/contents/idiom-target-1000/target/0001.json')) {
+        if (hasPathSuffix(url, '/contents/idiom-target-1000/target/0001.json')) {
           return { ok: false, status: 404 }
         }
 
-        if (url.endsWith('/contents/idiom-target-1000/target/0001-0500/0001.json')) {
+        if (hasPathSuffix(url, '/contents/idiom-target-1000/target/0001-0500/0001.json')) {
           return {
             ok: true,
             json: () => Promise.resolve({
@@ -43,7 +59,7 @@ describe('useGitHubData', () => {
           }
         }
 
-        if (url.endsWith('/idiom-target-1000/target/0001-0500/0001.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0001.json')) {
           return {
             ok: true,
             text: () => Promise.resolve(JSON.stringify(mockData)),
@@ -68,11 +84,11 @@ describe('useGitHubData', () => {
       }
 
       mockFetch.mockImplementation(async (url: string) => {
-        if (url.endsWith('/idiom-target-1000/target/0001.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001.json')) {
           return { ok: false, status: 403 }
         }
 
-        if (url.endsWith('/contents/idiom-target-1000/target/0001-0500/0001.json')) {
+        if (hasPathSuffix(url, '/contents/idiom-target-1000/target/0001-0500/0001.json')) {
           return {
             ok: true,
             json: () => Promise.resolve({
@@ -82,7 +98,7 @@ describe('useGitHubData', () => {
           }
         }
 
-        if (url.endsWith('/idiom-target-1000/target/0001-0500/0001.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0001.json')) {
           return {
             ok: true,
             text: () => Promise.resolve(JSON.stringify(mockData)),
@@ -115,11 +131,11 @@ describe('useGitHubData', () => {
       }
 
       mockFetch.mockImplementation(async (url: string) => {
-        if (url.endsWith('/idiom-target-1000/target/0150.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0150.json')) {
           return { ok: false, status: 404 }
         }
 
-        if (url.endsWith('/idiom-target-1000/target/0001-0500/0150.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0150.json')) {
           return mockFetch.mock.calls.filter(([calledUrl]) => calledUrl === url).length === 1
             ? { ok: false, status: 400 }
             : { ok: true, text: () => Promise.resolve(JSON.stringify(mockData)) }
@@ -148,11 +164,11 @@ describe('useGitHubData', () => {
       }
 
       mockFetch.mockImplementation(async (url: string) => {
-        if (url.endsWith('/idiom-target-1000/target/0144.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0144.json')) {
           return { ok: false, status: 404 }
         }
 
-        if (url.endsWith('/contents/idiom-target-1000/target/0001-0500/0144.json')) {
+        if (hasPathSuffix(url, '/contents/idiom-target-1000/target/0001-0500/0144.json')) {
           return {
             ok: true,
             json: () => Promise.resolve({
@@ -162,7 +178,7 @@ describe('useGitHubData', () => {
           }
         }
 
-        if (url.endsWith('/idiom-target-1000/target/0001-0500/0144.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0144.json')) {
           return { ok: false, status: 400 }
         }
 
@@ -211,18 +227,18 @@ describe('useGitHubData', () => {
       }
 
       mockFetch.mockImplementation(async (url: string) => {
-        if (url.endsWith('/idiom-target-1000/target/0001.json') || url.endsWith('/idiom-target-1000/target/0002.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001.json') || hasPathSuffix(url, '/idiom-target-1000/target/0002.json')) {
           return { ok: false, status: 404 }
         }
 
-        if (url.endsWith('/idiom-target-1000/target/0001-0500/0001.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0001.json')) {
           return {
             ok: true,
             text: () => Promise.resolve(JSON.stringify(mockData1)),
           }
         }
 
-        if (url.endsWith('/idiom-target-1000/target/0001-0500/0002.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0002.json')) {
           return {
             ok: true,
             text: () => Promise.resolve(JSON.stringify(mockData2)),
@@ -256,11 +272,11 @@ describe('useGitHubData', () => {
       const pendingResolves: (() => void)[] = []
 
       mockFetch.mockImplementation(async (url: string) => {
-        if (fileNames.some((name) => url.endsWith(`/target/${name}`) && url.includes('raw.githubusercontent.com'))) {
+        if (hasHost(url, 'raw.githubusercontent.com') && fileNames.some((name) => hasPathSuffix(url, `/target/${name}`))) {
           return { ok: false, status: 404 }
         }
 
-        if (fileNames.some((name) => url.endsWith(`/target/0001-0500/${name}`) && url.includes('raw.githubusercontent.com'))) {
+        if (hasHost(url, 'raw.githubusercontent.com') && fileNames.some((name) => hasPathSuffix(url, `/target/0001-0500/${name}`))) {
           currentInflight++
           maxInflight = Math.max(maxInflight, currentInflight)
           await new Promise<void>((resolve) => pendingResolves.push(resolve))
