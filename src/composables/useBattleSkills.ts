@@ -18,6 +18,15 @@ function getHpMultiplier(session: BattleSession): number {
     }, 1)
 }
 
+function getMemberMaxHp(
+  characters: BattleCharacter[],
+  characterId: string,
+  hpMultiplier: number,
+): number {
+  const character = characters.find((entry) => entry.id === characterId)
+  return character ? Math.round(character.hp * hpMultiplier) : 0
+}
+
 function addTimedEffects(
   session: BattleSession,
   sourceSkillId: string,
@@ -25,7 +34,12 @@ function addTimedEffects(
   effects: BattleCharacter['activeSkill']['effects'],
 ): BattleEffectState[] {
   const timedEffects = effects
-    .filter((effect) => effect.effectType === 'atk-multiplier' || effect.effectType === 'game-difficulty' || effect.effectType === 'damage-cut')
+    .filter((effect) =>
+      effect.effectType === 'atk-multiplier'
+      || effect.effectType === 'combo-constant'
+      || effect.effectType === 'game-difficulty'
+      || effect.effectType === 'damage-cut',
+    )
     .map((effect, index) => ({
       sourceId: `${sourceSkillId}:${characterId}:${index}`,
       effectType: effect.effectType,
@@ -75,18 +89,24 @@ export function applyActiveSkill(
   for (const effect of user.activeSkill.effects) {
     if (effect.effectType === 'heal' && typeof effect.value === 'number') {
       const hpMultiplier = getHpMultiplier(nextSession)
+      const targetMember = nextSession.party[memberIndex]
+      const memberMaxHp = getMemberMaxHp(characters, targetMember.characterId, hpMultiplier)
+      const healAmount = effect.value > 0 && effect.value <= 1
+        ? Math.round(memberMaxHp * effect.value)
+        : Math.round(effect.value)
+
       nextSession = {
         ...nextSession,
         party: nextSession.party.map((member, index) => {
-          const character = characters.find((entry) => entry.id === member.characterId)
-          if (!character) return member
-          const memberMaxHp = Math.round(character.hp * hpMultiplier)
-          const healAmount = effect.value > 0 && effect.value <= 1
-            ? Math.round(memberMaxHp * effect.value)
-            : Math.round(effect.value)
-          const nextHp = index === memberIndex
-            ? Math.min(memberMaxHp, member.currentHp + healAmount)
-            : member.currentHp
+          if (index !== memberIndex) {
+            return member
+          }
+
+          if (member.currentHp <= 0 || memberMaxHp <= member.currentHp) {
+            return member
+          }
+
+          const nextHp = Math.min(memberMaxHp, member.currentHp + healAmount)
           return { ...member, currentHp: nextHp }
         }),
       }

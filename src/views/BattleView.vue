@@ -150,12 +150,23 @@
             </template>
             <template v-else>
               <section class="play-field mb-4" aria-live="polite">
+                <div v-if="gameBackdropIconUrl" class="play-field-focus">
+                  <img :src="gameBackdropIconUrl" :alt="gameBackdropIconAlt" class="play-field-focus__image" />
+                </div>
                 <div class="danger-line" />
                 <div v-if="currentAttackItem" class="falling-word" :style="fallingWordStyle">
                   <span class="text-caption text-medium-emphasis">No.{{ currentAttackItem.number }}</span>
                   <strong>{{ currentAttackItem.questionText }}</strong>
                 </div>
               </section>
+
+              <div v-if="!isSkillChallenge" class="damage-strip mb-4">
+                <span class="text-caption text-medium-emphasis">現在の与ダメージ</span>
+                <strong class="damage-strip__value">{{ projectedDamage }}</strong>
+                <span class="text-caption text-medium-emphasis">
+                  {{ currentComboCount }} コンボ
+                </span>
+              </div>
 
               <div class="choice-grid mb-2">
                 <v-btn
@@ -200,7 +211,14 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { advanceBattleTurn, applyActiveSkill, canUseActiveSkill } from '@/composables/useBattleSkills'
-import { applyEnemyAttack, applyPlayerAttack, getCurrentEnemy, getPartyCurrentHp, getPartyMaxHp } from '@/composables/useBattleEngine'
+import {
+  applyEnemyAttack,
+  applyPlayerAttack,
+  calculateBattleDamage,
+  getCurrentEnemy,
+  getPartyCurrentHp,
+  getPartyMaxHp,
+} from '@/composables/useBattleEngine'
 import { useBattleData } from '@/composables/useBattleData'
 import { getGameAnswerLabel, useGameChoices, type GameChoice } from '@/composables/useGameChoices'
 import { useGitHubData } from '@/composables/useGitHubData'
@@ -224,7 +242,7 @@ const attackItems = ref<QuizItem[]>([])
 const currentAttackItem = ref<QuizItem | null>(null)
 const attackChoices = ref<GameChoice[]>([])
 const fallY = ref(24)
-const currentAttackRunScore = ref(0)
+const currentComboCount = ref(0)
 const lastIncorrectReview = ref<{ question: string; answer: string } | null>(null)
 const isLoading = ref(true)
 const isResolving = ref(false)
@@ -240,9 +258,6 @@ let previousFrameTime = 0
 const FIELD_HEIGHT = 320
 const WORD_HEIGHT = 96
 const START_FALL_Y = 24
-const FALL_SPEED = 26
-const ATTACK_BASE_SCORE = 100
-const ATTACK_COMBO_BONUS = 10
 
 const GAME_DIFFICULTIES: Record<GameDifficulty, { label: string; fallSpeed: number }> = {
   easy: {
@@ -298,13 +313,6 @@ function loadAttackSettings(): QuizSettings {
   }
 }
 
-function calculateAttackScore(correct: boolean): number {
-  if (!correct) return 0
-
-  const comboAfterCorrect = 1
-  return ATTACK_BASE_SCORE + comboAfterCorrect * ATTACK_COMBO_BONUS
-}
-
 function getAttackDifficulty(activeSession: BattleSession | null): GameDifficulty {
   if (!activeSession) return 'normal'
 
@@ -334,11 +342,31 @@ const fallingWordStyle = computed(() => ({
 }))
 const attackDifficulty = computed(() => getAttackDifficulty(session.value))
 const attackDifficultyLabel = computed(() => GAME_DIFFICULTIES[attackDifficulty.value].label)
+const projectedDamage = computed(() => {
+  if (!session.value) return 0
+  return calculateBattleDamage(session.value, characters.value, currentComboCount.value)
+})
 const isSkillChallenge = computed(() => Boolean(session.value?.pendingSkillCharacterId))
 const enemyIconUrl = computed(() => {
   if (!currentEnemy.value?.icon) return ''
   return resolveBattleAsset(currentEnemy.value.icon)
 })
+const skillChallengeMember = computed(() => {
+  if (!session.value?.pendingSkillCharacterId) return null
+  return characters.value.find((entry) => entry.id === session.value?.pendingSkillCharacterId) ?? null
+})
+const gameBackdropIconUrl = computed(() => {
+  if (isSkillChallenge.value) {
+    return skillChallengeMember.value ? resolveCharacterIcon(skillChallengeMember.value.icon) : ''
+  }
+
+  return enemyIconUrl.value
+})
+const gameBackdropIconAlt = computed(() =>
+  isSkillChallenge.value
+    ? `${skillChallengeMember.value?.name ?? 'member'} icon`
+    : `${currentEnemy.value?.name ?? 'enemy'} icon`,
+)
 const commandScreenTitle = computed(() => (session.value?.status === 'cleared' ? 'ダンジョンクリア' : 'コマンド画面'))
 const commandScreenDescription = computed(() =>
   session.value?.status === 'cleared'
@@ -349,7 +377,7 @@ const gameScreenTitle = computed(() => (isSkillChallenge.value ? 'スキルチ�
 const gameScreenDescription = computed(() =>
   isSkillChallenge.value
     ? '4択に正解するとスキルが発動します。時間制限はなく、回答するまでは進行しません。'
-    : '正解している間は落ち物ゲームが続き、失敗した時点の累積スコアをそのままダメージに変換します。',
+    : '正解している間は落ち物ゲームが続き、失敗した時点のコンボ数からダメージを計算します。',
 )
 const hpMultiplier = computed(() => {
   if (!session.value) return 1
@@ -421,6 +449,8 @@ function formatEffectLabel(effectType: BattleSession['activeEffects'][number]['e
   switch (effectType) {
     case 'atk-multiplier':
       return `攻撃 x${value} (${remainingTurns}T)`
+    case 'combo-constant':
+      return `コンボ定数 ${value} (${remainingTurns}T)`
     case 'hp-multiplier':
       return `HP x${value} (${remainingTurns}T)`
     case 'game-difficulty':
@@ -496,9 +526,9 @@ async function resolveTurn(correct: boolean): Promise<void> {
   }
 
   if (correct) {
-    currentAttackRunScore.value += calculateAttackScore(true)
+    currentComboCount.value += 1
     lastIncorrectReview.value = null
-    battleMessage.value = `正解。現在の累積スコアは ${currentAttackRunScore.value} です。失敗するまで続きます。`
+    battleMessage.value = `正解。現在 ${currentComboCount.value} コンボ、与ダメージは ${projectedDamage.value} です。失敗するまで続きます。`
     setNextAttackItem()
     isResolving.value = false
     return
@@ -511,18 +541,19 @@ async function resolveTurn(correct: boolean): Promise<void> {
     }
   }
 
-  const attackScore = currentAttackRunScore.value
-  battleMessage.value = attackScore > 0
-    ? `失敗。累積落ち物スコア ${attackScore} をそのまま ${attackScore} ダメージに変換します。`
-    : '失敗。累積スコアが 0 のためダメージは 0 です。'
+  const comboCount = currentComboCount.value
+  const attackDamage = calculateBattleDamage(session.value, characters.value, comboCount)
+  battleMessage.value = comboCount > 0
+    ? `失敗。${comboCount} コンボで ${attackDamage} ダメージを与えます。`
+    : '失敗。コンボが 0 のためダメージは 0 です。'
 
   const defeatedEnemy = currentEnemy.value
   const previousWaveIndex = session.value.currentWaveIndex
 
-  let nextSession = applyPlayerAttack(session.value, dungeon.value, attackScore)
+  let nextSession = applyPlayerAttack(session.value, dungeon.value, attackDamage)
   nextSession = {
     ...nextSession,
-    lastFallingGameScore: attackScore,
+    lastAttackDamage: attackDamage,
     lastIncorrectReview: lastIncorrectReview.value ?? undefined,
   }
 
@@ -581,7 +612,7 @@ function answerAttack(correct: boolean): void {
 
 function startAttackPhase(): void {
   if (isResolving.value) return
-  currentAttackRunScore.value = 0
+  currentComboCount.value = 0
   lastIncorrectReview.value = null
   battleMessage.value = '落ち物ゲームを開始します。失敗するまで続きます。'
   currentScreen.value = 'game'
@@ -607,7 +638,7 @@ function startSkillChallenge(characterId: string): void {
 
 function returnToCommandScreen(): void {
   currentScreen.value = 'command'
-  currentAttackRunScore.value = 0
+  currentComboCount.value = 0
   isPaused.value = false
   previousFrameTime = 0
   currentAttackItem.value = null
@@ -711,6 +742,30 @@ onBeforeUnmount(() => {
     rgb(var(--v-theme-surface));
 }
 
+.play-field-focus {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 0;
+  width: 104px;
+  height: 104px;
+  padding: 6px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 16px;
+  background: rgba(var(--v-theme-surface), 0.24);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(6px);
+  opacity: 0.32;
+}
+
+.play-field-focus__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 12px;
+}
+
 .danger-line {
   position: absolute;
   right: 0;
@@ -721,6 +776,7 @@ onBeforeUnmount(() => {
 
 .falling-word {
   position: absolute;
+  z-index: 1;
   right: 18px;
   left: 18px;
   display: flex;
@@ -747,6 +803,23 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.damage-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 10px;
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+
+.damage-strip__value {
+  color: rgb(var(--v-theme-error));
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .choice-button {
@@ -806,5 +879,11 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .damage-strip {
+    flex-wrap: wrap;
+  }
 }
 </style>

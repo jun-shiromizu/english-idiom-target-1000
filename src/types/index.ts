@@ -105,6 +105,7 @@ export interface QuizSession {
 
 export type BattleEffectType =
   | 'atk-multiplier'
+  | 'combo-constant'
   | 'hp-multiplier'
   | 'game-difficulty'
   | 'heal'
@@ -189,7 +190,7 @@ export interface BattleSession {
   enemyCurrentHp: number
   activeEffects: BattleEffectState[]
   pendingSkillCharacterId?: string
-  lastFallingGameScore?: number
+  lastAttackDamage?: number
   lastIncorrectReview?: {
     question: string
     answer: string

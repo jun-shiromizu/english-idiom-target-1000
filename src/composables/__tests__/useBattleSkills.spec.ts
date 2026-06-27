@@ -70,32 +70,59 @@ describe('useBattleSkills', () => {
     expect(canUseActiveSkill(session, 'hero-002')).toBe(false)
   })
 
+  it('クールダウンが 2 なら 2 ターン経過後に再びスキルを使える', () => {
+    const session = createSession()
+    session.party[0].skillCooldownRemaining = 2
+
+    const afterFirstTurn = advanceBattleTurn(session)
+    const afterSecondTurn = advanceBattleTurn(afterFirstTurn)
+
+    expect(canUseActiveSkill(afterFirstTurn, 'hero-001')).toBe(false)
+    expect(canUseActiveSkill(afterSecondTurn, 'hero-001')).toBe(true)
+  })
+
   it('回復スキル成功時に HP を回復しクールダウンを再設定する', () => {
     const session = createSession()
+    session.party[1].currentHp = 600
     const next = applyActiveSkill(session, characters, 'hero-001', true)
 
     expect(next.party[0].currentHp).toBe(600)
+    expect(next.party[1].currentHp).toBe(600)
     expect(next.party[0].skillCooldownRemaining).toBe(5)
   })
 
-  it('回復スキルは HP 倍率込みの最大 HP を基準にし、上限を超えない', () => {
+  it('回復スキルは対象キャラクターの最大 HP を基準にし、上限を超えない', () => {
     const session = createSession()
-    session.party[0].currentHp = 1400
+    session.party[0].currentHp = 1200
+    session.party[1].currentHp = 0
     session.activeEffects = [{ sourceId: 'leader', effectType: 'hp-multiplier', value: 1.5, remainingTurns: -1 }]
 
     const next = applyActiveSkill(session, characters, 'hero-001', true)
 
-    expect(next.party[0].currentHp).toBe(1500)
+    expect(next.party[0].currentHp).toBe(1350)
+    expect(next.party[1].currentHp).toBe(0)
   })
 
-  it('skill-boost 成功時に全員のクールダウンを短縮する', () => {
+  it('skill-boost 成功時に全員の残りクールダウンを 1 短縮し、0 まで下げられる', () => {
     const session = createSession()
+    session.party[0].skillCooldownRemaining = 2
+    session.party[1].skillCooldownRemaining = 0
+
+    const next = applyActiveSkill(session, characters, 'hero-002', true)
+
+    expect(next.party[0].skillCooldownRemaining).toBe(1)
+    expect(next.party[1].skillCooldownRemaining).toBe(3)
+  })
+
+  it('skill-boost で残り 1 ターンのスキルは 0 になり再使用可能になる', () => {
+    const session = createSession()
+    session.party[0].skillCooldownRemaining = 1
     session.party[1].skillCooldownRemaining = 0
 
     const next = applyActiveSkill(session, characters, 'hero-002', true)
 
     expect(next.party[0].skillCooldownRemaining).toBe(0)
-    expect(next.party[1].skillCooldownRemaining).toBe(3)
+    expect(canUseActiveSkill(next, 'hero-001')).toBe(true)
   })
 
   it('失敗時は効果を適用せずクールダウンだけ再設定する', () => {

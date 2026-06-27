@@ -4,6 +4,22 @@ import { useGitHubData, formatNumber, resetGitHubDataCaches } from '../useGitHub
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
+function hasHost(url: string, host: string): boolean {
+  try {
+    return new URL(url).hostname === host
+  } catch {
+    return false
+  }
+}
+
+function hasPathSuffix(url: string, suffix: string): boolean {
+  try {
+    return new URL(url).pathname.endsWith(suffix)
+  } catch {
+    return false
+  }
+}
+
 describe('formatNumber', () => {
   it('1 → "0001"', () => expect(formatNumber(1)).toBe('0001'))
   it('100 → "0100"', () => expect(formatNumber(100)).toBe('0100'))
@@ -18,46 +34,32 @@ describe('useGitHubData', () => {
 
   describe('fetchIdiomData', () => {
     it('JSONデータを取得してパースできる', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([{ name: '0001.json', type: 'file' }]),
-        })
-        .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve(JSON.stringify({
-          idioms: ['a piece of ~'],
-          means: [{ 'idiom-jp': '１つの～', 'example-sentence': 'example', 'sentence-jp': '例文訳' }],
-          notes: ['補足説明'],
-        })) })
-
-      const { fetchIdiomData } = useGitHubData()
-      const data = await fetchIdiomData('idiom-target-1000', '0001')
-
-      expect(data.idioms).toEqual(['a piece of ~'])
-      expect(data.means[0]['idiom-jp']).toBe('１つの～')
-    })
-
-    it('target 配下がサブディレクトリでもJSONデータを取得できる', async () => {
       const mockData = {
         idioms: ['a piece of ~'],
         means: [{ 'idiom-jp': '１つの～', 'example-sentence': 'example', 'sentence-jp': '例文訳' }],
         notes: ['補足説明'],
       }
+
       mockFetch.mockImplementation(async (url: string) => {
-        if (url.endsWith('/contents/idiom-target-1000/target')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001.json')) {
+          return { ok: false, status: 404 }
+        }
+
+        if (hasPathSuffix(url, '/contents/idiom-target-1000/target/0001.json')) {
+          return { ok: false, status: 404 }
+        }
+
+        if (hasPathSuffix(url, '/contents/idiom-target-1000/target/0001-0500/0001.json')) {
           return {
             ok: true,
-            json: () => Promise.resolve([{ name: '0001-0100', type: 'dir' }]),
+            json: () => Promise.resolve({
+              encoding: 'base64',
+              content: Buffer.from(JSON.stringify(mockData), 'utf-8').toString('base64'),
+            }),
           }
         }
 
-        if (url.endsWith('/contents/idiom-target-1000/target/0001-0100')) {
-          return {
-            ok: true,
-            json: () => Promise.resolve([{ name: '0001.json', type: 'file' }]),
-          }
-        }
-
-        if (url.endsWith('/idiom-target-1000/target/0001-0100/0001.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0001.json')) {
           return {
             ok: true,
             text: () => Promise.resolve(JSON.stringify(mockData)),
@@ -72,18 +74,124 @@ describe('useGitHubData', () => {
 
       expect(data.idioms).toEqual(['a piece of ~'])
       expect(data.means[0]['idiom-jp']).toBe('１つの～')
-      expect(mockFetch).toHaveBeenNthCalledWith(
-        3,
-        'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/target/0001-0100/0001.json',
-        { cache: 'no-store' },
-      )
+    })
+
+    it('候補パスの最初が 403 でも次のレンジ候補からJSONデータを取得できる', async () => {
+      const mockData = {
+        idioms: ['a piece of ~'],
+        means: [{ 'idiom-jp': '１つの～', 'example-sentence': 'example', 'sentence-jp': '例文訳' }],
+        notes: ['補足説明'],
+      }
+
+      mockFetch.mockImplementation(async (url: string) => {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001.json')) {
+          return { ok: false, status: 403 }
+        }
+
+        if (hasPathSuffix(url, '/contents/idiom-target-1000/target/0001-0500/0001.json')) {
+          return {
+            ok: true,
+            json: () => Promise.resolve({
+              encoding: 'base64',
+              content: Buffer.from(JSON.stringify(mockData), 'utf-8').toString('base64'),
+            }),
+          }
+        }
+
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0001.json')) {
+          return {
+            ok: true,
+            text: () => Promise.resolve(JSON.stringify(mockData)),
+          }
+        }
+
+        throw new Error(`Unexpected fetch URL: ${url}`)
+      })
+
+      const { fetchIdiomData } = useGitHubData()
+      const data = await fetchIdiomData('idiom-target-1000', '0001')
+
+      expect(data.idioms).toEqual(['a piece of ~'])
+      expect(data.means[0]['idiom-jp']).toBe('１つの～')
     })
 
     it('取得失敗時にエラーをスローする', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
+      mockFetch.mockImplementation(async () => ({ ok: false, status: 404 }))
 
       const { fetchIdiomData } = useGitHubData()
       await expect(fetchIdiomData('idiom-target-1000', '9999')).rejects.toThrow()
+    })
+
+    it('一時的な 400 エラーの後に再試行で取得できる', async () => {
+      vi.useFakeTimers()
+      const mockData = {
+        idioms: ['recover'],
+        means: [{ 'idiom-jp': '回復', 'example-sentence': 'recover', 'sentence-jp': '回復する' }],
+        notes: [],
+      }
+
+      mockFetch.mockImplementation(async (url: string) => {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0150.json')) {
+          return { ok: false, status: 404 }
+        }
+
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0150.json')) {
+          return mockFetch.mock.calls.filter(([calledUrl]) => calledUrl === url).length === 1
+            ? { ok: false, status: 400 }
+            : { ok: true, text: () => Promise.resolve(JSON.stringify(mockData)) }
+        }
+
+        throw new Error(`Unexpected fetch URL: ${url}`)
+      })
+
+      const { fetchIdiomData } = useGitHubData()
+      const promise = fetchIdiomData('idiom-target-1000', '0150')
+
+      await vi.runAllTimersAsync()
+      const data = await promise
+
+      expect(data.idioms).toEqual(['recover'])
+      expect(mockFetch).toHaveBeenCalledTimes(3)
+      vi.useRealTimers()
+    })
+
+    it('Raw URL が 400 のままでも Contents API のファイル取得へフォールバックできる', async () => {
+      vi.useFakeTimers()
+      const mockData = {
+        idioms: ['fallback'],
+        means: [{ 'idiom-jp': '代替', 'example-sentence': 'fallback', 'sentence-jp': 'フォールバック' }],
+        notes: [],
+      }
+
+      mockFetch.mockImplementation(async (url: string) => {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0144.json')) {
+          return { ok: false, status: 404 }
+        }
+
+        if (hasPathSuffix(url, '/contents/idiom-target-1000/target/0001-0500/0144.json')) {
+          return {
+            ok: true,
+            json: () => Promise.resolve({
+              encoding: 'base64',
+              content: Buffer.from(JSON.stringify(mockData), 'utf-8').toString('base64'),
+            }),
+          }
+        }
+
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0144.json')) {
+          return { ok: false, status: 400 }
+        }
+
+        throw new Error(`Unexpected fetch URL: ${url}`)
+      })
+
+      const { fetchIdiomData } = useGitHubData()
+      const promise = fetchIdiomData('idiom-target-1000', '0144')
+      await vi.runAllTimersAsync()
+      const data = await promise
+
+      expect(data.idioms).toEqual(['fallback'])
+      vi.useRealTimers()
     })
   })
 
@@ -106,7 +214,7 @@ describe('useGitHubData', () => {
   })
 
   describe('fetchRangeData', () => {
-    it('target 配下のサブディレクトリもたどって範囲データを取得できる', async () => {
+    it('レンジ候補のJSONを直接取得して範囲データを構築できる', async () => {
       const mockData1 = {
         idioms: ['first'],
         means: [{ 'idiom-jp': '最初', 'example-sentence': 'first sentence', 'sentence-jp': '最初の文' }],
@@ -119,41 +227,18 @@ describe('useGitHubData', () => {
       }
 
       mockFetch.mockImplementation(async (url: string) => {
-        if (url.endsWith('/contents/idiom-target-1000/target')) {
-          return {
-            ok: true,
-            json: () => Promise.resolve([
-              { name: '0001-0100', type: 'dir' },
-              { name: '0101-0200', type: 'dir' },
-            ]),
-          }
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001.json') || hasPathSuffix(url, '/idiom-target-1000/target/0002.json')) {
+          return { ok: false, status: 404 }
         }
 
-        if (url.endsWith('/contents/idiom-target-1000/target/0001-0100')) {
-          return {
-            ok: true,
-            json: () => Promise.resolve([
-              { name: '0001.json', type: 'file' },
-              { name: '0002.json', type: 'file' },
-            ]),
-          }
-        }
-
-        if (url.endsWith('/contents/idiom-target-1000/target/0101-0200')) {
-          return {
-            ok: true,
-            json: () => Promise.resolve([{ name: '0101.json', type: 'file' }]),
-          }
-        }
-
-        if (url.endsWith('/idiom-target-1000/target/0001-0100/0001.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0001.json')) {
           return {
             ok: true,
             text: () => Promise.resolve(JSON.stringify(mockData1)),
           }
         }
 
-        if (url.endsWith('/idiom-target-1000/target/0001-0100/0002.json')) {
+        if (hasPathSuffix(url, '/idiom-target-1000/target/0001-0500/0002.json')) {
           return {
             ok: true,
             text: () => Promise.resolve(JSON.stringify(mockData2)),
@@ -171,9 +256,9 @@ describe('useGitHubData', () => {
       expect(dataMap.get('0002')?.idioms).toEqual(['second'])
     })
 
-    // リグレッションテスト: Issue #65 大量件数で同時実行数が上限以下に抑えられ、かつ全データを取得できる
-    it('同時実行上限（20件）を超える件数でも全データを正常に取得でき、同時実行数が上限以下に抑えられる', async () => {
-      const LIMIT = 20
+    // リグレッションテスト: Issue #65 大量件数でも同時実行数が上限以下に抑えられ、かつ全データを取得できる
+    it('同時実行上限（8件）を超える件数でも全データを正常に取得でき、同時実行数が上限以下に抑えられる', async () => {
+      const LIMIT = 8
       const count = 25
       const fileNames = Array.from({ length: count }, (_, i) => `${String(i + 1).padStart(4, '0')}.json`)
       const mockJsonData = {
@@ -187,18 +272,11 @@ describe('useGitHubData', () => {
       const pendingResolves: (() => void)[] = []
 
       mockFetch.mockImplementation(async (url: string) => {
-        if (url.endsWith('/contents/idiom-target-1000/target')) {
-          return { ok: true, json: () => Promise.resolve([{ name: '0001-0100', type: 'dir' }]) }
+        if (hasHost(url, 'raw.githubusercontent.com') && fileNames.some((name) => hasPathSuffix(url, `/target/${name}`))) {
+          return { ok: false, status: 404 }
         }
 
-        if (url.endsWith('/contents/idiom-target-1000/target/0001-0100')) {
-          return {
-            ok: true,
-            json: () => Promise.resolve(fileNames.map((name) => ({ name, type: 'file' }))),
-          }
-        }
-
-        if (fileNames.some((name) => url.endsWith(`/target/0001-0100/${name}`))) {
+        if (hasHost(url, 'raw.githubusercontent.com') && fileNames.some((name) => hasPathSuffix(url, `/target/0001-0500/${name}`))) {
           currentInflight++
           maxInflight = Math.max(maxInflight, currentInflight)
           await new Promise<void>((resolve) => pendingResolves.push(resolve))
