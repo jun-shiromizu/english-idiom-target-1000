@@ -31,7 +31,6 @@
       </div>
 
       <v-card v-if="currentScreen === 'command'" class="mb-4">
-        <v-card-title class="text-subtitle-1">現在の敵</v-card-title>
         <v-card-text>
           <div class="d-flex align-center ga-4 mb-3 flex-wrap">
             <v-avatar size="88" rounded="lg" class="enemy-avatar">
@@ -50,7 +49,6 @@
       </v-card>
 
       <v-card v-if="currentScreen === 'command'" class="mb-4">
-        <v-card-title class="text-subtitle-1">味方パーティ</v-card-title>
         <v-card-text>
           <v-progress-linear class="mb-4" color="success" height="16" rounded :model-value="partyHpPercent">
             <strong class="text-white">HP {{ partyCurrentHp }} / {{ partyMaxHp }}</strong>
@@ -58,11 +56,11 @@
           <div class="party-icons mb-4">
             <div v-for="member in partyMembers" :key="member.id" class="party-icon-item">
               <v-badge :model-value="member.isLeader" content="L" color="primary" offset-x="6" offset-y="6">
-                <v-avatar size="64" rounded="lg" class="party-avatar">
+                <v-avatar size="52" rounded="lg" class="party-avatar">
                   <img :src="member.iconUrl" :alt="`${member.name} icon`" class="party-avatar-image" />
                 </v-avatar>
               </v-badge>
-              <div class="text-caption text-center mt-2">{{ member.name }}</div>
+              <div class="party-member-name text-caption text-center mt-2">{{ member.name }}</div>
             </div>
           </div>
           <div class="d-flex flex-wrap ga-2">
@@ -225,7 +223,7 @@ import { useGitHubData } from '@/composables/useGitHubData'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { useBattleSession } from '@/composables/useBattleSession'
 import { BOOK_ORDER, DEFAULT_BOOK_ID, STORAGE_KEY_SETTINGS, buildBattleGitHubRawBase, getBookConfig } from '@/config'
-import type { BattleCharacter, BattleDungeon, BattleSession, GameDifficulty, QuizItem, QuizSettings } from '@/types'
+import type { BattleCharacter, BattleDungeon, BattleSession, BattleSkillEffect, GameDifficulty, QuizItem, QuizSettings } from '@/types'
 
 type BattleScreen = 'command' | 'game'
 
@@ -442,7 +440,23 @@ function resolveBattleAsset(iconPath: string): string {
     return iconPath
   }
 
-  return `${battleRawBase}/${iconPath.replace(/^\/+/, '')}`
+  const normalizedPath = iconPath
+    .replace(/^\/+/, '')
+    .replace(/^\.\//, '')
+
+  if (normalizedPath.startsWith('battle/')) {
+    return `${battleRawBase}/${normalizedPath}`
+  }
+
+  if (normalizedPath.startsWith('icons/')) {
+    return `${battleRawBase}/battle/${normalizedPath}`
+  }
+
+  if (normalizedPath.startsWith('characters/') || normalizedPath.startsWith('enemies/')) {
+    return `${battleRawBase}/battle/icons/${normalizedPath}`
+  }
+
+  return `${battleRawBase}/${normalizedPath}`
 }
 
 function formatEffectLabel(effectType: BattleSession['activeEffects'][number]['effectType'], value: BattleSession['activeEffects'][number]['value'], remainingTurns: number): string {
@@ -464,6 +478,44 @@ function formatEffectLabel(effectType: BattleSession['activeEffects'][number]['e
     default:
       return `${effectType} (${remainingTurns}T)`
   }
+}
+
+function formatSkillEffectMessage(
+  effect: BattleSkillEffect,
+  healedAmount: number,
+): string | null {
+  switch (effect.effectType) {
+    case 'heal':
+      return `パーティのHPが ${healedAmount} 回復しました。`
+    case 'atk-multiplier':
+      return typeof effect.value === 'number'
+        ? `パーティの攻撃力が ${effect.value} 倍になりました。`
+        : null
+    case 'damage-cut':
+      return typeof effect.value === 'number'
+        ? `ダメージが ${effect.value} 倍になります。`
+        : null
+    case 'skill-boost':
+      return typeof effect.value === 'number'
+        ? `スキルターンが ${Math.round(effect.value)} ターン減りました。`
+        : null
+    default:
+      return null
+  }
+}
+
+function buildSkillSuccessMessage(
+  character: BattleCharacter | null,
+  beforeSession: BattleSession,
+  afterSession: BattleSession,
+): string {
+  const skillName = character?.activeSkill.name ?? 'スキル'
+  const healedAmount = Math.max(0, getPartyCurrentHp(afterSession) - getPartyCurrentHp(beforeSession))
+  const effectMessages = (character?.activeSkill.effects ?? [])
+    .map((effect) => formatSkillEffectMessage(effect, healedAmount))
+    .filter((message): message is string => Boolean(message))
+
+  return [`${skillName} が発動しました。`, ...effectMessages].join(' ')
 }
 
 function setNextAttackItem(): void {
@@ -504,6 +556,7 @@ async function resolveTurn(correct: boolean): Promise<void> {
   const answeredItem = currentAttackItem.value
 
   if (session.value.pendingSkillCharacterId) {
+    const beforeSkillSession = session.value
     const skillUser = characters.value.find((entry) => entry.id === session.value?.pendingSkillCharacterId)
     const skillName = skillUser?.activeSkill.name ?? 'スキル'
     const nextSession = applyActiveSkill(
@@ -518,7 +571,7 @@ async function resolveTurn(correct: boolean): Promise<void> {
     }
     saveSession(session.value)
     battleMessage.value = correct
-      ? `${skillName} が発動しました。`
+      ? buildSkillSuccessMessage(skillUser ?? null, beforeSkillSession, session.value)
       : `${skillName} の発動に失敗しました。`
     returnToCommandScreen()
     isResolving.value = false
@@ -543,12 +596,13 @@ async function resolveTurn(correct: boolean): Promise<void> {
 
   const comboCount = currentComboCount.value
   const attackDamage = calculateBattleDamage(session.value, characters.value, comboCount)
-  battleMessage.value = comboCount > 0
-    ? `失敗。${comboCount} コンボで ${attackDamage} ダメージを与えます。`
-    : '失敗。コンボが 0 のためダメージは 0 です。'
-
   const defeatedEnemy = currentEnemy.value
   const previousWaveIndex = session.value.currentWaveIndex
+  const attackSummary = defeatedEnemy
+    ? `${comboCount} コンボの攻撃、${defeatedEnemy.name} に ${attackDamage} のダメージ。`
+    : `${comboCount} コンボの攻撃、敵に ${attackDamage} のダメージ。`
+
+  battleMessage.value = attackSummary
 
   let nextSession = applyPlayerAttack(session.value, dungeon.value, attackDamage)
   nextSession = {
@@ -563,8 +617,8 @@ async function resolveTurn(correct: boolean): Promise<void> {
 
   if (nextSession.status === 'cleared') {
     battleMessage.value = defeatedEnemy
-      ? `${defeatedEnemy.name} を倒した。ダンジョンクリアです。`
-      : '最後の敵を倒した。ダンジョンクリアです。'
+      ? `${attackSummary} ${defeatedEnemy.name} を倒した。ダンジョンクリアです。`
+      : `${attackSummary} 最後の敵を倒した。ダンジョンクリアです。`
     nextSession = advanceBattleTurn(nextSession)
     session.value = nextSession
     saveSession(nextSession)
@@ -576,8 +630,8 @@ async function resolveTurn(correct: boolean): Promise<void> {
   if (defeatedEnemyByAttack) {
     const nextEnemy = getCurrentEnemy(nextSession, dungeon.value)
     battleMessage.value = defeatedEnemy && nextEnemy
-      ? `${defeatedEnemy.name} を倒した。次は ${nextEnemy.name} です。`
-      : '敵を倒した。次の敵へ進みます。'
+      ? `${attackSummary} ${defeatedEnemy.name} を倒した。次は ${nextEnemy.name} です。`
+      : `${attackSummary} 敵を倒した。次の敵へ進みます。`
     nextSession = advanceBattleTurn(nextSession)
     session.value = nextSession
     saveSession(nextSession)
@@ -586,8 +640,11 @@ async function resolveTurn(correct: boolean): Promise<void> {
     return
   }
 
+  const partyHpBeforeEnemyAttack = getPartyCurrentHp(nextSession)
   nextSession = applyEnemyAttack(nextSession, dungeon.value)
-  battleMessage.value += ` 敵の反撃を受けました。`
+  const enemyCounterDamage = Math.max(0, partyHpBeforeEnemyAttack - getPartyCurrentHp(nextSession))
+  const enemyName = currentEnemy.value?.name ?? '敵'
+  battleMessage.value += ` ${enemyName} の反撃、パーティに ${enemyCounterDamage} のダメージ。`
 
   if (nextSession.status === 'defeated') {
     session.value = nextSession
@@ -836,15 +893,22 @@ onBeforeUnmount(() => {
 
 .party-icons {
   display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  overflow: hidden;
 }
 
 .party-icon-item {
-  width: 76px;
+  flex: 0 0 56px;
+  width: 56px;
 }
 
 .party-avatar {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
 }
 
@@ -853,6 +917,11 @@ onBeforeUnmount(() => {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.party-member-name {
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .enemy-avatar {
@@ -884,6 +953,24 @@ onBeforeUnmount(() => {
 @media (max-width: 600px) {
   .damage-strip {
     flex-wrap: wrap;
+  }
+
+  .party-icons {
+    gap: 6px;
+  }
+
+  .party-icon-item {
+    flex-basis: 52px;
+    width: 52px;
+  }
+
+  .party-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .party-member-name {
+    font-size: 0.7rem;
   }
 }
 </style>
