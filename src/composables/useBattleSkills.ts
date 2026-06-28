@@ -27,6 +27,93 @@ function getMemberMaxHp(
   return character ? Math.round(character.hp * hpMultiplier) : 0
 }
 
+function getPartyMaxHp(
+  session: BattleSession,
+  characters: BattleCharacter[],
+  hpMultiplier: number,
+): number {
+  return session.party.reduce(
+    (total, member) => total + getMemberMaxHp(characters, member.characterId, hpMultiplier),
+    0,
+  )
+}
+
+function applyPartyHeal(
+  session: BattleSession,
+  characters: BattleCharacter[],
+  hpMultiplier: number,
+  healAmount: number,
+): BattleSession['party'] {
+  if (healAmount <= 0) {
+    return session.party
+  }
+
+  const memberMaxHps = session.party.map((member) => getMemberMaxHp(characters, member.characterId, hpMultiplier))
+  const nextParty = session.party.map((member) => ({ ...member }))
+  let remainingHeal = healAmount
+
+  while (remainingHeal > 0) {
+    const eligibleMembers = nextParty
+      .map((member, index) => ({
+        index,
+        weight: memberMaxHps[index],
+        missingHp: Math.max(0, memberMaxHps[index] - member.currentHp),
+      }))
+      .filter((member) => member.missingHp > 0 && member.weight > 0)
+
+    if (eligibleMembers.length === 0) {
+      break
+    }
+
+    const totalWeight = eligibleMembers.reduce((sum, member) => sum + member.weight, 0)
+    if (totalWeight <= 0) {
+      break
+    }
+
+    let appliedThisRound = 0
+    const fractionalShares = eligibleMembers.map((member) => {
+      const rawShare = (remainingHeal * member.weight) / totalWeight
+      const appliedHeal = Math.min(member.missingHp, Math.floor(rawShare))
+      if (appliedHeal > 0) {
+        nextParty[member.index].currentHp += appliedHeal
+        appliedThisRound += appliedHeal
+      }
+
+      return {
+        index: member.index,
+        fractional: rawShare - Math.floor(rawShare),
+      }
+    })
+
+    remainingHeal -= appliedThisRound
+    if (remainingHeal <= 0) {
+      break
+    }
+
+    fractionalShares
+      .sort((left, right) => right.fractional - left.fractional || left.index - right.index)
+      .forEach((member) => {
+        if (remainingHeal <= 0) {
+          return
+        }
+
+        const missingHp = memberMaxHps[member.index] - nextParty[member.index].currentHp
+        if (missingHp <= 0) {
+          return
+        }
+
+        nextParty[member.index].currentHp += 1
+        remainingHeal -= 1
+      })
+
+    if (appliedThisRound === 0 && fractionalShares.every((member) => member.fractional === 0)) {
+      break
+    }
+  }
+
+  return nextParty
+}
+
 function addTimedEffects(
   session: BattleSession,
   sourceSkillId: string,
@@ -52,7 +139,7 @@ function addTimedEffects(
 
 export function canUseActiveSkill(session: BattleSession, characterId: string): boolean {
   const member = session.party.find((entry) => entry.characterId === characterId)
-  return Boolean(member && member.currentHp > 0 && member.skillCooldownRemaining <= 0)
+  return Boolean(session.status === 'in-battle' && member && member.skillCooldownRemaining <= 0)
 }
 
 export function applyActiveSkill(
@@ -89,26 +176,17 @@ export function applyActiveSkill(
   for (const effect of user.activeSkill.effects) {
     if (effect.effectType === 'heal' && typeof effect.value === 'number') {
       const hpMultiplier = getHpMultiplier(nextSession)
-      const targetMember = nextSession.party[memberIndex]
-      const memberMaxHp = getMemberMaxHp(characters, targetMember.characterId, hpMultiplier)
-      const healAmount = effect.value > 0 && effect.value <= 1
-        ? Math.round(memberMaxHp * effect.value)
-        : Math.round(effect.value)
-
+      const partyMaxHp = getPartyMaxHp(nextSession, characters, hpMultiplier)
       nextSession = {
         ...nextSession,
-        party: nextSession.party.map((member, index) => {
-          if (index !== memberIndex) {
-            return member
-          }
-
-          if (member.currentHp <= 0 || memberMaxHp <= member.currentHp) {
-            return member
-          }
-
-          const nextHp = Math.min(memberMaxHp, member.currentHp + healAmount)
-          return { ...member, currentHp: nextHp }
-        }),
+        party: applyPartyHeal(
+          nextSession,
+          characters,
+          hpMultiplier,
+          effect.value > 0 && effect.value <= 1
+            ? Math.round(partyMaxHp * effect.value)
+            : Math.round(effect.value),
+        ),
       }
     }
 

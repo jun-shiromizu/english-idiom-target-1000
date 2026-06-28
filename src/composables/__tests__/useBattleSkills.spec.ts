@@ -81,17 +81,17 @@ describe('useBattleSkills', () => {
     expect(canUseActiveSkill(afterSecondTurn, 'hero-001')).toBe(true)
   })
 
-  it('回復スキル成功時に HP を回復しクールダウンを再設定する', () => {
+  it('回復スキル成功時に味方全員の HP を回復しクールダウンを再設定する', () => {
     const session = createSession()
     session.party[1].currentHp = 600
     const next = applyActiveSkill(session, characters, 'hero-001', true)
 
     expect(next.party[0].currentHp).toBe(600)
-    expect(next.party[1].currentHp).toBe(600)
+    expect(next.party[1].currentHp).toBe(680)
     expect(next.party[0].skillCooldownRemaining).toBe(5)
   })
 
-  it('回復スキルは対象キャラクターの最大 HP を基準にし、上限を超えない', () => {
+  it('回復スキルは各キャラクターの最大 HP を基準にし、上限を超えない', () => {
     const session = createSession()
     session.party[0].currentHp = 1200
     session.party[1].currentHp = 0
@@ -100,7 +100,19 @@ describe('useBattleSkills', () => {
     const next = applyActiveSkill(session, characters, 'hero-001', true)
 
     expect(next.party[0].currentHp).toBe(1350)
-    expect(next.party[1].currentHp).toBe(0)
+    expect(next.party[1].currentHp).toBe(120)
+  })
+
+  it('回復スキルは HP 倍率込みのパーティ最大 HP を基準にし、余剰分を他メンバーへ再配分する', () => {
+    const session = createSession()
+    session.party[0].currentHp = 2000
+    session.party[1].currentHp = 1000
+    session.activeEffects = [{ sourceId: 'leader', effectType: 'hp-multiplier', value: 2, remainingTurns: -1 }]
+
+    const next = applyActiveSkill(session, characters, 'hero-001', true)
+
+    expect(next.party[0].currentHp).toBe(2000)
+    expect(next.party[1].currentHp).toBe(1360)
   })
 
   it('skill-boost 成功時に全員の残りクールダウンを 1 短縮し、0 まで下げられる', () => {
@@ -123,6 +135,22 @@ describe('useBattleSkills', () => {
 
     expect(next.party[0].skillCooldownRemaining).toBe(0)
     expect(canUseActiveSkill(next, 'hero-001')).toBe(true)
+  })
+
+  it('個人 HP が 0 でも battle 継続中なら、チャージ済みスキルを使える', () => {
+    const session = createSession()
+    session.party[1].currentHp = 0
+    session.party[1].skillCooldownRemaining = 0
+
+    expect(canUseActiveSkill(session, 'hero-002')).toBe(true)
+  })
+
+  it('battle 終了後はチャージ済みでもスキルを使えない', () => {
+    const session = createSession()
+    session.status = 'defeated'
+    session.party[0].skillCooldownRemaining = 0
+
+    expect(canUseActiveSkill(session, 'hero-001')).toBe(false)
   })
 
   it('失敗時は効果を適用せずクールダウンだけ再設定する', () => {

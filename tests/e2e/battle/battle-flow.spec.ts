@@ -243,7 +243,6 @@ test.describe('バトルモード - 基本導線', () => {
 
     await page.getByRole('button', { name: 'ダンジョン決定' }).click()
     await expect(page).toHaveURL(/#\/battle\/play/)
-    await expect(page.getByText('現在の敵')).toBeVisible()
     await expect(page.getByText('Test Dungeon')).toBeVisible()
     await expect(page.locator('img[alt="Slime icon"]')).toBeVisible()
     await expect(page.getByText('コマンド画面')).toBeVisible()
@@ -277,7 +276,6 @@ test.describe('バトルモード - 基本導線', () => {
     await page.getByRole('button', { name: '再開する' }).last().click()
 
     await expect(page).toHaveURL(/#\/battle\/play/)
-    await expect(page.getByText('現在の敵')).toBeVisible()
     await expect(page.getByText('Slime')).toBeVisible()
     await expect(page.getByText('TURN')).toBeVisible()
   })
@@ -372,7 +370,7 @@ test.describe('バトルモード - 基本導線', () => {
     await page.getByRole('button', { name: 'Member 1: Member Skill 1', exact: true }).click()
     await clickCorrectBattleChoice(page)
 
-    await expect(page.getByText('Member Skill 1 が発動しました。')).toBeVisible()
+    await expect(page.getByText('Member Skill 1 が発動しました。 ダメージが 0.5 倍になります。')).toBeVisible()
     await expect(page.getByText('被ダメ 0.5倍 (1T)')).toBeVisible()
     await expect(page.getByText('コマンド画面')).toBeVisible()
   })

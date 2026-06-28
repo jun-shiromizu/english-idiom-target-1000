@@ -16,6 +16,7 @@ const {
   mockBuildGameChoices,
   mockGetGameAnswerLabel,
   mockCanUseActiveSkill,
+  mockApplyActiveSkill,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockReplace: vi.fn(),
@@ -28,6 +29,7 @@ const {
   mockBuildGameChoices: vi.fn(),
   mockGetGameAnswerLabel: vi.fn(),
   mockCanUseActiveSkill: vi.fn(),
+  mockApplyActiveSkill: vi.fn((session: BattleSession) => session),
 }))
 
 vi.mock('vue-router', () => ({
@@ -69,7 +71,7 @@ vi.mock('@/composables/useGameChoices', () => ({
 
 vi.mock('@/composables/useBattleSkills', () => ({
   advanceBattleTurn: vi.fn((session: BattleSession) => session),
-  applyActiveSkill: vi.fn((session: BattleSession) => session),
+  applyActiveSkill: mockApplyActiveSkill,
   canUseActiveSkill: mockCanUseActiveSkill,
 }))
 
@@ -197,6 +199,8 @@ describe('BattleView', () => {
     mockBuildGameChoices.mockReset()
     mockGetGameAnswerLabel.mockReset()
     mockCanUseActiveSkill.mockReset()
+    mockApplyActiveSkill.mockReset()
+    mockApplyActiveSkill.mockImplementation((session: BattleSession) => session)
 
     vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1))
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
@@ -258,6 +262,38 @@ describe('BattleView', () => {
     expect(wrapper.text()).not.toContain('味方パーティ')
     expect(wrapper.find('.play-field-focus img[alt="Leader icon"]').exists()).toBe(true)
     expect(mockSaveSession).toHaveBeenCalledWith(expect.objectContaining({ pendingSkillCharacterId: 'hero-001' }))
+  })
+
+  it('スキル成功時に効果ごとの詳細メッセージを表示する', async () => {
+    mockLoadSession.mockReturnValue(createSession())
+    mockFetchRangeData.mockResolvedValue({ dataMap: new Map([['0001', idiomData]]) })
+    mockFetchCharacters.mockResolvedValue(characters)
+    mockFetchDungeons.mockResolvedValue([dungeon])
+    mockBuildItems.mockReturnValue(items)
+    mockBuildGameChoices.mockReturnValue([
+      { label: '答え1', correct: true },
+      { label: '答え2', correct: false },
+      { label: '答え3', correct: false },
+      { label: '答え4', correct: false },
+    ])
+    mockCanUseActiveSkill.mockReturnValue(true)
+
+    const wrapper = mount(BattleView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    const skillButton = wrapper.findAll('button').find((button) => button.text().includes('Member 1: Member Skill 1'))
+    expect(skillButton).toBeTruthy()
+
+    await skillButton!.trigger('click')
+    await flushPromises()
+
+    const correctButton = wrapper.findAll('button').find((button) => button.text().includes('答え1'))
+    expect(correctButton).toBeTruthy()
+
+    await correctButton!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Member Skill 1 が発動しました。 ダメージが 0.5 倍になります。')
   })
 
   it('未進行の battle session は最新 enemy HP に同期する', async () => {
@@ -348,7 +384,7 @@ describe('BattleView', () => {
     await wrongButton!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('1 コンボで 462 ダメージを与えます。 敵の反撃を受けました。')
+    expect(wrapper.text()).toContain('1 コンボの攻撃、Golem に 462 のダメージ。 Golem の反撃、パーティに 15 のダメージ。')
     expect(wrapper.text()).toContain('直前に間違えた問題')
     expect(wrapper.text()).toContain('問題: idiom 0003')
     expect(wrapper.text()).toContain('正しい答え: 正しい答え')
@@ -403,7 +439,7 @@ describe('BattleView', () => {
     await wrongButton!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Slime を倒した。次は Bat です。')
+    expect(wrapper.text()).toContain('1 コンボの攻撃、Slime に 462 のダメージ。 Slime を倒した。次は Bat です。')
     expect(wrapper.text()).toContain('コマンド画面')
     expect(wrapper.text()).toContain('Bat')
   })
@@ -454,7 +490,7 @@ describe('BattleView', () => {
     await wrongButton!.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Slime を倒した。ダンジョンクリアです。')
+    expect(wrapper.text()).toContain('1 コンボの攻撃、Slime に 462 のダメージ。 Slime を倒した。ダンジョンクリアです。')
     expect(wrapper.text()).toContain('ダンジョンクリア')
     expect(wrapper.text()).toContain('バトル結果へ')
   })
