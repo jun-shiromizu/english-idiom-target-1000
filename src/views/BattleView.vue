@@ -76,7 +76,7 @@
         <v-card-title class="text-subtitle-1">{{ currentScreen === 'command' ? commandScreenTitle : gameScreenTitle }}</v-card-title>
         <v-card-text>
           <div class="d-flex flex-wrap ga-2 mb-4">
-            <v-chip color="primary" size="small" variant="tonal">落下速度 {{ attackDifficultyLabel }}</v-chip>
+            <v-chip color="primary" size="small" variant="tonal">落下速度 {{ currentFallSpeed }}</v-chip>
           </div>
 
           <v-alert v-if="battleMessage" type="info" variant="tonal" class="mb-4">
@@ -223,7 +223,7 @@ import { useGitHubData } from '@/composables/useGitHubData'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { useBattleSession } from '@/composables/useBattleSession'
 import { BOOK_ORDER, DEFAULT_BOOK_ID, STORAGE_KEY_SETTINGS, buildBattleGitHubRawBase, getBookConfig } from '@/config'
-import type { BattleCharacter, BattleDungeon, BattleSession, BattleSkillEffect, GameDifficulty, QuizItem, QuizSettings } from '@/types'
+import type { BattleCharacter, BattleDungeon, BattleSession, BattleSkillEffect, QuizItem, QuizSettings } from '@/types'
 
 type BattleScreen = 'command' | 'game'
 
@@ -256,21 +256,7 @@ let previousFrameTime = 0
 const FIELD_HEIGHT = 320
 const WORD_HEIGHT = 96
 const START_FALL_Y = 24
-
-const GAME_DIFFICULTIES: Record<GameDifficulty, { label: string; fallSpeed: number }> = {
-  easy: {
-    label: 'EASY',
-    fallSpeed: 20,
-  },
-  normal: {
-    label: 'NORMAL',
-    fallSpeed: 28,
-  },
-  hard: {
-    label: 'HARD',
-    fallSpeed: 38,
-  },
-}
+const DEFAULT_FALL_SPEED = 28
 
 function createDefaultSettings(): QuizSettings {
   return {
@@ -311,16 +297,13 @@ function loadAttackSettings(): QuizSettings {
   }
 }
 
-function getAttackDifficulty(activeSession: BattleSession | null): GameDifficulty {
-  if (!activeSession) return 'normal'
-
-  const difficultyEffect = [...activeSession.activeEffects]
-    .reverse()
-    .find((effect) => effect.effectType === 'game-difficulty')
-
-  return difficultyEffect?.value === 'easy' || difficultyEffect?.value === 'hard'
-    ? difficultyEffect.value
-    : 'normal'
+function getActiveFallSpeed(activeDungeon: BattleDungeon | null, activeSession: BattleSession | null): number {
+  const base = activeDungeon?.fallSpeed ?? DEFAULT_FALL_SPEED
+  if (!activeSession) return base
+  const delta = activeSession.activeEffects
+    .filter((effect) => effect.effectType === 'game-difficulty' && typeof effect.value === 'number')
+    .reduce((sum, effect) => sum + (effect.value as number), 0)
+  return Math.max(1, base + delta)
 }
 
 const currentEnemy = computed(() => (session.value && dungeon.value ? getCurrentEnemy(session.value, dungeon.value) : null))
@@ -338,8 +321,7 @@ const maxFallY = computed(() => FIELD_HEIGHT - WORD_HEIGHT - 12)
 const fallingWordStyle = computed(() => ({
   transform: `translate3d(0, ${fallY.value}px, 0)`,
 }))
-const attackDifficulty = computed(() => getAttackDifficulty(session.value))
-const attackDifficultyLabel = computed(() => GAME_DIFFICULTIES[attackDifficulty.value].label)
+const currentFallSpeed = computed(() => getActiveFallSpeed(dungeon.value, session.value))
 const projectedDamage = computed(() => {
   if (!session.value) return 0
   return calculateBattleDamage(session.value, characters.value, currentComboCount.value)
@@ -467,8 +449,11 @@ function formatEffectLabel(effectType: BattleSession['activeEffects'][number]['e
       return `コンボ定数 ${value} (${remainingTurns}T)`
     case 'hp-multiplier':
       return `HP x${value} (${remainingTurns}T)`
-    case 'game-difficulty':
-      return `難易度 ${value} (${remainingTurns}T)`
+    case 'game-difficulty': {
+      const delta = typeof value === 'number' ? value : 0
+      const sign = delta >= 0 ? '+' : ''
+      return `落下速度 ${sign}${delta} (${remainingTurns}T)`
+    }
     case 'heal':
       return `回復 ${value} (${remainingTurns}T)`
     case 'damage-cut':
@@ -499,6 +484,11 @@ function formatSkillEffectMessage(
       return typeof effect.value === 'number'
         ? `スキルターンが ${Math.round(effect.value)} ターン減りました。`
         : null
+    case 'game-difficulty':
+      if (typeof effect.value !== 'number') return null
+      if (effect.value < 0) return `落下速度が ${Math.abs(effect.value)} 遅くなりました。`
+      if (effect.value > 0) return `落下速度が ${effect.value} 速くなりました。`
+      return null
     default:
       return null
   }
@@ -540,7 +530,7 @@ function tick(time: number) {
   if (!previousFrameTime) previousFrameTime = time
   const delta = Math.min((time - previousFrameTime) / 1000, 0.05)
   previousFrameTime = time
-  fallY.value += GAME_DIFFICULTIES[attackDifficulty.value].fallSpeed * delta
+  fallY.value += currentFallSpeed.value * delta
 
   if (fallY.value >= maxFallY.value) {
     void resolveTurn(false)

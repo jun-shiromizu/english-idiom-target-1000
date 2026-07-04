@@ -498,9 +498,9 @@ describe('BattleView', () => {
   it('game-difficulty 効果があれば現在の落下速度表示に反映する', async () => {
     mockLoadSession.mockReturnValue(createSession([
       {
-        sourceId: 'skill-hard',
+        sourceId: 'skill-fast',
         effectType: 'game-difficulty',
-        value: 'hard',
+        value: 10,
         remainingTurns: 2,
       },
     ]))
@@ -526,7 +526,7 @@ describe('BattleView', () => {
     await flushPromises()
 
     expect(wrapper.find('.play-field-focus img[alt="Slime icon"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('落下速度 HARD')
+    expect(wrapper.text()).toContain('落下速度 38')
   })
 
   it('一時停止ボタンで落ち物ゲームを停止し、再開できる', async () => {

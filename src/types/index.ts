@@ -50,7 +50,6 @@ export type QuizMode = 'idiom' | 'sentence'
 export type QuizDirection = 'en-to-ja' | 'ja-to-en'
 export type QuizTarget = 'all' | 'incorrect'
 export type QuizOrder = 'sequential' | 'random'
-export type GameDifficulty = 'easy' | 'normal' | 'hard'
 export type ThemeId = string
 export type BattleSessionStatus = 'deck-building' | 'dungeon-select' | 'in-battle' | 'cleared' | 'defeated'
 
@@ -157,6 +156,8 @@ export interface BattleDungeon {
   id: string
   name: string
   description?: string
+  /** 落下速度 (px/s)。未設定時は 28 をデフォルト値として使用する */
+  fallSpeed?: number
   enemies: BattleEnemy[]
 }
 
