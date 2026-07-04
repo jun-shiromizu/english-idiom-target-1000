@@ -146,7 +146,7 @@ describe('GameView', () => {
     expect(rafCallback, 'requestAnimationFrame のコールバックが取得できません').toBeTruthy()
 
     const readFallY = () => {
-      const style = wrapper.find('.falling-word').attributes('style')
+      const style = wrapper.find('.falling-word').attributes('style') ?? ''
       const matched = style.match(/translate3d\(0,\s*([\d.]+)px/)
       return matched ? Number(matched[1]) : NaN
     }

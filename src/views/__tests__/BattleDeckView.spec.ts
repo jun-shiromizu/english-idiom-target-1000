@@ -66,7 +66,7 @@ const characters: BattleCharacter[] = [
       description: 'heal',
     },
   },
-  ...Array.from({ length: 4 }, (_, index) => ({
+  ...Array.from({ length: 4 }, (_, index): BattleCharacter => ({
     id: `hero-00${index + 2}`,
     name: `Member ${index + 1}`,
     icon: `battle/icons/characters/hero-00${index + 2}.png`,

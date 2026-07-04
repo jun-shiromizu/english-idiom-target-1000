@@ -92,14 +92,38 @@ function makeCacheKey(bookId: BookId, number: string): string {
   return `${bookId}:${number}`
 }
 
-function decodeBase64Utf8(encoded: string): string {
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(encoded, 'base64').toString('utf-8')
+function decodeBase64ToBytes(encoded: string): Uint8Array {
+  const normalized = encoded.replace(/\s+/g, '')
+  if (typeof globalThis.atob === 'function') {
+    const binary = globalThis.atob(normalized)
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0))
   }
 
-  const binary = atob(encoded)
-  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
-  return new TextDecoder().decode(bytes)
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+  const output: number[] = []
+  let buffer = 0
+  let bitsInBuffer = 0
+
+  for (const char of normalized.replace(/=+$/u, '')) {
+    const value = alphabet.indexOf(char)
+    if (value < 0) {
+      throw new Error('Invalid base64 string.')
+    }
+
+    buffer = (buffer << 6) | value
+    bitsInBuffer += 6
+
+    if (bitsInBuffer >= 8) {
+      bitsInBuffer -= 8
+      output.push((buffer >> bitsInBuffer) & 0xff)
+    }
+  }
+
+  return Uint8Array.from(output)
+}
+
+function decodeBase64Utf8(encoded: string): string {
+  return new TextDecoder().decode(decodeBase64ToBytes(encoded))
 }
 
 function getGitHubErrorStatus(error: unknown): number | null {

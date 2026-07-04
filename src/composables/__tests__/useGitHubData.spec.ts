@@ -4,6 +4,15 @@ import { useGitHubData, formatNumber, resetGitHubDataCaches } from '../useGitHub
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
+function encodeBase64Utf8(value: string): string {
+  const bytes = new TextEncoder().encode(value)
+  let binary = ''
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte)
+  }
+  return btoa(binary)
+}
+
 function hasHost(url: string, host: string): boolean {
   try {
     return new URL(url).hostname === host
@@ -54,7 +63,7 @@ describe('useGitHubData', () => {
             ok: true,
             json: () => Promise.resolve({
               encoding: 'base64',
-              content: Buffer.from(JSON.stringify(mockData), 'utf-8').toString('base64'),
+              content: encodeBase64Utf8(JSON.stringify(mockData)),
             }),
           }
         }
@@ -93,7 +102,7 @@ describe('useGitHubData', () => {
             ok: true,
             json: () => Promise.resolve({
               encoding: 'base64',
-              content: Buffer.from(JSON.stringify(mockData), 'utf-8').toString('base64'),
+              content: encodeBase64Utf8(JSON.stringify(mockData)),
             }),
           }
         }
@@ -173,7 +182,7 @@ describe('useGitHubData', () => {
             ok: true,
             json: () => Promise.resolve({
               encoding: 'base64',
-              content: Buffer.from(JSON.stringify(mockData), 'utf-8').toString('base64'),
+              content: encodeBase64Utf8(JSON.stringify(mockData)),
             }),
           }
         }

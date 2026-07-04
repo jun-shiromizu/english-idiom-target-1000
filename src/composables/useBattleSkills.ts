@@ -191,11 +191,12 @@ export function applyActiveSkill(
     }
 
     if (effect.effectType === 'skill-boost' && typeof effect.value === 'number') {
+      const boostAmount = effect.value
       nextSession = {
         ...nextSession,
         party: nextSession.party.map((member) => ({
           ...member,
-          skillCooldownRemaining: Math.max(0, member.skillCooldownRemaining - Math.round(effect.value)),
+          skillCooldownRemaining: Math.max(0, member.skillCooldownRemaining - Math.round(boostAmount)),
         })),
       }
     }

@@ -74,7 +74,8 @@ describe('useBattleData', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    resolveText?.(JSON.stringify(dungeons))
+    expect(resolveText).toBeTypeOf('function')
+    resolveText!(JSON.stringify(dungeons))
 
     await expect(firstPromise).resolves.toEqual(dungeons)
     await expect(secondPromise).resolves.toEqual(dungeons)
