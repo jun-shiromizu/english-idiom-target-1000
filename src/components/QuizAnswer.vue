@@ -40,14 +40,14 @@
 
         <!-- 例文モード -->
         <template v-else>
-          <section class="mb-4">
+          <section v-if="selectedMean" class="mb-4">
             <h3 class="text-subtitle-1 font-weight-bold mb-2">例文</h3>
-            <p class="text-body-1">{{ item.idiomData.means[item.meanIndex]['example-sentence'] }}</p>
+            <p class="text-body-1">{{ selectedMean['example-sentence'] }}</p>
           </section>
 
-          <section class="mb-4">
+          <section v-if="selectedMean" class="mb-4">
             <h3 class="text-subtitle-1 font-weight-bold mb-2">例文訳</h3>
-            <p class="text-body-1">{{ item.idiomData.means[item.meanIndex]['sentence-jp'] }}</p>
+            <p class="text-body-1">{{ selectedMean['sentence-jp'] }}</p>
           </section>
 
           <section class="mb-4">
@@ -112,12 +112,18 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { QuizItem } from '@/types'
 import SupplementContent from './SupplementContent.vue'
 
-defineProps<{
+const props = defineProps<{
   item: QuizItem
 }>()
+
+const selectedMean = computed(() => {
+  const { item } = props
+  return item.meanIndex === undefined ? null : item.idiomData.means[item.meanIndex] ?? null
+})
 
 const emit = defineEmits<{
   correct: []

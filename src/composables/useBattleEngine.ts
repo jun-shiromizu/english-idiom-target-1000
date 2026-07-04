@@ -76,7 +76,7 @@ export function getComboConstant(session: BattleSession): number {
     .reverse()
     .find((effect) => effect.effectType === 'combo-constant' && typeof effect.value === 'number')
 
-  return comboConstantEffect?.value ?? 1.1
+  return typeof comboConstantEffect?.value === 'number' ? comboConstantEffect.value : 1.1
 }
 
 export function calculateBattleDamage(
