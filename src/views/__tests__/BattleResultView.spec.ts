@@ -169,6 +169,7 @@ describe('BattleResultView', () => {
     expect(wrapper.find('img[alt="Bat icon"]').exists()).toBe(true)
     expect(wrapper.find('img[alt="勇者ソロ icon"]').exists()).toBe(true)
     expect(wrapper.find('img[alt="Member 4 icon"]').exists()).toBe(true)
+    expect(wrapper.find('.result-icon-row--party').exists()).toBe(true)
   })
 
   it('敗北時は直前に間違えた問題と正しい答えを表示する', async () => {

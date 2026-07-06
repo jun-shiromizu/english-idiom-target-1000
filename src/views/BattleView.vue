@@ -56,11 +56,19 @@
           <div class="party-icons mb-4">
             <div v-for="member in partyMembers" :key="member.id" class="party-icon-item">
               <v-badge :model-value="member.isLeader" content="L" color="primary" offset-x="6" offset-y="6">
-                <v-avatar size="52" rounded="lg" class="party-avatar">
-                  <img :src="member.iconUrl" :alt="`${member.name} icon`" class="party-avatar-image" />
-                </v-avatar>
+                <v-btn
+                  icon
+                  variant="text"
+                  class="party-member-button"
+                  :class="{ 'party-member-button--ready': member.canUseSkill }"
+                  :aria-label="`${member.name} の詳細を開く`"
+                  @click="openMemberDetail(member.id)"
+                >
+                  <v-avatar size="52" rounded="lg" class="party-avatar">
+                    <img :src="member.iconUrl" :alt="`${member.name} icon`" class="party-avatar-image" />
+                  </v-avatar>
+                </v-btn>
               </v-badge>
-              <div class="party-member-name text-caption text-center mt-2">{{ member.name }}</div>
             </div>
           </div>
           <div class="d-flex flex-wrap ga-2">
@@ -73,7 +81,7 @@
       </v-card>
 
       <v-card>
-        <v-card-title class="text-subtitle-1">{{ currentScreen === 'command' ? commandScreenTitle : gameScreenTitle }}</v-card-title>
+        <v-card-title v-if="displayScreenTitle" class="text-subtitle-1">{{ displayScreenTitle }}</v-card-title>
         <v-card-text>
           <div class="d-flex flex-wrap ga-2 mb-4">
             <v-chip color="primary" size="small" variant="tonal">落下速度 {{ currentFallSpeed }}</v-chip>
@@ -103,20 +111,6 @@
             <div v-else class="d-flex flex-wrap ga-2 mb-4">
               <v-btn color="primary" variant="elevated" @click="router.push({ name: 'battle-result' })">
                 バトル結果へ
-              </v-btn>
-            </div>
-
-            <div v-if="session.status !== 'cleared'" class="d-flex flex-wrap ga-2">
-              <v-btn
-                v-for="member in skillMembers"
-                :key="`skill-${member.id}`"
-                size="small"
-                variant="outlined"
-                color="secondary"
-                :disabled="isResolving || !member.canUse"
-                @click="startSkillChallenge(member.id)"
-              >
-                {{ member.name }}: {{ member.skillName }}
               </v-btn>
             </div>
           </template>
@@ -203,6 +197,37 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <v-dialog v-model="showMemberDetailDialog" max-width="480">
+    <v-card v-if="selectedMemberDetail">
+      <v-card-title>{{ selectedMemberDetail.name }}</v-card-title>
+      <v-card-text>
+        <div class="member-skill-section">
+          <div class="text-subtitle-2 font-weight-bold mb-2">リーダースキル: {{ selectedMemberDetail.leaderSkillName }}</div>
+          <div class="text-body-2">{{ selectedMemberDetail.leaderSkillDescription }}</div>
+        </div>
+
+        <div class="member-skill-section">
+          <div class="text-subtitle-2 font-weight-bold mb-2">スキル: {{ selectedMemberDetail.activeSkillName }}</div>
+          <div class="text-body-2 mb-2">残り {{ selectedMemberDetail.skillCooldownRemaining }} ターン</div>
+          <div class="text-body-2">{{ selectedMemberDetail.activeSkillDescription }}</div>
+        </div>
+      </v-card-text>
+      <v-card-actions>
+        <v-btn variant="text" @click="closeMemberDetail">閉じる</v-btn>
+        <v-spacer />
+        <v-btn
+          v-if="selectedMemberDetail.canUseSkill"
+          color="secondary"
+          variant="elevated"
+          :disabled="isResolving"
+          @click="triggerSkillChallenge(selectedMemberDetail.id)"
+        >
+          {{ selectedMemberDetail.activeSkillName }} を使う
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
@@ -250,6 +275,8 @@ const errorMessage = ref('')
 const battleMessage = ref('')
 const currentScreen = ref<BattleScreen>('command')
 const battleRawBase = buildBattleGitHubRawBase()
+const showMemberDetailDialog = ref(false)
+const selectedMemberId = ref<string | null>(null)
 let animationFrame = 0
 let previousFrameTime = 0
 
@@ -347,13 +374,16 @@ const gameBackdropIconAlt = computed(() =>
     ? `${skillChallengeMember.value?.name ?? 'member'} icon`
     : `${currentEnemy.value?.name ?? 'enemy'} icon`,
 )
-const commandScreenTitle = computed(() => (session.value?.status === 'cleared' ? 'ダンジョンクリア' : 'コマンド画面'))
+const commandScreenTitle = computed(() => (session.value?.status === 'cleared' ? 'ダンジョンクリア' : ''))
 const commandScreenDescription = computed(() =>
   session.value?.status === 'cleared'
     ? '最後の敵を倒しました。結果画面へ進んで戦績を確認してください。'
     : 'スキルを使うか、このまま落ち物ゲームを始めるかを選びます。準備ができたら「落ち物ゲームスタート」を押してください。',
 )
 const gameScreenTitle = computed(() => (isSkillChallenge.value ? 'スキルチャレンジ' : '落ち物ゲーム'))
+const displayScreenTitle = computed(() =>
+  currentScreen.value === 'command' ? commandScreenTitle.value : gameScreenTitle.value,
+)
 const gameScreenDescription = computed(() =>
   isSkillChallenge.value
     ? '4択に正解するとスキルが発動します。時間制限はなく、回答するまでは進行しません。'
@@ -368,7 +398,14 @@ const hpMultiplier = computed(() => {
   if (baseHp <= 0) return 1
   return partyMaxHp.value / baseHp
 })
-const skillMembers = computed(() => {
+const activeEffectSummaries = computed(() => {
+  if (!session.value) return []
+  return session.value.activeEffects.map((effect, index) => ({
+    key: `${effect.sourceId}-${effect.effectType}-${index}`,
+    label: formatEffectLabel(effect.effectType, effect.value, effect.remainingTurns),
+  }))
+})
+const partyMembers = computed(() => {
   if (!session.value) return []
   const activeSession = session.value
 
@@ -380,38 +417,38 @@ const skillMembers = computed(() => {
       return {
         id: character.id,
         name: character.name,
-        skillName: character.activeSkill.name,
-        canUse: canUseActiveSkill(activeSession, character.id),
-      }
-    })
-    .filter((member): member is { id: string; name: string; skillName: string; canUse: boolean } => member !== null)
-})
-const activeEffectSummaries = computed(() => {
-  if (!session.value) return []
-  return session.value.activeEffects.map((effect, index) => ({
-    key: `${effect.sourceId}-${effect.effectType}-${index}`,
-    label: formatEffectLabel(effect.effectType, effect.value, effect.remainingTurns),
-  }))
-})
-const partyMembers = computed(() => {
-  if (!session.value) return []
-  return session.value.party
-    .map((memberState) => {
-      const character = characters.value.find((entry) => entry.id === memberState.characterId)
-      if (!character) return null
-
-      return {
-        id: character.id,
-        name: character.name,
         iconUrl: resolveCharacterIcon(character.icon),
-        isLeader: character.id === session.value?.deck.leaderId,
+        isLeader: character.id === activeSession.deck.leaderId,
         currentHp: memberState.currentHp,
         maxHp: Math.round(character.hp * hpMultiplier.value),
         skillCooldownRemaining: memberState.skillCooldownRemaining,
+        canUseSkill: canUseActiveSkill(activeSession, character.id),
+        leaderSkillName: character.leaderSkill.name,
+        leaderSkillDescription: character.leaderSkill.description,
+        activeSkillName: character.activeSkill.name,
+        activeSkillDescription: character.activeSkill.description,
       }
     })
-    .filter((member): member is { id: string; name: string; iconUrl: string; isLeader: boolean; currentHp: number; maxHp: number; skillCooldownRemaining: number } => member !== null)
+    .filter((member): member is {
+      id: string
+      name: string
+      iconUrl: string
+      isLeader: boolean
+      currentHp: number
+      maxHp: number
+      skillCooldownRemaining: number
+      canUseSkill: boolean
+      leaderSkillName: string
+      leaderSkillDescription: string
+      activeSkillName: string
+      activeSkillDescription: string
+    } => member !== null)
 })
+const selectedMemberDetail = computed(() =>
+  selectedMemberId.value
+    ? partyMembers.value.find((member) => member.id === selectedMemberId.value) ?? null
+    : null,
+)
 
 function resolveCharacterIcon(iconPath: string): string {
   return resolveBattleAsset(iconPath)
@@ -506,6 +543,16 @@ function buildSkillSuccessMessage(
     .filter((message): message is string => Boolean(message))
 
   return [`${skillName} が発動しました。`, ...effectMessages].join(' ')
+}
+
+function openMemberDetail(memberId: string): void {
+  selectedMemberId.value = memberId
+  showMemberDetailDialog.value = true
+}
+
+function closeMemberDetail(): void {
+  showMemberDetailDialog.value = false
+  selectedMemberId.value = null
 }
 
 function setNextAttackItem(): void {
@@ -681,6 +728,11 @@ function startSkillChallenge(characterId: string): void {
   isPaused.value = false
   previousFrameTime = 0
   setNextAttackItem()
+}
+
+function triggerSkillChallenge(characterId: string): void {
+  closeMemberDetail()
+  startSkillChallenge(characterId)
 }
 
 function returnToCommandScreen(): void {
@@ -895,11 +947,23 @@ onBeforeUnmount(() => {
   width: 56px;
 }
 
+.party-member-button {
+  width: 56px;
+  height: 56px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
+  border-radius: 16px;
+}
+
+.party-member-button--ready {
+  border-width: 3px;
+  border-color: rgb(var(--v-theme-secondary));
+  background: rgba(var(--v-theme-secondary), 0.08);
+}
+
 .party-avatar {
   width: 52px;
   height: 52px;
   margin: 0 auto;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
 }
 
 .party-avatar-image {
@@ -909,9 +973,8 @@ onBeforeUnmount(() => {
   display: block;
 }
 
-.party-member-name {
-  line-height: 1.2;
-  overflow-wrap: anywhere;
+.member-skill-section + .member-skill-section {
+  margin-top: 20px;
 }
 
 .enemy-avatar {
@@ -959,8 +1022,5 @@ onBeforeUnmount(() => {
     height: 48px;
   }
 
-  .party-member-name {
-    font-size: 0.7rem;
-  }
 }
 </style>
