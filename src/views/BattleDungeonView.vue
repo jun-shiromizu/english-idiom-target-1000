@@ -1,6 +1,6 @@
 <template>
-  <v-container class="py-8" max-width="860">
-    <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-6">
+  <v-container class="dungeon-page py-6" max-width="860">
+    <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-4">
       <div>
         <h1 class="text-h5 font-weight-bold">ダンジョン選択</h1>
         <p class="text-body-2 text-medium-emphasis mt-2">
@@ -12,40 +12,44 @@
       </v-btn>
     </div>
 
-    <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-6">
+    <v-alert v-if="errorMessage" type="error" variant="tonal" class="mb-4">
       {{ errorMessage }}
     </v-alert>
 
-    <div v-if="isLoading" class="text-center py-16">
+    <div v-if="isLoading" class="dungeon-page__loading text-center">
       <v-progress-circular indeterminate color="primary" />
     </div>
 
     <template v-else>
-      <v-radio-group v-model="selectedDungeonId" aria-label="ダンジョン選択">
-        <v-card
-          v-for="dungeon in dungeons"
-          :key="dungeon.id"
-          variant="outlined"
-          class="mb-4 dungeon-card"
-          :class="{ 'dungeon-card--selected': selectedDungeonId === dungeon.id }"
-          @click="selectedDungeonId = dungeon.id"
-        >
-          <v-card-text class="d-flex align-center ga-3 dungeon-card__content">
-            <v-radio class="dungeon-card__radio" :value="dungeon.id" :label="undefined" @click.stop />
-            <div class="dungeon-card__body">
-              <div class="text-subtitle-1 font-weight-bold">{{ dungeon.name }}</div>
-              <p class="text-body-2 text-medium-emphasis mt-2 mb-2">{{ dungeon.description || '説明未設定' }}</p>
-              <div class="text-caption text-medium-emphasis">Wave 数: {{ dungeon.enemies.length }}</div>
-              <div class="text-caption text-medium-emphasis mt-1">ID: {{ dungeon.id }}</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-radio-group>
+      <div class="dungeon-page__body">
+        <div class="dungeon-page__list">
+          <v-radio-group v-model="selectedDungeonId" aria-label="ダンジョン選択" class="dungeon-list-group">
+            <v-card
+              v-for="dungeon in dungeons"
+              :key="dungeon.id"
+              variant="outlined"
+              class="mb-4 dungeon-card"
+              :class="{ 'dungeon-card--selected': selectedDungeonId === dungeon.id }"
+              @click="selectedDungeonId = dungeon.id"
+            >
+              <v-card-text class="d-flex align-center ga-3 dungeon-card__content">
+                <v-radio class="dungeon-card__radio" :value="dungeon.id" :label="undefined" @click.stop />
+                <div class="dungeon-card__body">
+                  <div class="text-subtitle-1 font-weight-bold">{{ dungeon.name }}</div>
+                  <p class="text-body-2 text-medium-emphasis mt-2 mb-2">{{ dungeon.description || '説明未設定' }}</p>
+                  <div class="text-caption text-medium-emphasis">Wave 数: {{ dungeon.enemies.length }}</div>
+                  <div class="text-caption text-medium-emphasis mt-1">ID: {{ dungeon.id }}</div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-radio-group>
+        </div>
 
-      <div class="d-flex justify-end mt-6">
-        <v-btn color="primary" variant="elevated" :disabled="!selectedDungeonId" @click="confirmDungeon">
-          ダンジョン決定
-        </v-btn>
+        <div class="dungeon-page__footer d-flex justify-end">
+          <v-btn color="primary" variant="elevated" :disabled="!selectedDungeonId" @click="confirmDungeon">
+            ダンジョン決定
+          </v-btn>
+        </div>
       </div>
     </template>
   </v-container>
@@ -113,6 +117,48 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.dungeon-page {
+  box-sizing: border-box;
+  display: flex;
+  height: 100dvh;
+  max-height: 100dvh;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dungeon-page__loading {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.dungeon-page__body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.dungeon-page__list {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.dungeon-list-group {
+  margin-top: 0;
+}
+
+.dungeon-page__footer {
+  flex: 0 0 auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgb(var(--v-theme-background));
+}
+
 .dungeon-card {
   cursor: pointer;
   transition: border-color 0.18s ease, background-color 0.18s ease;

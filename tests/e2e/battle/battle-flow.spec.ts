@@ -245,7 +245,6 @@ test.describe('バトルモード - 基本導線', () => {
     await expect(page).toHaveURL(/#\/battle\/play/)
     await expect(page.getByText('Test Dungeon')).toBeVisible()
     await expect(page.locator('img[alt="Slime icon"]')).toBeVisible()
-    await expect(page.getByText('コマンド画面')).toBeVisible()
     await expect(page.getByRole('button', { name: '落ち物ゲームスタート' })).toBeVisible()
   })
 
@@ -367,11 +366,12 @@ test.describe('バトルモード - 基本導線', () => {
 
     await page.goto('./#/battle/play', { waitUntil: 'networkidle' })
 
-    await page.getByRole('button', { name: 'Member 1: Member Skill 1', exact: true }).click()
+    await page.getByRole('button', { name: 'Member 1 の詳細を開く', exact: true }).click()
+    await page.getByRole('button', { name: 'Member Skill 1 を使う', exact: true }).click()
     await clickCorrectBattleChoice(page)
 
     await expect(page.getByText('Member Skill 1 が発動しました。 ダメージが 0.5 倍になります。')).toBeVisible()
     await expect(page.getByText('被ダメ 0.5倍 (1T)')).toBeVisible()
-    await expect(page.getByText('コマンド画面')).toBeVisible()
+    await expect(page.getByRole('button', { name: '落ち物ゲームスタート' })).toBeVisible()
   })
 })

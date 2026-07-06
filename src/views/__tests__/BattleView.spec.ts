@@ -226,7 +226,7 @@ describe('BattleView', () => {
     expect(mockReplace).toHaveBeenCalledWith({ name: 'battle-deck' })
   })
 
-  it('コマンド画面を表示し、スキルボタン押下で発動チャレンジ状態へ入る', async () => {
+  it('コマンド画面でメンバー詳細ダイアログを開き、そこからスキル発動チャレンジ状態へ入る', async () => {
     mockLoadSession.mockReturnValue(createSession())
     mockFetchRangeData.mockResolvedValue({ dataMap: new Map([['0001', idiomData]]) })
     mockFetchCharacters.mockResolvedValue(characters)
@@ -240,28 +240,45 @@ describe('BattleView', () => {
     ])
     mockCanUseActiveSkill.mockReturnValue(true)
 
-    const wrapper = mount(BattleView, { global: { plugins: [vuetify] } })
-    await flushPromises()
+    const wrapper = mount(BattleView, { attachTo: document.body, global: { plugins: [vuetify] } })
+    try {
+      await flushPromises()
 
-    expect(wrapper.text()).toContain('コマンド画面')
-    expect(wrapper.text()).toContain('Slime')
-    expect(wrapper.text()).toContain('Leader: Skill 1')
-    expect(wrapper.text()).toContain('被ダメ 0.5倍 (2T)')
-    expect(wrapper.text()).toContain('落ち物ゲームスタート')
-    expect(wrapper.find('img[alt="Slime icon"]').attributes('src')).toContain('/battle/icons/enemies/slime.png')
+      expect(wrapper.text()).not.toContain('コマンド画面')
+      expect(wrapper.text()).toContain('Slime')
+      expect(wrapper.text()).toContain('被ダメ 0.5倍 (2T)')
+      expect(wrapper.text()).toContain('落ち物ゲームスタート')
+      expect(wrapper.find('img[alt="Slime icon"]').attributes('src')).toContain('/battle/icons/enemies/slime.png')
+      expect(wrapper.find('.party-member-button--ready').exists()).toBe(true)
+      expect(wrapper.find('.party-member-name').exists()).toBe(false)
 
-    const buttons = wrapper.findAll('button')
-    const skillButton = buttons.find((button) => button.text().includes('Leader: Skill 1'))
-    expect(skillButton).toBeTruthy()
+      const detailButton = wrapper.find('.party-member-button')
+      expect(detailButton.exists()).toBe(true)
 
-    await skillButton!.trigger('click')
-    await flushPromises()
+      await detailButton.trigger('click')
+      await flushPromises()
 
-    expect(wrapper.text()).toContain('スキルチャレンジ')
-    expect(wrapper.text()).toContain('4択に正解するとスキルが発動します。')
-    expect(wrapper.text()).not.toContain('味方パーティ')
-    expect(wrapper.find('.play-field-focus img[alt="Leader icon"]').exists()).toBe(true)
-    expect(mockSaveSession).toHaveBeenCalledWith(expect.objectContaining({ pendingSkillCharacterId: 'hero-001' }))
+      expect(document.body.textContent ?? '').toContain('Leader Skill')
+      expect(document.body.textContent ?? '').toContain('leader')
+      expect(document.body.textContent ?? '').toContain('Skill 1')
+      expect(document.body.textContent ?? '').toContain('残り 0 ターン')
+
+      const skillActionButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Skill 1 を使う'),
+      )
+      expect(skillActionButton).toBeTruthy()
+
+      ;(skillActionButton as HTMLButtonElement).click()
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('スキルチャレンジ')
+      expect(wrapper.text()).toContain('4択に正解するとスキルが発動します。')
+      expect(wrapper.text()).not.toContain('味方パーティ')
+      expect(wrapper.find('.play-field-focus img[alt="Leader icon"]').exists()).toBe(true)
+      expect(mockSaveSession).toHaveBeenCalledWith(expect.objectContaining({ pendingSkillCharacterId: 'hero-001' }))
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it('スキル成功時に効果ごとの詳細メッセージを表示する', async () => {
@@ -278,22 +295,34 @@ describe('BattleView', () => {
     ])
     mockCanUseActiveSkill.mockReturnValue(true)
 
-    const wrapper = mount(BattleView, { global: { plugins: [vuetify] } })
-    await flushPromises()
+    const wrapper = mount(BattleView, { attachTo: document.body, global: { plugins: [vuetify] } })
+    try {
+      await flushPromises()
 
-    const skillButton = wrapper.findAll('button').find((button) => button.text().includes('Member 1: Member Skill 1'))
-    expect(skillButton).toBeTruthy()
+      const memberButtons = wrapper.findAll('.party-member-button')
+      expect(memberButtons.length).toBeGreaterThan(1)
 
-    await skillButton!.trigger('click')
-    await flushPromises()
+      await memberButtons[1].trigger('click')
+      await flushPromises()
 
-    const correctButton = wrapper.findAll('button').find((button) => button.text().includes('答え1'))
-    expect(correctButton).toBeTruthy()
+      const skillActionButton = Array.from(document.body.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Member Skill 1 を使う'),
+      )
+      expect(skillActionButton).toBeTruthy()
 
-    await correctButton!.trigger('click')
-    await flushPromises()
+      ;(skillActionButton as HTMLButtonElement).click()
+      await flushPromises()
 
-    expect(wrapper.text()).toContain('Member Skill 1 が発動しました。 ダメージが 0.5 倍になります。')
+      const correctButton = wrapper.findAll('button').find((button) => button.text().includes('答え1'))
+      expect(correctButton).toBeTruthy()
+
+      await correctButton!.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('Member Skill 1 が発動しました。 ダメージが 0.5 倍になります。')
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it('未進行の battle session は最新 enemy HP に同期する', async () => {
@@ -440,7 +469,7 @@ describe('BattleView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('1 コンボの攻撃、Slime に 462 のダメージ。 Slime を倒した。次は Bat です。')
-    expect(wrapper.text()).toContain('コマンド画面')
+    expect(wrapper.text()).not.toContain('コマンド画面')
     expect(wrapper.text()).toContain('Bat')
   })
 

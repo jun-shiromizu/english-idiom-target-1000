@@ -22,10 +22,10 @@
 
         <section v-if="partyCharacters.length > 0" class="mb-6">
           <div class="text-subtitle-2 font-weight-bold mb-3">パーティ</div>
-          <div class="result-icon-row">
+          <div class="result-icon-row result-icon-row--party">
             <div v-for="character in partyCharacters" :key="character.id" class="result-icon-item">
               <v-badge :model-value="character.id === session.deck.leaderId" content="L" color="primary" offset-x="6" offset-y="6">
-                <v-avatar size="64" rounded="lg" class="result-avatar">
+                <v-avatar rounded="lg" class="result-avatar result-avatar--party">
                   <img :src="character.iconUrl" :alt="`${character.name} icon`" class="result-avatar-image" />
                 </v-avatar>
               </v-badge>
@@ -267,12 +267,33 @@ onMounted(() => {
   gap: 12px;
 }
 
+.result-icon-row--party {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
 .result-icon-item {
   width: 72px;
 }
 
+.result-icon-row--party .result-icon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  flex: 1 1 0;
+  width: auto;
+}
+
 .result-avatar {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.16);
+}
+
+.result-avatar--party {
+  width: min(100%, 60px);
+  height: auto;
+  aspect-ratio: 1;
+  margin: 0 auto;
 }
 
 .result-avatar-image {
@@ -289,6 +310,14 @@ onMounted(() => {
 
   .result-icon-item {
     width: 64px;
+  }
+
+  .result-icon-row--party {
+    gap: 4px;
+  }
+
+  .result-avatar--party {
+    width: min(100%, 52px);
   }
 }
 </style>
