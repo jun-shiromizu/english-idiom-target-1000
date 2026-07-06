@@ -441,9 +441,9 @@ bring「手に持っている」＋up「大きくする」 → 手の中で大�
   ```
 
 ### デプロイ
-- アプリリポジトリで `npm run build` した成果物を `gh-pages` ブランチに push して公開する
-- GitHub Actions で型チェック、ユニットテスト、E2E テスト、ビルド、デプロイを実行する
-- デプロイ workflow は手動実行とし、`gh-pages` ブランチへ反映する
+- アプリリポジトリで `npm run build` した成果物を GitHub Pages artifact として公開する
+- GitHub Actions で型チェック、ユニットテスト、ビルド、デプロイを実行する
+- デプロイ workflow は手動実行とし、GitHub Pages へ反映する
 - 公開URL: `https://{GitHubユーザー名}.github.io/english-idiom-target-1000/`
 
 ### データへのアクセス

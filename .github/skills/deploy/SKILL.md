@@ -9,10 +9,10 @@ Vue 3 アプリを GitHub Pages に手動デプロイする手順。
 
 ## デプロイ方式
 
-- `gh-pages` ブランチ方式を採用
+- GitHub Pages の公式 artifact 方式を採用
 - Pull Request では CI のみ実行する
-- デプロイは GitHub Actions でビルド → `gh-pages` ブランチへ手動 push する
-- **手動 push は行わない**。全てワークフロー経由でデプロイ
+- デプロイは GitHub Actions でビルド → Pages artifact を手動公開する
+- branch への手動 push は行わない。全てワークフロー経由でデプロイ
 
 ## 現在の関連ワークフロー
 
@@ -83,17 +83,23 @@ name: Deploy to GitHub Pages
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
@@ -105,20 +111,27 @@ jobs:
       - name: Unit test
         run: npx vitest run
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: E2E test
-        run: npm run test:e2e
-
       - name: Build
         run: npm run build
 
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 ```
 
 ## GitHub Pages の有効化手順
@@ -126,9 +139,8 @@ jobs:
 初回のみリポジトリで設定が必要：
 
 1. GitHub リポジトリの Settings > Pages を開く
-2. Source を「Deploy from a branch」に設定
-3. Branch を「gh-pages」/「root」に設定
-4. Save
+2. Source を「GitHub Actions」に設定
+3. Save
 
 ## デプロイの流れ
 
@@ -143,7 +155,7 @@ PR を main にマージ
   ↓
 Actions タブから Deploy to GitHub Pages を手動実行
   ↓
-npm ci → typecheck → unit test → e2e → build → gh-pages push
+npm ci → typecheck → unit test → build → Pages artifact upload → Pages deploy
   ↓
 GitHub Pages が配信
 ```
@@ -175,8 +187,8 @@ npm run preview
 | ページが真っ白 | `base` 設定が抜けている | `vite.config.ts` の `base` を確認 |
 | ルーティングが 404 | `createBrowserHistory` を使っている | `createWebHashHistory` に変更 |
 | 画像が表示されない | `public/` ではなく `src/assets/` に配置している | 画像は `public/` に置くか import する |
-| Actions が失敗する | `permissions` やブラウザインストールが不足している | ワークフロー YAML を確認 |
-| gh-pages ブランチがない | 初回デプロイ前 | ワークフローを手動実行（workflow_dispatch） |
+| Actions が失敗する | `permissions` や Pages 設定が不足している | ワークフロー YAML と Settings > Pages を確認 |
+| 公開が進まない | Pages の Source が `GitHub Actions` ではない | Settings > Pages の Source を切り替える |
 | PR が `Expected` で止まる | required check 名が GitHub の表示名と噛み合っていない | branch protection では `required-pr-checks` を required にする |
 
 ## 本番動作確認

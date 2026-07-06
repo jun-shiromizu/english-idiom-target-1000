@@ -129,7 +129,7 @@ interface QuizSession {
 15. レスポンシブ対応の確認・調整
 
 ### Phase 5: デプロイ
-16. GitHub Actions ワークフロー作成（build → gh-pages へ push）
+16. GitHub Actions ワークフロー作成（build → Pages artifact を deploy）
 17. 動作確認
 
 ## 依存ライブラリ（想定）
