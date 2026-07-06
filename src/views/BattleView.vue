@@ -551,12 +551,14 @@ function openMemberDetail(memberId: string): void {
 }
 
 function closeMemberDetail(): void {
-  showMemberDetailDialog.value = false
   selectedMemberId.value = null
+  if (showMemberDetailDialog.value) {
+    showMemberDetailDialog.value = false
+  }
 }
 
 function handleMemberDetailDialogState(isOpen: boolean): void {
-  if (!isOpen) selectedMemberId.value = null
+  if (!isOpen) closeMemberDetail()
 }
 
 function setNextAttackItem(): void {
