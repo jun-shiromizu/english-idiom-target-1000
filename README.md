@@ -185,12 +185,12 @@ Branch protection で required check を設定する場合は、`required-pr-che
 ### デプロイ
 
 デプロイは `main` への push では自動実行されません。まとめて反映したいタイミングで、Actions タブ → "Deploy to GitHub Pages" → "Run workflow" から手動実行します。
-GitHub Pages の Settings > Pages では、Source を `Deploy from a branch`、Branch を `gh-pages`、Folder を `/(root)` に設定します。
+GitHub Pages の Settings > Pages では、Source を `GitHub Actions` に設定します。
 
-手動デプロイ時には以下を実行してから `gh-pages` ブランチへ反映します。
+手動デプロイ時には以下を実行し、ビルド成果物を GitHub Pages へ artifact デプロイします。
 
 1. 型チェック（`vue-tsc --noEmit`）
 2. ユニットテスト（`vitest run`）
-3. E2E テスト（`npm run test:e2e`）
-4. プロダクションビルド（`vite build`）
-5. `gh-pages` ブランチへデプロイ（`peaceiris/actions-gh-pages`）
+3. プロダクションビルド（`vite build`）
+4. Pages artifact を upload
+5. `actions/deploy-pages` で公開

@@ -93,7 +93,7 @@
 
 ### 目的
 
-検証済みの成果物を `gh-pages` ブランチへ反映し、GitHub Pages に公開する。
+検証済みの成果物を GitHub Pages artifact として公開する。
 
 ### トリガー
 
@@ -103,38 +103,48 @@
 
 ### 権限
 
-1. `contents: write`
+1. `contents: read`
+2. `pages: write`
+3. `id-token: write`
 
 ### ジョブ構成
 
-#### 1. `deploy`
+#### 1. `build`
 
-このジョブは検証から公開までを一括で担当する。
+このジョブは検証と Pages artifact の作成を担当する。
 
 実行順:
 
 1. リポジトリを checkout
-2. Node.js 20 をセットアップ
+2. Node.js 24 をセットアップ
 3. `npm ci`
 4. `npx vue-tsc --noEmit`
 5. `npx vitest run`
-6. `npx playwright install --with-deps chromium`
-7. `npm run test:e2e`
-8. `npm run build`
-9. `peaceiris/actions-gh-pages@v4` で `./dist` を公開
+6. `npm run build`
+7. `actions/configure-pages`
+8. `actions/upload-pages-artifact@v4` で `./dist` を upload
+
+#### 2. `deploy`
+
+このジョブは upload 済み artifact を GitHub Pages に公開する。
+
+実行順:
+
+1. `build` ジョブ完了を待つ
+2. `actions/deploy-pages@v4` で公開
 
 ### デプロイ仕様
 
-1. 公開先ブランチは `gh-pages`。
-2. 公開対象ディレクトリは `./dist`。
-3. 認証には `secrets.GITHUB_TOKEN` を使用する。
-4. workflow 内で build artifact を別ジョブへ受け渡しせず、同一ジョブ内で build して即デプロイする。
+1. 公開対象ディレクトリは `./dist`。
+2. 認証には workflow 標準の `GITHUB_TOKEN` と Pages 用 OIDC を使用する。
+3. `build` ジョブで生成した artifact を `deploy` ジョブへ受け渡して公開する。
+4. branch 公開ではなく、GitHub Pages の公式 artifact 方式を使用する。
 
 ### 運用前提
 
-1. GitHub Pages の公開元は `Deploy from a branch` を選び、`gh-pages` / `/(root)` を向ける必要がある。
-2. `gh-pages` ブランチへの書き込みが `GITHUB_TOKEN` で許可されている必要がある。
-3. デプロイ前に型チェック、ユニットテスト、E2E テスト、ビルドのすべてが成功する必要がある。
+1. GitHub Pages の公開元は `GitHub Actions` を選ぶ必要がある。
+2. リポジトリ Actions 権限で Pages デプロイが許可されている必要がある。
+3. デプロイ前に型チェック、ユニットテスト、ビルドのすべてが成功する必要がある。
 
 ### 暗黙の要件
 
@@ -148,7 +158,7 @@
 
 1. CI とデプロイの検証内容はほぼ同一で、デプロイ前に再度フルチェックを走らせる設計になっている。
 2. デプロイ専用 workflow は CI 成功を外部的に参照せず、手動実行時点の HEAD に対して独立に再検証する。
-3. GitHub Pages への公開は公式 Pages artifact 方式ではなく、`gh-pages` ブランチへ push する方式を採用している。
+3. GitHub Pages への公開は公式 Pages artifact 方式を採用している。
 4. required check は workflow/job 名ではなく `required-pr-checks` という commit status 名に抽象化されている。
 
 ## 現時点で workflow からは定義されていないこと
