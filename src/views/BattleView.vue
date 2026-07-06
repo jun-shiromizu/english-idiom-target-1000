@@ -198,7 +198,7 @@
     </v-card>
   </v-dialog>
 
-  <v-dialog v-model="showMemberDetailDialog" max-width="480">
+  <v-dialog v-model="showMemberDetailDialog" max-width="480" @update:model-value="handleMemberDetailDialogState">
     <v-card v-if="selectedMemberDetail">
       <v-card-title>{{ selectedMemberDetail.name }}</v-card-title>
       <v-card-text>
@@ -378,7 +378,7 @@ const commandScreenTitle = computed(() => (session.value?.status === 'cleared' ?
 const commandScreenDescription = computed(() =>
   session.value?.status === 'cleared'
     ? '最後の敵を倒しました。結果画面へ進んで戦績を確認してください。'
-    : 'スキルを使うか、このまま落ち物ゲームを始めるかを選びます。準備ができたら「落ち物ゲームスタート」を押してください。',
+    : '落ち物ゲームを始めるか、メンバーアイコンから詳細を開いてスキルを使うかを選びます。準備ができたら「落ち物ゲームスタート」を押してください。',
 )
 const gameScreenTitle = computed(() => (isSkillChallenge.value ? 'スキルチャレンジ' : '落ち物ゲーム'))
 const displayScreenTitle = computed(() =>
@@ -553,6 +553,10 @@ function openMemberDetail(memberId: string): void {
 function closeMemberDetail(): void {
   showMemberDetailDialog.value = false
   selectedMemberId.value = null
+}
+
+function handleMemberDetailDialogState(isOpen: boolean): void {
+  if (!isOpen) selectedMemberId.value = null
 }
 
 function setNextAttackItem(): void {
