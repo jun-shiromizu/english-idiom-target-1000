@@ -22,7 +22,7 @@
     "vuetify": "^4.1.6"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.0",
+    "@playwright/test": "^1.62.1",
     "@tsconfig/node22": "^22.0.5",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vitest/coverage-v8": "^4.1.9",
