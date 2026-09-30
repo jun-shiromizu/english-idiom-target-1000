@@ -125,6 +125,39 @@ describe('useQuizSession', () => {
     })
   })
 
+  describe('ランダム出題数', () => {
+    it('ランダム出題では指定件数に絞り、順番出題では全件を維持する', () => {
+      const settings: QuizSettings = {
+        ...baseSettings,
+        order: 'random',
+        randomQuestionCount: 2,
+      }
+      const { buildItems } = useQuizSession()
+
+      expect(buildItems(settings, dataMap)).toHaveLength(2)
+      expect(buildItems({ ...settings, order: 'sequential' }, dataMap)).toHaveLength(4)
+    })
+
+    it('未指定の場合はランダムでも従来どおり全件を出題する', () => {
+      const { buildItems } = useQuizSession()
+      const items = buildItems({ ...baseSettings, order: 'random' }, dataMap)
+
+      expect(items).toHaveLength(4)
+    })
+
+    it('穴埋め問題にもランダム出題数を適用する', () => {
+      const settings: QuizSettings = {
+        ...baseSettings,
+        mode: 'sentence',
+        order: 'random',
+        randomQuestionCount: 1,
+      }
+      const { buildClozeItems } = useQuizSession()
+
+      expect(buildClozeItems(settings, dataMap)).toHaveLength(1)
+    })
+  })
+
   describe('buildDictationItems', () => {
     it('英単語ターゲット1900 / 単語熟語 / 日本語→英語で書き取り問題を作成する', () => {
       const settings: QuizSettings = {

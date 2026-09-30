@@ -15,6 +15,7 @@ const mockQuizData = {
 async function mockGitHubDataRequests(
   page: Parameters<typeof test.beforeEach>[0] extends (args: infer T) => any ? T['page'] : never,
   expectedRawUrl: string,
+  quizData = mockQuizData,
 ) {
   const requestedUrls: string[] = []
 
@@ -42,7 +43,7 @@ async function mockGitHubDataRequests(
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(mockQuizData),
+        body: JSON.stringify(quizData),
       })
       return
     }
@@ -250,6 +251,31 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await expect(page.getByRole('combobox', { name: '出題方向' })).toHaveValue('日本語 → 英語')
     await expect(page.getByRole('combobox', { name: '出題対象' })).toHaveValue('間違えたものだけ')
     await expect(page.getByRole('combobox', { name: '出題順序' })).toHaveValue('ランダム')
+  })
+
+  test('HOME-010: ランダム出題数を設定してもゲームは全問題を使用する', async ({ page }) => {
+    const gameData = {
+      ...mockQuizData,
+      idioms: ['a piece of ~', 'as a rule', 'in fact', 'for example'],
+    }
+    await mockGitHubDataRequests(
+      page,
+      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/target/0001.json',
+      gameData,
+    )
+
+    await page.getByRole('radio', { name: '英熟語ターゲット1000' }).click()
+    await page.getByLabel('終了番号').fill('1')
+    await page.getByRole('combobox', { name: '出題順序' }).press('ArrowDown')
+    await page.getByRole('option', { name: 'ランダム' }).click()
+    await page.getByLabel('ランダム出題数').fill('1')
+    await page.getByRole('button', { name: 'ゲーム' }).click()
+
+    await expect(page).toHaveURL(/#\/game/)
+    const session = await getSavedSession(page)
+
+    expect(session.settings.randomQuestionCount).toBe(1)
+    expect(session.items).toHaveLength(4)
   })
 
   test('HOME-301: 教材を英単語ターゲット1900に切り替えると 1900 番まで入力できる', async ({ page }) => {
