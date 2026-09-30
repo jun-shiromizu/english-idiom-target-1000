@@ -25,7 +25,17 @@ export function useQuizSession() {
       direction: settings.direction ?? 'en-to-ja',
       target: settings.target,
       order: settings.order,
+      randomQuestionCount: settings.randomQuestionCount,
     }
+  }
+
+  function orderAndLimitItems(items: QuizItem[], settings: QuizSettings): QuizItem[] {
+    const orderedItems = settings.order === 'random' ? shuffle(items) : items
+    if (settings.order !== 'random' || settings.randomQuestionCount === undefined) {
+      return orderedItems
+    }
+
+    return orderedItems.slice(0, Math.max(0, Math.floor(settings.randomQuestionCount)))
   }
 
   /**
@@ -136,7 +146,7 @@ export function useQuizSession() {
       }
     }
 
-    return normalizedSettings.order === 'random' ? shuffle(items) : items
+    return orderAndLimitItems(items, normalizedSettings)
   }
 
   function buildDictationItems(settings: QuizSettings, dataMap: Map<string, IdiomData>): QuizItem[] {
@@ -204,7 +214,7 @@ export function useQuizSession() {
       })
     }
 
-    return normalizedSettings.order === 'random' ? shuffle(items) : items
+    return orderAndLimitItems(items, normalizedSettings)
   }
 
   function saveSession(session: QuizSession): void {

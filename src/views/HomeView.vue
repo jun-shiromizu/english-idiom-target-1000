@@ -143,6 +143,18 @@
               aria-label="出題順序"
             />
 
+            <v-text-field
+              v-if="settings.order === 'random'"
+              v-model.number="settings.randomQuestionCount"
+              label="ランダム出題数"
+              type="number"
+              :min="1"
+              :max="selectedBook.maxNumber"
+              variant="outlined"
+              density="compact"
+              aria-label="ランダム出題数"
+            />
+
             <v-select
               v-model="gameDifficulty"
               label="ゲーム難易度"
@@ -294,6 +306,8 @@ const {
   clearSession: clearBattleSession,
 } = useBattleSession()
 
+const DEFAULT_RANDOM_QUESTION_COUNT = 100
+
 function createDefaultSettings(): QuizSettings {
   return {
     bookId: DEFAULT_BOOK_ID,
@@ -303,6 +317,7 @@ function createDefaultSettings(): QuizSettings {
     direction: 'en-to-ja',
     target: 'all',
     order: 'sequential',
+    randomQuestionCount: DEFAULT_RANDOM_QUESTION_COUNT,
   }
 }
 
@@ -312,6 +327,10 @@ function normalizeSettings(raw: Partial<QuizSettings> | null | undefined): QuizS
   const maxNumber = getBookConfig(bookId).maxNumber
   const startNumber = Math.min(Math.max(raw?.startNumber ?? defaults.startNumber, 1), maxNumber)
   const endNumber = Math.min(Math.max(raw?.endNumber ?? defaults.endNumber, 1), maxNumber)
+  const randomQuestionCount = Math.min(
+    Math.max(raw?.randomQuestionCount ?? DEFAULT_RANDOM_QUESTION_COUNT, 1),
+    maxNumber,
+  )
 
   return {
     bookId,
@@ -321,6 +340,7 @@ function normalizeSettings(raw: Partial<QuizSettings> | null | undefined): QuizS
     direction: raw?.direction === 'ja-to-en' ? 'ja-to-en' : defaults.direction,
     target: raw?.target ?? defaults.target,
     order: raw?.order ?? defaults.order,
+    randomQuestionCount,
   }
 }
 
@@ -407,7 +427,9 @@ const isValid = computed(
   () =>
     settings.value.startNumber >= 1 &&
     settings.value.endNumber <= selectedBook.value.maxNumber &&
-    settings.value.startNumber <= settings.value.endNumber,
+    settings.value.startNumber <= settings.value.endNumber &&
+    (settings.value.randomQuestionCount ?? 0) >= 1 &&
+    (settings.value.randomQuestionCount ?? 0) <= selectedBook.value.maxNumber,
 )
 
 watch(
@@ -440,13 +462,17 @@ async function startSession(routeName: 'quiz' | 'dictation' | 'cloze' | 'typing-
       settings.value.startNumber,
       settings.value.endNumber,
     )
+    const itemSettings =
+      routeName === 'game'
+        ? { ...settings.value, randomQuestionCount: undefined }
+        : settings.value
 
     const items =
       routeName === 'dictation'
-        ? buildDictationItems(settings.value, dataMap)
+        ? buildDictationItems(itemSettings, dataMap)
         : routeName === 'cloze'
-          ? buildClozeItems(settings.value, dataMap)
-        : buildItems(settings.value, dataMap)
+          ? buildClozeItems(itemSettings, dataMap)
+        : buildItems(itemSettings, dataMap)
 
     if (items.length === 0) {
       errorMessage.value =

@@ -62,6 +62,7 @@ export interface QuizSettings {
   direction: QuizDirection
   target: QuizTarget
   order: QuizOrder
+  randomQuestionCount?: number
 }
 
 export interface QuizItem {
