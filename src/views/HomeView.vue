@@ -83,6 +83,7 @@
                     :key="action.value"
                     :label="action.label"
                     :value="action.value"
+                    :disabled="startingRoute !== null"
                   />
                 </v-radio-group>
               </v-col>

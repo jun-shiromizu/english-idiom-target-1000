@@ -221,7 +221,7 @@ test.describe('バトルモード - 基本導線', () => {
     await page.reload({ waitUntil: 'networkidle' })
   })
 
-  test('BATTLE-001: トップページのバトルボタンからデッキ作成画面へ遷移できる', async ({ page }) => {
+  test('BATTLE-001: トップページでバトルを選択してデッキ作成画面へ遷移できる', async ({ page }) => {
     await page.getByRole('radio', { name: 'バトル' }).click()
     await page.getByRole('button', { name: '開始' }).click()
 

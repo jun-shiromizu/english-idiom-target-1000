@@ -6,10 +6,11 @@ scenarios:
   - id: BATTLE-001
     category: normal
     status: done
-    scenario: トップページのバトルボタンからデッキ作成画面へ遷移できる
+    scenario: トップページでバトルを選択してデッキ作成画面へ遷移できる
     precondition: トップページを表示している状態
     steps:
-      - 「バトル」ボタンをクリックする
+      - アクションで「バトル」を選択する
+      - 「開始」ボタンをクリックする
     expect:
       - デッキ作成画面へ遷移する
       - キャラクター一覧が表示される
