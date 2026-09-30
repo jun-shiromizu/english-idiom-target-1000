@@ -303,10 +303,12 @@ function normalizeSettings(raw: Partial<QuizSettings> | null | undefined): QuizS
   const maxNumber = getBookConfig(bookId).maxNumber
   const startNumber = Math.min(Math.max(raw?.startNumber ?? defaults.startNumber, 1), maxNumber)
   const endNumber = Math.min(Math.max(raw?.endNumber ?? defaults.endNumber, 1), maxNumber)
-  const randomQuestionCount = Math.min(
-    Math.max(raw?.randomQuestionCount ?? DEFAULT_RANDOM_QUESTION_COUNT, 1),
-    maxNumber,
-  )
+  const randomQuestionCount =
+    raw === null || raw === undefined
+      ? DEFAULT_RANDOM_QUESTION_COUNT
+      : raw.randomQuestionCount === undefined
+        ? undefined
+        : Math.min(Math.max(raw.randomQuestionCount, 1), maxNumber)
 
   return {
     bookId,
@@ -415,8 +417,10 @@ const isValid = computed(
     settings.value.startNumber >= 1 &&
     settings.value.endNumber <= selectedBook.value.maxNumber &&
     settings.value.startNumber <= settings.value.endNumber &&
-    (settings.value.randomQuestionCount ?? 0) >= 1 &&
-    (settings.value.randomQuestionCount ?? 0) <= selectedBook.value.maxNumber,
+    (settings.value.order !== 'random' ||
+      settings.value.randomQuestionCount === undefined ||
+      (settings.value.randomQuestionCount >= 1 &&
+        settings.value.randomQuestionCount <= selectedBook.value.maxNumber)),
 )
 
 watch(

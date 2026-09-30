@@ -276,6 +276,60 @@ test.describe('トップページ - 出題設定フォーム', () => {
     expect(session.items).toHaveLength(4)
   })
 
+  test('HOME-013: ランダム出題数がない既存設定でも番号順で開始できる', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.setItem(
+        'idiom-app-settings',
+        JSON.stringify({
+          bookId: 'idiom-target-1000',
+          startNumber: 1,
+          endNumber: 1,
+          mode: 'idiom',
+          direction: 'en-to-ja',
+          target: 'all',
+          order: 'sequential',
+        }),
+      )
+    })
+    await page.reload()
+
+    await expect(page.getByRole('radio', { name: '番号順' })).toBeChecked()
+    await expect(page.getByRole('radio', { name: '単語帳' })).toBeChecked()
+  })
+
+  test('HOME-014: ランダム出題数がない既存設定では全件を出題する', async ({ page }) => {
+    const legacyData = {
+      ...mockQuizData,
+      idioms: ['a piece of ~', 'as a rule'],
+    }
+    await mockGitHubDataRequests(
+      page,
+      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/idiom-target-1000/target/0001.json',
+      legacyData,
+    )
+    await page.evaluate(() => {
+      localStorage.setItem(
+        'idiom-app-settings',
+        JSON.stringify({
+          bookId: 'idiom-target-1000',
+          startNumber: 1,
+          endNumber: 1,
+          mode: 'idiom',
+          direction: 'en-to-ja',
+          target: 'all',
+          order: 'random',
+        }),
+      )
+    })
+    await page.reload()
+
+    await page.getByRole('radio', { name: '単語帳' }).click()
+    await page.getByRole('button', { name: '開始' }).click()
+    await expect(page).toHaveURL(/#\/quiz/)
+    const session = await getSavedSession(page)
+    expect(session.items).toHaveLength(2)
+  })
+
   test('HOME-301: 教材を英単語ターゲット1900に切り替えると 1900 番まで入力できる', async ({ page }) => {
     await page.getByRole('radio', { name: '英単語ターゲット1900' }).click()
     await page.getByLabel('開始番号').fill('1500')
