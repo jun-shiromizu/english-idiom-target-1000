@@ -168,7 +168,6 @@ scenarios:
       - 「単語／熟語」が選択できない
       - 出題方向で「英語 → 日本語」が選択される
       - 「日本語 → 英語」が選択できない
-
   - id: HOME-012
     category: boundary
     status: done
@@ -180,6 +179,30 @@ scenarios:
     expect:
       - 教材で「英単語ターゲット1900」が選択される
       - 「英熟語ターゲット1000」が選択できない
+
+  - id: HOME-013
+    category: boundary
+    status: done
+    scenario: ランダム出題数がない既存設定でも番号順で開始できる
+    precondition: ランダム出題数追加前の設定が保存されている状態
+    steps:
+      - アプリのトップページを開く
+      - 出題順序が「番号順」の状態にする
+    expect:
+      - ランダム出題数が未指定でも「単語帳」アクションを選択して開始できる
+
+  - id: HOME-014
+    category: boundary
+    status: done
+    scenario: ランダム出題数がない既存設定では全件を出題する
+    precondition: ランダム出題数追加前のランダム設定が保存されている状態
+    steps:
+      - アプリのトップページを開く
+      - アクションで「単語帳」を選択する
+      - 「開始」ボタンをクリックする
+    expect:
+      - ランダム出題数が未指定でも出題画面に遷移する
+      - 対象範囲の問題が全件出題される
 
   - id: HOME-301
     category: boundary
