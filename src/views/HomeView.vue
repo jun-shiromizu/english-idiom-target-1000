@@ -67,6 +67,23 @@
                     :key="book.value"
                     :label="book.label"
                     :value="book.value"
+                    :disabled="selectedAction === 'dictation' && book.value !== 'word-target-1900'"
+                  />
+                </v-radio-group>
+              </v-col>
+              <v-col cols="12">
+                <v-radio-group
+                  v-model="selectedAction"
+                  label="アクション"
+                  inline
+                  aria-label="アクション"
+                >
+                  <v-radio
+                    v-for="action in actionItems"
+                    :key="action.value"
+                    :label="action.label"
+                    :value="action.value"
+                    :disabled="startingRoute !== null"
                   />
                 </v-radio-group>
               </v-col>
@@ -96,52 +113,63 @@
               </v-col>
             </v-row>
 
-            <v-select
+            <v-radio-group
               v-model="settings.mode"
               label="出題形式"
-              :items="modeItems"
-              item-title="label"
-              item-value="value"
-              variant="outlined"
-              density="compact"
-              class="mb-2"
+              inline
               aria-label="出題形式"
-            />
+            >
+              <v-radio
+                v-for="item in modeItems"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+                :disabled="isModeDisabled(item.value)"
+              />
+            </v-radio-group>
 
-            <v-select
+            <v-radio-group
               v-model="settings.direction"
               label="出題方向"
-              :items="directionItems"
-              item-title="label"
-              item-value="value"
-              variant="outlined"
-              density="compact"
-              class="mb-2"
+              inline
               aria-label="出題方向"
-            />
+            >
+              <v-radio
+                v-for="item in directionItems"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+                :disabled="isDirectionDisabled(item.value)"
+              />
+            </v-radio-group>
 
-            <v-select
+            <v-radio-group
               v-model="settings.target"
               label="出題対象"
-              :items="targetItems"
-              item-title="label"
-              item-value="value"
-              variant="outlined"
-              density="compact"
-              class="mb-2"
+              inline
               aria-label="出題対象"
-            />
+            >
+              <v-radio
+                v-for="item in targetItems"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </v-radio-group>
 
-            <v-select
+            <v-radio-group
               v-model="settings.order"
               label="出題順序"
-              :items="orderItems"
-              item-title="label"
-              item-value="value"
-              variant="outlined"
-              density="compact"
+              inline
               aria-label="出題順序"
-            />
+            >
+              <v-radio
+                v-for="item in orderItems"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </v-radio-group>
 
             <v-text-field
               v-if="settings.order === 'random'"
@@ -155,16 +183,20 @@
               aria-label="ランダム出題数"
             />
 
-            <v-select
+            <v-radio-group
               v-model="gameDifficulty"
               label="ゲーム難易度"
-              :items="difficultyItems"
-              item-title="label"
-              item-value="value"
-              variant="outlined"
-              density="compact"
               aria-label="ゲーム難易度"
-            />
+              inline
+            >
+              <v-radio
+                v-for="item in difficultyItems"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+                :disabled="selectedAction !== 'game'"
+              />
+            </v-radio-group>
           </v-card-text>
           <v-card-actions class="pa-4 pt-0 flex-wrap action-buttons">
             <v-spacer />
@@ -172,67 +204,11 @@
               color="primary"
               variant="elevated"
               size="large"
-              :loading="startingRoute === 'quiz'"
-              :disabled="!isValid || startingRoute !== null"
-              @click="startSession('quiz')"
+              :loading="startingRoute === selectedAction"
+              :disabled="startingRoute !== null || (selectedAction !== 'battle' && !isValid)"
+              @click="startSelectedAction"
             >
-              <v-icon start>mdi-card-text-outline</v-icon>
-              単語帳
-            </v-btn>
-            <v-btn
-              color="secondary"
-              variant="elevated"
-              size="large"
-              :loading="startingRoute === 'dictation'"
-              :disabled="!isValid || startingRoute !== null || isDictationDisabled"
-              @click="startSession('dictation')"
-            >
-              <v-icon start>mdi-pencil-outline</v-icon>
-              書き取り
-            </v-btn>
-            <v-btn
-              color="secondary"
-              variant="outlined"
-              size="large"
-              :loading="startingRoute === 'cloze'"
-              :disabled="!isValid || startingRoute !== null || isClozeDisabled"
-              @click="startSession('cloze')"
-            >
-              <v-icon start>mdi-format-letter-case</v-icon>
-              例文穴埋め
-            </v-btn>
-            <v-btn
-              color="primary"
-              variant="outlined"
-              size="large"
-              :loading="startingRoute === 'typing-race'"
-              :disabled="!isValid || startingRoute !== null || isTypingRaceDisabled"
-              @click="startSession('typing-race')"
-            >
-              <v-icon start>mdi-keyboard-outline</v-icon>
-              タイピング
-            </v-btn>
-            <v-btn
-              color="primary"
-              variant="outlined"
-              size="large"
-              :loading="startingRoute === 'game'"
-              :disabled="!isValid || startingRoute !== null"
-              @click="startSession('game')"
-            >
-              <v-icon start>mdi-gamepad-variant-outline</v-icon>
-              ゲーム
-            </v-btn>
-            <v-btn
-              color="warning"
-              variant="elevated"
-              size="large"
-              :loading="startingRoute === 'battle'"
-              :disabled="startingRoute !== null"
-              @click="openBattleMode"
-            >
-              <v-icon start>mdi-sword-cross</v-icon>
-              バトル
+              開始
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -381,7 +357,7 @@ const bookItems = BOOK_ORDER.map((bookId) => {
   return { label: book.title, value: book.id }
 })
 
-const modeItems = [
+const modeItems: Array<{ label: string; value: QuizSettings['mode'] }> = [
   { label: '単語／熟語', value: 'idiom' },
   { label: '例文', value: 'sentence' },
 ]
@@ -403,20 +379,31 @@ const difficultyItems = [
   { label: 'ハード', value: 'hard' },
 ]
 
+type Action = 'quiz' | 'dictation' | 'cloze' | 'typing-race' | 'game' | 'battle'
+
+const actionItems: Array<{ label: string; value: Action }> = [
+  { label: '単語帳', value: 'quiz' },
+  { label: '書き取り', value: 'dictation' },
+  { label: '例文穴埋め', value: 'cloze' },
+  { label: 'タイピング', value: 'typing-race' },
+  { label: 'ゲーム', value: 'game' },
+  { label: 'バトル', value: 'battle' },
+]
+
+const selectedAction = ref<Action>('quiz')
 const startingRoute = ref<'quiz' | 'dictation' | 'cloze' | 'typing-race' | 'game' | 'battle' | null>(null)
 
-const isDictationDisabled = computed(
-  () =>
-    settings.value.bookId !== 'word-target-1900' ||
-    settings.value.mode !== 'idiom' ||
-    settings.value.direction !== 'ja-to-en',
-)
-const isClozeDisabled = computed(
-  () => settings.value.mode !== 'sentence' || settings.value.direction !== 'en-to-ja',
-)
-const isTypingRaceDisabled = computed(
-  () => settings.value.mode !== 'sentence' || settings.value.direction !== 'en-to-ja',
-)
+function isModeDisabled(value: QuizSettings['mode']): boolean {
+  if (selectedAction.value === 'dictation') return value !== 'idiom'
+  if (selectedAction.value === 'cloze' || selectedAction.value === 'typing-race') return value !== 'sentence'
+  return false
+}
+
+function isDirectionDisabled(value: QuizSettings['direction']): boolean {
+  if (selectedAction.value === 'dictation') return value !== 'ja-to-en'
+  if (selectedAction.value === 'cloze' || selectedAction.value === 'typing-race') return value !== 'en-to-ja'
+  return false
+}
 const errorMessage = ref('')
 const showClearDialog = ref(false)
 const savedSession = ref(loadSession())
@@ -430,6 +417,20 @@ const isValid = computed(
     settings.value.startNumber <= settings.value.endNumber &&
     (settings.value.randomQuestionCount ?? 0) >= 1 &&
     (settings.value.randomQuestionCount ?? 0) <= selectedBook.value.maxNumber,
+)
+
+watch(
+  selectedAction,
+  (action) => {
+    if (action === 'dictation') {
+      settings.value.bookId = 'word-target-1900'
+      settings.value.mode = 'idiom'
+      settings.value.direction = 'ja-to-en'
+    } else if (action === 'cloze' || action === 'typing-race') {
+      settings.value.mode = 'sentence'
+      settings.value.direction = 'en-to-ja'
+    }
+  },
 )
 
 watch(
@@ -515,6 +516,15 @@ async function startSession(routeName: 'quiz' | 'dictation' | 'cloze' | 'typing-
   } finally {
     startingRoute.value = null
   }
+}
+
+function startSelectedAction() {
+  if (selectedAction.value === 'battle') {
+    openBattleMode()
+    return
+  }
+
+  void startSession(selectedAction.value)
 }
 
 function getBookTitle(bookId: QuizSettings['bookId']) {

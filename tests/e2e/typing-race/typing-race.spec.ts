@@ -105,11 +105,10 @@ test.describe('タイピングレース', () => {
   test('TYPING-001: 例文モードでタイピングレースを開始すると専用画面へ遷移する', async ({ page }) => {
     await mockTypingRaceRequests(page)
 
-    await page.getByRole('combobox', { name: '出題形式' }).press('ArrowDown')
-    await page.getByRole('option', { name: '例文' }).click()
+    await page.getByRole('radio', { name: 'タイピング' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
-    await page.getByRole('button', { name: 'タイピング' }).click()
+    await page.getByRole('button', { name: '開始' }).click()
 
     await expect(page).toHaveURL(/#\/typing-race/)
     await expect(page.getByText('あなたからの連絡を楽しみにしています。')).toBeVisible()

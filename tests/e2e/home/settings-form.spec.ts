@@ -108,18 +108,16 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await expect(page.getByLabel('教材')).toBeVisible()
     await expect(page.getByRole('radio', { name: '英単語ターゲット1900' })).toBeChecked()
     await expect(page.getByRole('radio', { name: '英熟語ターゲット1000' })).not.toBeChecked()
+    await expect(page.getByRole('radio', { name: '単語帳' })).toBeChecked()
     await expect(page.getByLabel('開始番号')).toBeVisible()
     await expect(page.getByLabel('終了番号')).toBeVisible()
     await expect(page.getByLabel('出題形式')).toBeVisible()
-    await expect(page.getByText('単語／熟語', { exact: true })).toBeVisible()
+    await expect(page.getByRole('radio', { name: '単語／熟語' })).toBeChecked()
     await expect(page.getByLabel('出題方向')).toBeVisible()
-    await expect(page.getByText('英語 → 日本語', { exact: true })).toBeVisible()
+    await expect(page.getByRole('radio', { name: '英語 → 日本語' })).toBeChecked()
     await expect(page.getByLabel('出題対象')).toBeVisible()
     await expect(page.getByLabel('出題順序')).toBeVisible()
-    await expect(page.getByRole('button', { name: '単語帳' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '書き取り' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '例文穴埋め' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'タイピング' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '開始' })).toBeVisible()
   })
 
   test('HOME-002: 不正解履歴のリセットセクションが表示される', async ({ page }) => {
@@ -135,7 +133,8 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await page.getByRole('radio', { name: '英熟語ターゲット1000' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
-    await page.getByRole('button', { name: '単語帳' }).click()
+    await page.getByRole('radio', { name: '単語帳' }).click()
+    await page.getByRole('button', { name: '開始' }).click()
 
     await expect(page).toHaveURL(/#\/quiz/)
     expect(requestedUrls).toContain(
@@ -152,7 +151,8 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await page.getByRole('radio', { name: '英単語ターゲット1900' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
-    await page.getByRole('button', { name: '単語帳' }).click()
+    await page.getByRole('radio', { name: '単語帳' }).click()
+    await page.getByRole('button', { name: '開始' }).click()
 
     await expect(page).toHaveURL(/#\/quiz/)
     expect(requestedUrls).toContain(
@@ -169,7 +169,8 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await page.getByRole('radio', { name: '英熟語ターゲット1000' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
-    await page.getByRole('button', { name: '単語帳' }).click()
+    await page.getByRole('radio', { name: '単語帳' }).click()
+    await page.getByRole('button', { name: '開始' }).click()
 
     await expect(page).toHaveURL(/#\/quiz/)
 
@@ -194,7 +195,8 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await page.getByRole('radio', { name: '英単語ターゲット1900' }).click()
     await page.getByLabel('開始番号').fill('1')
     await page.getByLabel('終了番号').fill('1')
-    await page.getByRole('button', { name: '単語帳' }).click()
+    await page.getByRole('radio', { name: '単語帳' }).click()
+    await page.getByRole('button', { name: '開始' }).click()
 
     await expect(page).toHaveURL(/#\/quiz/)
 
@@ -233,24 +235,20 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await page.getByRole('radio', { name: '英熟語ターゲット1000' }).click()
     await page.getByLabel('開始番号').fill('101')
     await page.getByLabel('終了番号').fill('110')
-    await page.getByRole('combobox', { name: '出題形式' }).press('ArrowDown')
-    await page.getByRole('option', { name: '例文' }).click()
-    await page.getByRole('combobox', { name: '出題方向' }).press('ArrowDown')
-    await page.getByRole('option', { name: '日本語 → 英語' }).click()
-    await page.getByRole('combobox', { name: '出題対象' }).press('ArrowDown')
-    await page.getByRole('option', { name: '間違えたものだけ' }).click()
-    await page.getByRole('combobox', { name: '出題順序' }).press('ArrowDown')
-    await page.getByRole('option', { name: 'ランダム' }).click()
+    await page.getByRole('radio', { name: '例文', exact: true }).click()
+    await page.getByRole('radio', { name: '日本語 → 英語' }).click()
+    await page.getByRole('radio', { name: '間違えたものだけ' }).click()
+    await page.getByRole('radio', { name: 'ランダム' }).click()
 
     await page.reload()
 
     await expect(page.getByRole('radio', { name: '英熟語ターゲット1000' })).toBeChecked()
     await expect(page.getByLabel('開始番号')).toHaveValue('101')
     await expect(page.getByLabel('終了番号')).toHaveValue('110')
-    await expect(page.getByRole('combobox', { name: '出題形式' })).toHaveValue('例文')
-    await expect(page.getByRole('combobox', { name: '出題方向' })).toHaveValue('日本語 → 英語')
-    await expect(page.getByRole('combobox', { name: '出題対象' })).toHaveValue('間違えたものだけ')
-    await expect(page.getByRole('combobox', { name: '出題順序' })).toHaveValue('ランダム')
+    await expect(page.getByRole('radio', { name: '例文', exact: true })).toBeChecked()
+    await expect(page.getByRole('radio', { name: '日本語 → 英語' })).toBeChecked()
+    await expect(page.getByRole('radio', { name: '間違えたものだけ' })).toBeChecked()
+    await expect(page.getByRole('radio', { name: 'ランダム' })).toBeChecked()
   })
 
   test('HOME-010: ランダム出題数を設定してもゲームは全問題を使用する', async ({ page }) => {
@@ -266,10 +264,10 @@ test.describe('トップページ - 出題設定フォーム', () => {
 
     await page.getByRole('radio', { name: '英熟語ターゲット1000' }).click()
     await page.getByLabel('終了番号').fill('1')
-    await page.getByRole('combobox', { name: '出題順序' }).press('ArrowDown')
-    await page.getByRole('option', { name: 'ランダム' }).click()
+    await page.getByRole('radio', { name: 'ランダム' }).click()
     await page.getByLabel('ランダム出題数').fill('1')
-    await page.getByRole('button', { name: 'ゲーム' }).click()
+    await page.getByRole('radio', { name: 'ゲーム' }).click()
+    await page.getByRole('button', { name: '開始' }).click()
 
     await expect(page).toHaveURL(/#\/game/)
     const session = await getSavedSession(page)
@@ -296,5 +294,21 @@ test.describe('トップページ - 出題設定フォーム', () => {
 
     await expect(page.getByLabel('開始番号')).toHaveValue('1000')
     await expect(page.getByLabel('終了番号')).toHaveValue('1000')
+  })
+
+  test('HOME-011: 例文穴埋めを選ぶと対応しない出題形式と方向が無効になる', async ({ page }) => {
+    await page.getByRole('radio', { name: '例文穴埋め' }).click()
+
+    await expect(page.getByRole('radio', { name: '例文', exact: true })).toBeChecked()
+    await expect(page.getByRole('radio', { name: '単語／熟語' })).toBeDisabled()
+    await expect(page.getByRole('radio', { name: '英語 → 日本語' })).toBeChecked()
+    await expect(page.getByRole('radio', { name: '日本語 → 英語' })).toBeDisabled()
+  })
+
+  test('HOME-012: 書き取りを選ぶと英単語教材以外を選択できない', async ({ page }) => {
+    await page.getByRole('radio', { name: '書き取り' }).click()
+
+    await expect(page.getByRole('radio', { name: '英単語ターゲット1900' })).toBeChecked()
+    await expect(page.getByRole('radio', { name: '英熟語ターゲット1000' })).toBeDisabled()
   })
 })
