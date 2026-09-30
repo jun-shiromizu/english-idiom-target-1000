@@ -4,55 +4,54 @@ page: "#/"
 
 scenarios:
   - id: HOME-001
-    - id: HOME-011
-      category: normal
-      status: done
-      scenario: 例文穴埋めを選ぶと対応しない出題形式と方向が無効になる
-      precondition: localStorage がクリアな状態
-      steps:
-        - アプリのトップページを開く
-        - アクションで「例文穴埋め」を選択する
-      expect:
-        - 出題形式で「例文」が選択される
-        - 「単語／熟語」が選択できない
-        - 出題方向で「英語 → 日本語」が選択される
-        - 「日本語 → 英語」が選択できない
+    category: normal
+    status: done
+    scenario: ページを開くと出題設定フォームが表示される
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+    expect:
+      - 「教材」ラジオボタンが表示される
+      - 「英単語ターゲット1900」が初期選択されている
+      - 「アクション」ラジオボタンが表示される
+      - 「単語帳」が初期選択されている
+      - 「開始番号」入力フィールドが表示される
+      - 「終了番号」入力フィールドが表示される
+      - 「単語／熟語」が初期表示される
+      - 「出題形式」ラジオボタンが表示される
+      - 「出題方向」ラジオボタンが表示される
+      - 「英語 → 日本語」が初期表示される
+      - 「出題対象」ラジオボタンが表示される
+      - 「出題順序」ラジオボタンが表示される
+      - 「開始」ボタンが表示される
 
-    - id: HOME-012
-      category: boundary
-      status: done
-      scenario: 書き取りを選ぶと英単語教材以外を選択できない
-      precondition: localStorage がクリアな状態
-      steps:
-        - アプリのトップページを開く
-        - アクションで「書き取り」を選択する
-      expect:
-        - 教材で「英単語ターゲット1900」が選択される
-        - 「英熟語ターゲット1000」が選択できない
+  - id: HOME-002
+    category: normal
+    status: done
+    scenario: 不正解履歴のリセットセクションが表示される
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+    expect:
+      - 「全履歴をクリア」ボタンが表示される
 
-    - id: HOME-013
-      category: boundary
-      status: done
-      scenario: ランダム出題数がない既存設定でも番号順で開始できる
-      precondition: ランダム出題数追加前の設定が保存されている状態
-      steps:
-        - アプリのトップページを開く
-        - 出題順序が「番号順」の状態にする
-      expect:
-        - ランダム出題数が未指定でも「単語帳」アクションを選択して開始できる
+  - id: HOME-003
+    category: normal
+    status: done
+    scenario: 英熟語ターゲット1000で開始すると熟語データの取得先を使って出題画面へ遷移する
+    precondition: localStorage がクリアな状態
+    steps:
+      - アプリのトップページを開く
+      - 開始番号に「1」、終了番号に「1」を入力する
+      - 「開始」ボタンをクリックする
+    expect:
+      - 英熟語ターゲット1000用のデータ取得先にリクエストが送られる
+      - 出題画面に遷移する
 
-    - id: HOME-014
-      category: boundary
-      status: done
-      scenario: ランダム出題数がない既存設定では全件を出題する
-      precondition: ランダム出題数追加前のランダム設定が保存されている状態
-      steps:
-        - アプリのトップページを開く
-        - アクションで「単語帳」を選択する
-        - 「開始」ボタンをクリックする
-      expect:
-        - ランダム出題数が未指定でも出題画面に遷移する
-        - 対象範囲の問題が全件出題される
+  - id: HOME-004
+    category: normal
+    status: done
+    scenario: 英単語ターゲット1900で開始すると単語データの取得先を使って出題画面へ遷移する
     precondition: localStorage がクリアな状態
     steps:
       - アプリのトップページを開く
@@ -218,9 +217,11 @@ scenarios:
       - 開始番号に「1500」が入力された状態になる
       - 終了番号に「1900」が入力された状態になる
 
-  - id: HOME-012
+  - id: HOME-302
     category: boundary
     status: done
+    scenario: 英単語ターゲット1900で 1000 超の番号を入力後に英熟語ターゲット1000へ切り替えると 1000 に補正される
+    precondition: localStorage がクリアな状態
     steps:
       - アプリのトップページを開く
       - 教材で「英単語ターゲット1900」を選択する

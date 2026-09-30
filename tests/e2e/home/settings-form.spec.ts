@@ -295,6 +295,7 @@ test.describe('トップページ - 出題設定フォーム', () => {
 
     await expect(page.getByRole('radio', { name: '番号順' })).toBeChecked()
     await expect(page.getByRole('radio', { name: '単語帳' })).toBeChecked()
+    await expect(page.getByRole('button', { name: '開始' })).toBeEnabled()
   })
 
   test('HOME-014: ランダム出題数がない既存設定では全件を出題する', async ({ page }) => {
