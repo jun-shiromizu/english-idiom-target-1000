@@ -304,4 +304,11 @@ test.describe('トップページ - 出題設定フォーム', () => {
     await expect(page.getByRole('radio', { name: '英語 → 日本語' })).toBeChecked()
     await expect(page.getByRole('radio', { name: '日本語 → 英語' })).toBeDisabled()
   })
+
+  test('HOME-012: 書き取りを選ぶと英単語教材以外を選択できない', async ({ page }) => {
+    await page.getByRole('radio', { name: '書き取り' }).click()
+
+    await expect(page.getByRole('radio', { name: '英単語ターゲット1900' })).toBeChecked()
+    await expect(page.getByRole('radio', { name: '英熟語ターゲット1000' })).toBeDisabled()
+  })
 })

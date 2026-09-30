@@ -67,6 +67,7 @@
                     :key="book.value"
                     :label="book.label"
                     :value="book.value"
+                    :disabled="selectedAction === 'dictation' && book.value !== 'word-target-1900'"
                   />
                 </v-radio-group>
               </v-col>
