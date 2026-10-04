@@ -345,7 +345,10 @@ describe('useGitHubData', () => {
       await expect(fetchSupplementHtml('idiom-target-1000', '0999')).resolves.toBeNull()
     })
 
-    it('教材ごとの dataPath を使って単語データの補足を取得する', async () => {
+    it.each([
+      ['0001', '0001-0500'],
+      ['0501', '0501-1000'],
+    ])('単語データは範囲フォルダ %s-add.md を取得する', async (number, directory) => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -353,15 +356,34 @@ describe('useGitHubData', () => {
       })
 
       const { fetchSupplementHtml } = useGitHubData()
-      const html = await fetchSupplementHtml('word-target-1900', '0001')
+      const html = await fetchSupplementHtml('word-target-1900', number)
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/supplement/0001-add.md',
+        `https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/supplement/${directory}/${number}-add.md`,
         { cache: 'no-store' },
       )
       expect(html).toContain(
         'src="https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/img/word.png"',
       )
+    })
+
+    it('単語の範囲フォルダに補足がない場合は従来の直下パスを試す', async () => {
+      mockFetch
+        .mockResolvedValueOnce({ ok: false, status: 404 })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve('flat supplement'),
+        })
+
+      const { fetchSupplementHtml } = useGitHubData()
+      const html = await fetchSupplementHtml('word-target-1900', '0001')
+
+      expect(mockFetch.mock.calls.map(([url]) => url)).toEqual([
+        'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/supplement/0001-0500/0001-add.md',
+        'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/supplement/0001-add.md',
+      ])
+      expect(html).toContain('flat supplement')
     })
   })
 })
