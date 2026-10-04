@@ -285,7 +285,7 @@ export function useGitHubData() {
     }
   }
 
-  /** 指定番号の補足Markdownを取得しHTMLに変換して返す。補足は supplement/{number}-add.md 固定。 */
+  /** 指定番号の補足Markdownを取得しHTML化する。単語教材は範囲フォルダを優先し、直下にもフォールバックする。 */
   async function fetchSupplementHtml(bookId: BookId, number: string): Promise<string | null> {
     const cacheKey = makeCacheKey(bookId, number)
 
@@ -298,21 +298,34 @@ export function useGitHubData() {
 
     const request = (async () => {
       const rawBase = buildGitHubRawBase(bookId)
-      const path = joinBookPath(bookId, `supplement/${number}-add.md`)
-      const res = await fetchWithRetry(`${rawBase}/${path}`)
+      const parsedNumber = Number.parseInt(number, 10)
+      const paths = [`supplement/${number}-add.md`]
 
-      if (res.status === 404) {
-        supplementHtmlCache.set(cacheKey, null)
-        return null
+      if (bookId === 'word-target-1900' && Number.isInteger(parsedNumber) && parsedNumber > 0) {
+        const directory = buildRangeDirectory(
+          parsedNumber,
+          TARGET_DIRECTORY_RANGE_SIZES[0],
+          getBookConfig(bookId).maxNumber,
+        )
+        paths.unshift(`supplement/${directory}/${number}-add.md`)
       }
 
-      if (!res.ok) throw new Error(`GitHub Raw URL error: ${res.status} ${path}`)
+      for (const candidatePath of paths) {
+        const path = joinBookPath(bookId, candidatePath)
+        const res = await fetchWithRetry(`${rawBase}/${path}`)
 
-      const raw = await res.text()
-      const resolved = resolveImagePaths(bookId, raw)
-      const html = await marked.parse(resolved)
-      supplementHtmlCache.set(cacheKey, html)
-      return html
+        if (res.status === 404) continue
+        if (!res.ok) throw new Error(`GitHub Raw URL error: ${res.status} ${path}`)
+
+        const raw = await res.text()
+        const resolved = resolveImagePaths(bookId, raw)
+        const html = await marked.parse(resolved)
+        supplementHtmlCache.set(cacheKey, html)
+        return html
+      }
+
+      supplementHtmlCache.set(cacheKey, null)
+      return null
     })()
 
     pendingSupplementRequests.set(cacheKey, request)
