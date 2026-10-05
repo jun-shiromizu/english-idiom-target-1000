@@ -14,7 +14,7 @@
 両 workflow から読み取れる共通要件は次のとおりです。
 
 1. 実行環境は `ubuntu-latest` を使用する。
-2. Node.js は `20` を使用する。
+2. Node.js は `24` を使用する。
 3. 依存関係は `npm ci` でインストールする。
 4. npm キャッシュを有効化する。
 5. 型チェック、ユニットテスト、E2E テスト、ビルドの順で検証する。
@@ -52,7 +52,7 @@
 実行順:
 
 1. リポジトリを checkout
-2. Node.js 20 をセットアップ
+2. Node.js 24 をセットアップ
 3. `npm ci`
 4. `npx playwright install --with-deps chromium`
 5. `npx vue-tsc --noEmit`
