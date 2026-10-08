@@ -1,6 +1,6 @@
 ---
 name: delivery-flow
-description: '修正・Issue対応・feature branch・コミット・PR・push・本番反映の依頼を最初に整理し、適切なブランチ運用とスキルへ振り分ける入口スキル。Use when Issueに対応する、feature branchで作業する、mainで修正してと言われる、コミットだけしたい、PRだけ作りたい、pushしたい、レビューに出したい、デプロイしたい、と依頼されたとき。'
+description: '既存 Issue の実装・テスト・PR、feature branch・コミット・push・デプロイの依頼を整理し、適切なフローへ振り分ける入口スキル。Use when Issue の実装に対応する、feature branchで作業する、コミットやPRを作る、pushする、レビューに出す、デプロイすると依頼されたとき。Issueの新規作成・本文編集・原因分析には issue-authoring を使う。'
 ---
 
 # 全体運用フロー
@@ -10,6 +10,7 @@ description: '修正・Issue対応・feature branch・コミット・PR・push�
 ## 役割
 
 - 依頼が実装なのか、コミット / PR なのか、デプロイなのかを切り分ける
+- Issue の新規作成・本文編集・原因分析のみの依頼は `issue-authoring` に渡し、このスキルでは実装・テスト・PR 等を扱う
 - `main` 直 push 禁止の前提を最初に確認する
 - ユーザーがすでに作った feature branch を尊重する
 - Issue 番号がある依頼では、その番号をブランチ名や PR に反映する
