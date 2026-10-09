@@ -194,3 +194,78 @@ GitHub Pages の Settings > Pages では、Source を `GitHub Actions` に設定
 3. プロダクションビルド（`vite build`）
 4. Pages artifact を upload
 5. `actions/deploy-pages` で公開
+
+## 本リポジトリのActions
+
+Actions タブに表示されるワークフローの一覧です。YAML ファイルで定義しているものと、GitHub の設定によって GitHub 側が自動で動かすもの（リポジトリ内に YAML はありません）があります。
+
+### 一覧
+
+| 名前 | 定義場所 | トリガー | 概要 |
+|---|---|---|---|
+| Required PR Checks | [.github/workflows/ci.yml](.github/workflows/ci.yml) | `main` 向けの PR、手動実行 | PR の型チェック・テスト・ビルド |
+| Deploy to GitHub Pages | [.github/workflows/deploy.yml](.github/workflows/deploy.yml) | 手動実行のみ | GitHub Pages へのデプロイ |
+| Copilot Cloud Agent Setup | [.github/workflows/copilot-setup-steps.yml](.github/workflows/copilot-setup-steps.yml) | 手動実行、このファイルへの push | Copilot cloud agent の作業環境の準備 |
+| Dependabot Updates | GitHub の設定（内容は [.github/dependabot.yml](.github/dependabot.yml)） | 週 1 回のスケジュール、セキュリティアラート | 依存関係の更新 PR の作成 |
+| CodeQL | GitHub の設定（Code security → CodeQL default setup） | push、PR、定期実行 | コードの脆弱性検査 |
+| Copilot cloud agent | GitHub の設定（Copilot cloud agent） | Issue を Copilot に割り当てる、PR で Copilot に依頼する | Copilot による実装と PR の作成 |
+| Copilot code review | GitHub の設定（`main` の ruleset） | PR の作成・更新 | Copilot による PR レビュー |
+| Copilot | GitHub の設定（Copilot 関連） | Copilot 機能の利用時 | Copilot 関連の実行履歴 |
+| pages-build-deployment | GitHub の設定（Pages の Source が「Deploy from a branch」の場合） | ブランチへの push | GitHub 標準の Pages 公開処理（現在は未使用） |
+
+### Required PR Checks
+
+`required-checks` ジョブで以下を順に実行します。
+
+1. Node 24 のセットアップと `npm ci`
+2. E2E テスト用の Chrome のセットアップ
+3. 型チェック（`vue-tsc --noEmit`）
+4. ユニットテスト（`vitest run`）
+5. Vite 開発サーバーを `http://127.0.0.1:4173/english-idiom-target-1000/` で起動し、応答するまで最大 60 秒待機
+6. E2E テスト（`npm run test:e2e`）
+7. プロダクションビルド（`npm run build`）
+
+続いて `publish-required-status` ジョブが、`required-checks` の成否にかかわらず実行され、結果を `required-pr-checks` というコミットステータスとして PR に付けます。`main` の ruleset ではこのステータスをマージの必須条件にしています。
+
+### Deploy to GitHub Pages
+
+[デプロイ](#デプロイ) の手順で手動実行します。
+
+1. `build` ジョブ：`npm ci`、型チェック、ユニットテスト、ビルドを行い、`dist/` を Pages artifact としてアップロード
+2. `deploy` ジョブ：`actions/deploy-pages` で GitHub Pages に公開
+
+同時実行は `github-pages` グループで 1 つに制限され、新しい実行が始まると古い実行はキャンセルされます。E2E テストは含みません。
+
+### Copilot Cloud Agent Setup
+
+Copilot cloud agent が作業を始める前に実行する準備手順です。Node 24 と依存関係（`npm ci`）、E2E テスト用の Chrome を用意します。このファイルを変更して push したときにも実行されるため、準備手順が正しく動くかを確認できます。
+
+### Dependabot Updates
+
+[.github/dependabot.yml](.github/dependabot.yml) の設定に従い、週 1 回更新を確認して PR を作成します。PR には `dependencies` ラベルが付きます。
+
+- npm：PR は最大 5 件。`vitest` と `@vitest/*` はまとめて 1 つの PR
+- GitHub Actions：PR は最大 2 件。`github-actions` ラベルも付く
+
+Dependabot security updates も有効なため、脆弱性アラートに対応する PR も作成されます。作成された PR は Required PR Checks で確認されます。
+
+### CodeQL
+
+Code scanning の default setup により GitHub 側が実行します。検出結果は Security タブの Code scanning alerts に表示され、Copilot Autofix による修正案も利用できます。
+
+### Copilot cloud agent
+
+Issue を Copilot に割り当てると、Copilot が実装し、PR を作成・更新します。準備段階で Copilot Cloud Agent Setup の手順が使われます。作業時の方針は [.github/copilot-instructions.md](.github/copilot-instructions.md) や [.github/agents](.github/agents) などのカスタマイズに従います。
+
+### Copilot code review
+
+`main` の ruleset で自動リクエストを設定しているため、PR に Copilot のレビューが付きます。レビューは [.github/instructions/review-common.instructions.md](.github/instructions/review-common.instructions.md) の指示に従い、日本語で行われます。
+
+### Copilot
+
+Copilot 関連機能の実行履歴です。何をきっかけに実行されたかは、各実行の詳細で確認できます。
+
+### pages-build-deployment
+
+Pages の Source が「Deploy from a branch」のときに GitHub が自動で動かす公開処理です。現在は Source を `GitHub Actions` にして Deploy to GitHub Pages で公開しているため使っていません。Actions タブに表示されているのは過去の実行履歴です。
+
