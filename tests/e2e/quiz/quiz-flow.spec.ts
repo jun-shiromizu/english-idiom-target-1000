@@ -175,6 +175,7 @@ test.describe('通常クイズ - 回答から結果表示', () => {
       return session?.results
     })).toEqual({ 0: false })
 
+    await page.getByRole('button', { name: 'タップまたはクリックして回答を表示' }).click()
     const secondMeaning = page.getByText('1つの〜', { exact: true })
     await dispatchTouchSequence(secondMeaning, [
       { type: 'touchstart', x: 200, y: 100 },
