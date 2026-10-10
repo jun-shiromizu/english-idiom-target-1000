@@ -88,9 +88,8 @@ let touchStartY = 0
 const swipeOffsetX = ref(0)
 const isSwipeActive = ref(false)
 
-const SWIPE_MIN_X = 120
-const SWIPE_MAX_Y = 40
-const SWIPE_MIN_XY_RATIO = 3
+const SWIPE_MIN_X = 80
+const SWIPE_MIN_XY_RATIO = 1.5
 const SWIPE_ACTIVATE_X = 24
 const SWIPE_ACTIVATE_XY_RATIO = 1.5
 const SWIPE_MAX_OFFSET = 160
@@ -196,7 +195,6 @@ function onTouchEnd(e: TouchEvent) {
   resetTouch()
 
   if (absX < SWIPE_MIN_X) return
-  if (absY > SWIPE_MAX_Y) return
   if (absX / Math.max(absY, 1) < SWIPE_MIN_XY_RATIO) return
 
   if (diffX > 0) onJudge(true)
@@ -220,6 +218,7 @@ function quitSession() {
 .swipe-zone {
   position: relative;
   overflow: hidden;
+  touch-action: pan-y;
 }
 
 .swipe-card {
