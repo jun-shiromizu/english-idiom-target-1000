@@ -71,3 +71,17 @@ scenarios:
     expect:
       - スキル成功メッセージが表示される
       - スキル効果が battle 画面に反映される
+
+  - id: BATTLE-007
+    category: normal
+    status: done
+    scenario: 最終 wave の敵を倒すとダンジョンクリア結果が表示される
+    precondition: 最終 wave の敵を倒せる battle 状態を開始している状態
+    steps:
+      - 落ち物ゲームを開始する
+      - 問題に1回正解した後、不正解を選択して攻撃を確定する
+      - 「バトル結果へ」をクリックする
+    expect:
+      - バトル結果画面へ遷移する
+      - 「ダンジョンクリア」が表示される
+      - 状態が cleared になり、倒した敵が表示される

@@ -376,4 +376,39 @@ test.describe('バトルモード - 基本導線', () => {
     await expect(page.getByText('被ダメ 0.5倍 (1T)')).toBeVisible()
     await expect(page.getByRole('button', { name: '落ち物ゲームスタート' })).toBeVisible()
   })
+
+  test('BATTLE-007: 最終 wave の敵を倒すとダンジョンクリア結果が表示される', async ({ page }) => {
+    await seedBattleSession(page, {
+      sessionType: 'battle',
+      status: 'in-battle',
+      deck: {
+        leaderId: 'hero-001',
+        memberIds: ['hero-002', 'hero-003', 'hero-004', 'hero-005'],
+      },
+      dungeonId: 'dungeon-001',
+      currentWaveIndex: 0,
+      turn: 1,
+      score: 0,
+      party: battleCharacters.map((character) => ({
+        characterId: character.id,
+        currentHp: character.hp,
+        skillCooldownRemaining: 0,
+      })),
+      enemyCurrentHp: 120,
+      activeEffects: [],
+    })
+
+    await page.goto('./#/battle/play', { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: '落ち物ゲームスタート' }).click()
+    await clickCorrectBattleChoice(page)
+    await clickWrongBattleChoice(page)
+
+    await page.getByRole('button', { name: 'バトル結果へ' }).click()
+
+    await expect(page).toHaveURL(/#\/battle\/result/)
+    await expect(page.getByText('ダンジョンクリア', { exact: true })).toBeVisible()
+    await expect(page.getByText('Test Dungeon', { exact: true })).toBeVisible()
+    await expect(page.getByText('Slime', { exact: true })).toBeVisible()
+    await expect(page.getByText('cleared', { exact: true })).toBeVisible()
+  })
 })
