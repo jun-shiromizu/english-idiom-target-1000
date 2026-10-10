@@ -1,0 +1,20 @@
+feature: 通常クイズ - 回答から結果表示
+action: quiz-flow
+page: "#/quiz"
+
+scenarios:
+  - id: QUIZ-001
+    category: normal
+    status: done
+    scenario: 2問に回答すると結果画面に正解数と正解率が表示される
+    precondition: 2問の通常クイズ session が保存されている状態
+    steps:
+      - 通常クイズ画面を開く
+      - 1問目の問題カードをクリックして回答を表示する
+      - 「正解」ボタンをクリックする
+      - 2問目の問題カードをクリックして回答を表示する
+      - 「不正解」ボタンをクリックする
+    expect:
+      - 結果画面（#/result）へ遷移する
+      - 2問中1問正解、正解率50%が表示される
+      - 回答結果が保存されている

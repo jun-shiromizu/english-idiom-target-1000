@@ -1,0 +1,64 @@
+feature: タイピングレース
+action: typing-race
+page: "#/typing-race"
+
+scenarios:
+  - id: TYPING-001
+    category: normal
+    status: done
+    scenario: 例文モードで開始するとタイピングレース画面へ遷移する
+    precondition: タイピングレース用データを取得できる状態
+    steps:
+      - トップページでアクション「タイピング」を選択する
+      - 開始番号と終了番号に「1」を入力する
+      - 「開始」ボタンをクリックする
+    expect:
+      - タイピングレース画面へ遷移する
+      - 例文と日本語訳が表示される
+      - 残り時間「90秒」が表示される
+
+  - id: TYPING-002
+    category: normal
+    status: done
+    scenario: 正しい例文を入力して送信すると結果が表示される
+    precondition: 制限時間内のタイピングレース session が保存されている状態
+    steps:
+      - 例文を入力する
+      - 「採点して次へ」をクリックする
+    expect:
+      - 90秒チャレンジ結果が表示される
+      - 正解した文字数が表示される
+      - ミスタイプが0文字と表示される
+
+  - id: TYPING-003
+    category: normal
+    status: done
+    scenario: 誤った文字は入力欄に反映されない
+    precondition: タイピングレース画面を表示している状態
+    steps:
+      - 例文の先頭文字を入力する
+      - 続けて誤った文字を入力する
+    expect:
+      - 正しい先頭文字だけが入力欄に残る
+
+  - id: TYPING-101
+    category: error
+    status: done
+    scenario: typing-race 以外の session でアクセスするとトップへ戻る
+    precondition: sessionType が quiz の session が存在する状態
+    steps:
+      - quiz 用 session を保存して「#/typing-race」に直接アクセスする
+    expect:
+      - トップページ（/#/）にリダイレクトされる
+
+  - id: TYPING-102
+    category: normal
+    status: done
+    scenario: タイムアップ後に続けると保存位置から再開できる
+    precondition: タイムアップ済みで途中の進捗が保存された session が存在する状態
+    steps:
+      - タイピングレース画面を開く
+      - 「続ける」をクリックする
+    expect:
+      - 結果画面が閉じる
+      - 保存されていた位置の例文から再開する
