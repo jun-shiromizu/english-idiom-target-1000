@@ -83,8 +83,8 @@ const { setResult } = useHistory()
 const session = ref<QuizSession | null>(null)
 const revealed = ref(false)
 const showQuitDialog = ref(false)
-let touchStartX = 0
-let touchStartY = 0
+let touchStartX: number | null = null
+let touchStartY: number | null = null
 const swipeOffsetX = ref(0)
 const isSwipeActive = ref(false)
 
@@ -166,7 +166,7 @@ function onTouchStart(e: TouchEvent) {
 }
 
 function onTouchMove(e: TouchEvent) {
-  if (!touchStartX || !touchStartY || e.touches.length !== 1) return
+  if (touchStartX === null || touchStartY === null || e.touches.length !== 1) return
 
   const touch = e.touches[0]
   const diffX = touch.clientX - touchStartX
@@ -185,7 +185,7 @@ function onTouchMove(e: TouchEvent) {
 }
 
 function onTouchEnd(e: TouchEvent) {
-  if (!touchStartX || !touchStartY) return
+  if (touchStartX === null || touchStartY === null) return
 
   const touch = e.changedTouches[0]
   const diffX = touch.clientX - touchStartX
@@ -204,8 +204,8 @@ function onTouchEnd(e: TouchEvent) {
 }
 
 function resetTouch() {
-  touchStartX = 0
-  touchStartY = 0
+  touchStartX = null
+  touchStartY = null
   swipeOffsetX.value = 0
   isSwipeActive.value = false
 }
