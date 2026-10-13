@@ -1,4 +1,29 @@
-import { test, expect, type Locator } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
+
+type TouchPoint = { x: number; y: number }
+
+async function swipeWithRealTouch(page: Page, from: TouchPoint, to: TouchPoint, steps = 12) {
+  const client = await page.context().newCDPSession(page)
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] })
+  for (let i = 1; i <= steps; i++) {
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{
+        x: from.x + ((to.x - from.x) * i) / steps,
+        y: from.y + ((to.y - from.y) * i) / steps,
+      }],
+    })
+  }
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await client.detach()
+}
+
+async function readResults(page: Page) {
+  return page.evaluate(() => {
+    const session = JSON.parse(localStorage.getItem('idiom-app-session') ?? 'null')
+    return session?.results
+  })
+}
 
 async function dispatchTouchSequence(
   target: Locator,
@@ -188,5 +213,66 @@ test.describe('通常クイズ - 回答から結果表示', () => {
       const session = JSON.parse(localStorage.getItem('idiom-app-session') ?? 'null')
       return session?.results
     })).toEqual({ 0: false, 1: true })
+  })
+})
+
+test.describe('通常クイズ - スマートフォンでのスワイプ判定', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
+
+  test('QUIZ-003: スマートフォンで縦ブレを含む左右スワイプでも回答を判定し縦スクロールでは判定しない', async ({ page }) => {
+    await page.addInitScript(() => localStorage.clear())
+    await page.goto('./')
+
+    await page.evaluate(() => {
+      const means = Array.from({ length: 8 }, (_, i) => ({
+        'idiom-jp': `意味${i + 1}`,
+        'example-sentence': `This is a fairly long example sentence number ${i + 1} to make the answer page scrollable.`,
+        'sentence-jp': `これは回答画面をスクロール可能にするための長い例文${i + 1}です。`,
+      }))
+      const idiomData = { idioms: ['stimulate'], means, notes: [] }
+      const baseItem = { mode: 'idiom', direction: 'en-to-ja', idiomIndex: 0 }
+      const session = {
+        settings: {
+          bookId: 'idiom-target-1000',
+          startNumber: 1,
+          endNumber: 2,
+          mode: 'idiom',
+          direction: 'en-to-ja',
+          target: 'all',
+          order: 'sequential',
+        },
+        items: [
+          { ...baseItem, number: '0001', idiomData, questionText: 'stimulate' },
+          { ...baseItem, number: '0002', idiomData: { ...idiomData, idioms: ['promote'] }, questionText: 'promote' },
+        ],
+        currentIndex: 0,
+        results: {},
+      }
+      localStorage.setItem('idiom-app-session', JSON.stringify(session))
+    })
+
+    await page.goto('./#/quiz')
+    await page.getByRole('button', { name: 'タップまたはクリックして回答を表示' }).click()
+    await expect(page.getByText('意味1', { exact: true })).toBeVisible()
+
+    // 縦スクロールは維持され、回答は判定しない
+    const scrollYBefore = await page.evaluate(() => window.scrollY)
+    await swipeWithRealTouch(page, { x: 200, y: 600 }, { x: 215, y: 300 })
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(scrollYBefore)
+    expect(await readResults(page)).toEqual({})
+    await expect(page.getByRole('button', { name: '不正解', exact: true })).toBeVisible()
+
+    // 親指の弧による縦ブレを含む左スワイプ
+    await swipeWithRealTouch(page, { x: 330, y: 400 }, { x: 90, y: 470 })
+    await expect(page.getByText('promote', { exact: true })).toBeVisible()
+    expect(await readResults(page)).toEqual({ 0: false })
+
+    await page.getByRole('button', { name: 'タップまたはクリックして回答を表示' }).click()
+    await expect(page.getByText('意味1', { exact: true })).toBeVisible()
+
+    // 縦ブレを含む右スワイプ
+    await swipeWithRealTouch(page, { x: 60, y: 450 }, { x: 300, y: 390 })
+    await expect(page).toHaveURL(/#\/result/)
+    expect(await readResults(page)).toEqual({ 0: false, 1: true })
   })
 })
