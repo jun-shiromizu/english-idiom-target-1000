@@ -192,12 +192,16 @@ function onTouchEnd(e: TouchEvent) {
   const diffY = touch.clientY - touchStartY
   const absX = Math.abs(diffX)
   const absY = Math.abs(diffY)
+  const wasSwipeActive = isSwipeActive.value
 
   resetTouch()
 
   if (absX < SWIPE_MIN_X) return
-  if (absY > SWIPE_MAX_Y) return
-  if (absX / Math.max(absY, 1) < SWIPE_MIN_XY_RATIO) return
+  // 横スワイプとして確定済みなら、指の弧による縦ブレは許容する
+  if (!wasSwipeActive) {
+    if (absY > SWIPE_MAX_Y) return
+    if (absX / Math.max(absY, 1) < SWIPE_MIN_XY_RATIO) return
+  }
 
   if (diffX > 0) onJudge(true)
   else onJudge(false)
@@ -220,6 +224,7 @@ function quitSession() {
 .swipe-zone {
   position: relative;
   overflow: hidden;
+  touch-action: pan-y;
 }
 
 .swipe-card {
