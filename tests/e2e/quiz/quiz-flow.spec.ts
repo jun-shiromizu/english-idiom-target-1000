@@ -255,8 +255,10 @@ test.describe('通常クイズ - スマートフォンでのスワイプ判定',
     await page.getByRole('button', { name: 'タップまたはクリックして回答を表示' }).click()
     await expect(page.getByText('意味1', { exact: true })).toBeVisible()
 
-    // 縦スクロールでは判定しない
+    // 縦スクロールは維持され、回答は判定しない
+    const scrollYBefore = await page.evaluate(() => window.scrollY)
     await swipeWithRealTouch(page, { x: 200, y: 600 }, { x: 215, y: 300 })
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(scrollYBefore)
     expect(await readResults(page)).toEqual({})
     await expect(page.getByRole('button', { name: '不正解', exact: true })).toBeVisible()
 
