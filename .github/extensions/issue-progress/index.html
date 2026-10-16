@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Issue → PR 進捗一覧</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/client.mjs"></script>
+</head>
+<body>
+  <main>
+    <h1>Issue → PR 進捗一覧</h1>
+    <p>監視専用です。エージェントの操作・問い合わせへの回答・PR マージはできません。</p>
+    <p id="limitation">ローカルで受領した報告のみ表示します。cloud agent の詳細工程は接続未対応です。</p>
+    <div id="error" role="alert" hidden></div>
+    <p id="status" role="status" aria-live="polite">読み込み中…</p>
+    <div class="controls">
+      <label for="filter">状態で絞り込み</label>
+      <select id="filter">
+        <option value="all">すべて</option>
+        <option value="running">実行中</option>
+        <option value="waiting">ユーザー判断待ち</option>
+        <option value="attention">異常終了・中断・要確認</option>
+      </select>
+      <button id="refresh" type="button">最新情報を取得</button>
+    </div>
+    <div class="table-wrap" tabindex="0" role="region" aria-label="タスク一覧（横スクロール可能）">
+      <table>
+        <caption>独立した Issue 実行（親を展開すると子タスクと履歴を表示）</caption>
+        <thead><tr>
+          <th scope="col">Issue / タスク</th><th scope="col">担当 / 実行元</th>
+          <th scope="col">工程</th><th scope="col">実行状態</th><th scope="col">時刻</th>
+          <th scope="col">親子 / 並列</th><th scope="col">直近の報告 / 待機・異常理由</th>
+          <th scope="col">検証</th><th scope="col">PR</th>
+        </tr></thead>
+        <tbody id="tasks"></tbody>
+      </table>
+    </div>
+  </main>
+</body>
+</html>
