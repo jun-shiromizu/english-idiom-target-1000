@@ -9,6 +9,7 @@ afterEach(() => {
   document.head.querySelectorAll('script[data-google-analytics]').forEach((script) => script.remove())
   delete window.gtag
   window.dataLayer = []
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
@@ -17,6 +18,18 @@ function getQueuedCalls(): unknown[][] {
 }
 
 describe('Google Analytics', () => {
+  it('crypto.randomUUID が使えない場合も暗号学的乱数からUUIDを生成する', async () => {
+    vi.stubGlobal('crypto', {
+      getRandomValues: vi.fn((bytes: Uint8Array) => {
+        bytes.set(Array.from({ length: bytes.length }, (_, index) => index))
+        return bytes
+      }),
+    })
+    const analytics = await loadAnalytics()
+
+    expect(analytics.createAnalyticsSessionId()).toBe('00010203-0405-4607-8809-0a0b0c0d0e0f')
+  })
+
   it('本番以外では初期化しない', async () => {
     const analytics = await loadAnalytics()
 
