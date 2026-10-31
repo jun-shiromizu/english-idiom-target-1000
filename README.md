@@ -9,9 +9,9 @@
 ![Vitest](https://img.shields.io/badge/Vitest-2-6e9f18?logo=vitest&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-1-2ead33?logo=playwright&logoColor=white)
 
-高校生向け英単語／英熟語暗記アプリ（旺文社・英単語ターゲット1900／英熟語ターゲット1000）。
+高校生向け英単語／英熟語暗記アプリ（旺文社・英単語ターゲット1900／英熟語ターゲット1000）。古文単語330も単語帳（古文 → 現代語）で学習できます。
 
-> アプリの詳細仕様は [docs/spec.md](docs/spec.md)、実装計画は [docs/plan.md](docs/plan.md) を参照してください。
+> アプリの詳細仕様は [docs/spec.md](docs/spec.md)、実装計画は [docs/plan.md](docs/plan.md) を参照してください。古文単語330の仕様・計画は [docs/classic-japanese-spec.md](docs/classic-japanese-spec.md)、[docs/classic-japanese-plan.md](docs/classic-japanese-plan.md) にまとめています。
 
 ---
 
@@ -50,37 +50,58 @@ src/
 ├── components/
 │   ├── QuizQuestion.vue   # 問題カード
 │   ├── QuizAnswer.vue     # 回答カード
+│   ├── ClassicQuizAnswer.vue  # 古文単語330の回答カード
 │   ├── ProgressBar.vue    # 進捗バー
 │   └── SupplementContent.vue  # 補足データ表示
-└── composables/
-    ├── useGameChoices.ts  # game 用の選択肢生成
-    ├── useGitHubData.ts   # データ取得（GitHub API / Raw URL）
-    ├── useHistory.ts      # 正解/不正解履歴（localStorage）
-    ├── useQuizSession.ts  # セッション管理
-    └── useThemeSettings.ts # テーマ設定の永続化
+├── composables/
+│   ├── useAppNotice.ts    # 画面遷移をまたぐ通知
+│   ├── useGameChoices.ts  # game 用の選択肢生成
+│   ├── useGitHubData.ts   # データ取得（GitHub API / Raw URL）
+│   ├── useHistory.ts      # 正解/不正解履歴（localStorage）
+│   ├── useQuizSession.ts  # セッション管理
+│   └── useThemeSettings.ts # テーマ設定の永続化
+└── utils/
+    ├── classicWordData.ts # 古文単語データの形式検証
+    ├── classicSession.ts  # 古文セッションの復元検証
+    ├── routeGuards.ts     # 古文で非対応の画面への遷移制御
+    ├── sessionErrors.ts   # セッション保存エラー
+    └── studySettings.ts   # 出題設定の保存・補正
 ```
 
 ### データリポジトリの設定変更
 
-問題データのリポジトリ・ブランチを変更する場合は `src/config.ts` を編集します。
+問題データのリポジトリ・ブランチを変更する場合は `src/config.ts` を編集します（抜粋）。
 
 ```ts
 export const GITHUB_OWNER = 'jun-shiromizu'
 
-export const BOOKS = {
+export const BOOKS: Record<BookId, BookConfig> = {
     'idiom-target-1000': {
         title: '英熟語ターゲット1000',
+        maxNumber: 1000,
         dataRepo: 'english-idiom-target-1000-data',
         dataBranch: 'main',
         dataPath: 'idiom-target-1000',
+        supportedActions: ALL_STUDY_ACTIONS,
     },
     'word-target-1900': {
         title: '英単語ターゲット1900',
+        maxNumber: 1900,
         dataRepo: 'english-idiom-target-1000-data',
         dataBranch: 'main',
         dataPath: 'word-target-1900',
+        supportedActions: ALL_STUDY_ACTIONS,
     },
-} as const
+    'classic-japanese-330': {
+        title: '古文単語330',
+        kind: 'classic',
+        maxNumber: 330,
+        dataRepo: 'english-idiom-target-1000-data',
+        dataBranch: 'main',
+        dataPath: 'classic-japanese-330',
+        supportedActions: ['quiz'], // 単語帳のみ
+    },
+}
 ```
 
 ---
@@ -100,7 +121,7 @@ npx vitest run
 npm run test:coverage
 ```
 
-テストファイルは `src/composables/__tests__/`、`src/components/__tests__/`、`src/views/__tests__/` 配下にあります。
+テストファイルは `src/composables/__tests__/`、`src/components/__tests__/`、`src/views/__tests__/`、`src/utils/__tests__/` 配下にあります。古文単語330のテストでは `src/__tests__/fixtures/classicWords.ts` の架空データを使います。
 
 ### E2Eテスト（Playwright）
 

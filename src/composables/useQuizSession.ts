@@ -1,7 +1,25 @@
 import { DEFAULT_BOOK_ID, LEGACY_BOOK_ID, STORAGE_KEY_SESSION } from '@/config'
-import type { ClozeData, IdiomData, Mean, QuizItem, QuizSession, QuizSettings } from '@/types'
-import { useHistory } from './useHistory'
+import type {
+  ClassicQuizItem,
+  ClassicQuizSession,
+  ClassicQuizSettings,
+  ClassicWordData,
+  ClozeData,
+  IdiomData,
+  Mean,
+  QuizItem,
+  QuizOrder,
+  QuizSession,
+  QuizSettings,
+  StoredQuizSessionState,
+} from '@/types'
+import { isClassicQuizSession, isClassicSessionLike, parseClassicQuizSession } from '@/utils/classicSession'
+import { SessionSaveError } from '@/utils/sessionErrors'
+import { getClassicExampleHistoryKey, getClassicWordHistoryKey, useHistory } from './useHistory'
 import { formatNumber } from './useGitHubData'
+
+export { SessionSaveError } from '@/utils/sessionErrors'
+export { isClassicQuizSession } from '@/utils/classicSession'
 
 /** Fisher-Yates シャッフル */
 function shuffle<T>(arr: T[]): T[] {
@@ -14,7 +32,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export function useQuizSession() {
-  const { isIncorrect } = useHistory()
+  const { isIncorrect, isClassicIncorrect } = useHistory()
 
   function normalizeSettings(settings: QuizSettings): QuizSettings {
     return {
@@ -29,7 +47,10 @@ export function useQuizSession() {
     }
   }
 
-  function orderAndLimitItems(items: QuizItem[], settings: QuizSettings): QuizItem[] {
+  function orderAndLimitItems<T>(
+    items: T[],
+    settings: { order: QuizOrder; randomQuestionCount?: number },
+  ): T[] {
     const orderedItems = settings.order === 'random' ? shuffle(items) : items
     if (settings.order !== 'random' || settings.randomQuestionCount === undefined) {
       return orderedItems
@@ -149,6 +170,81 @@ export function useQuizSession() {
     return orderAndLimitItems(items, normalizedSettings)
   }
 
+  /**
+   * 古文の問題を生成する。見出し語は表記ごとに1問、例文は意味×例文ごとに1問。
+   * 絞り込み → 生成 → 並べ替え → 件数制限の順で処理する。
+   */
+  function buildClassicItems(
+    settings: ClassicQuizSettings,
+    dataMap: Map<string, ClassicWordData>,
+  ): ClassicQuizItem[] {
+    const items: ClassicQuizItem[] = []
+    const shouldInclude = (historyKey: string) =>
+      settings.target !== 'incorrect' || isClassicIncorrect(historyKey)
+
+    for (let i = settings.startNumber; i <= settings.endNumber; i++) {
+      const number = formatNumber(i)
+      const data = dataMap.get(number)
+      if (!data) continue
+
+      if (settings.mode === 'idiom') {
+        data.words.forEach((word, wordIndex) => {
+          const historyKey = getClassicWordHistoryKey(data, wordIndex)
+          if (!shouldInclude(historyKey)) return
+          items.push({
+            number,
+            mode: 'idiom',
+            direction: 'classic-to-modern',
+            questionText: word,
+            historyKey,
+            wordIndex,
+          })
+        })
+        continue
+      }
+
+      data.means.forEach((mean, meanIndex) => {
+        mean.examples.forEach((example, exampleIndex) => {
+          const historyKey = getClassicExampleHistoryKey(data, meanIndex, exampleIndex)
+          if (!shouldInclude(historyKey)) return
+          items.push({
+            number,
+            mode: 'sentence',
+            direction: 'classic-to-modern',
+            questionText: example.text,
+            historyKey,
+            meanIndex,
+            exampleIndex,
+          })
+        })
+      })
+    }
+
+    return orderAndLimitItems(items, settings)
+  }
+
+  /** 問題が参照する番号の単語データだけを1回ずつ保持したセッションを作る */
+  function createClassicSession(
+    settings: ClassicQuizSettings,
+    items: ClassicQuizItem[],
+    dataMap: Map<string, ClassicWordData>,
+  ): ClassicQuizSession {
+    const words: Record<string, ClassicWordData> = {}
+    items.forEach((item) => {
+      const data = dataMap.get(item.number)
+      if (data) words[item.number] = data
+    })
+    return {
+      contentType: 'classic-japanese',
+      sessionType: 'quiz',
+      settings: { ...settings },
+      words,
+      items,
+      currentIndex: 0,
+      results: {},
+    }
+  }
+
   function buildDictationItems(settings: QuizSettings, dataMap: Map<string, IdiomData>): QuizItem[] {
     const normalizedSettings = normalizeSettings(settings)
 
@@ -217,36 +313,79 @@ export function useQuizSession() {
     return orderAndLimitItems(items, normalizedSettings)
   }
 
-  function saveSession(session: QuizSession): void {
-    localStorage.setItem(
-      STORAGE_KEY_SESSION,
-      JSON.stringify({ ...session, settings: normalizeSettings(session.settings) }),
-    )
+  function writeSession(value: unknown): void {
+    try {
+      localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(value))
+    } catch (error) {
+      throw new SessionSaveError({ cause: error })
+    }
   }
 
-  function loadSession(): QuizSession | null {
+  function saveSession(session: QuizSession | ClassicQuizSession): void {
+    if (isClassicQuizSession(session)) {
+      writeSession(session)
+      return
+    }
+    writeSession({ ...session, settings: normalizeSettings(session.settings) })
+  }
+
+  function normalizeStoredEnglishSession(session: QuizSession): QuizSession {
+    return {
+      ...session,
+      settings: {
+        ...normalizeSettings(session.settings),
+        bookId: session.settings.bookId ?? LEGACY_BOOK_ID,
+        direction: session.settings.direction ?? 'en-to-ja',
+      },
+    }
+  }
+
+  /** 保存済みセッションを英語・古文・不正な古文に分類して返す */
+  function loadStoredSession(): StoredQuizSessionState {
+    let parsed: unknown
     try {
       const raw = localStorage.getItem(STORAGE_KEY_SESSION)
-      if (!raw) return null
-      const session = JSON.parse(raw) as QuizSession
-      return {
-        ...session,
-        settings: {
-          ...normalizeSettings(session.settings),
-          bookId: session.settings.bookId ?? LEGACY_BOOK_ID,
-          direction: session.settings.direction ?? 'en-to-ja',
-        },
-      }
+      if (!raw) return { kind: 'none' }
+      parsed = JSON.parse(raw)
     } catch {
-      return null
+      return { kind: 'none' }
     }
+
+    if (isClassicSessionLike(parsed)) {
+      const result = parseClassicQuizSession(parsed)
+      return result.ok
+        ? { kind: 'classic', session: result.session }
+        : { kind: 'invalid-classic', reason: result.reason }
+    }
+
+    try {
+      return { kind: 'english', session: normalizeStoredEnglishSession(parsed as QuizSession) }
+    } catch {
+      return { kind: 'none' }
+    }
+  }
+
+  /** 英語教材のセッションだけを返す。古文セッションは英語専用画面へ渡さない */
+  function loadSession(): QuizSession | null {
+    const stored = loadStoredSession()
+    return stored.kind === 'english' ? stored.session : null
   }
 
   function clearSession(): void {
     localStorage.removeItem(STORAGE_KEY_SESSION)
   }
 
-  return { buildItems, buildDictationItems, buildClozeItems, saveSession, loadSession, clearSession }
+  return {
+    buildItems,
+    buildDictationItems,
+    buildClozeItems,
+    buildClassicItems,
+    createClassicSession,
+    saveSession,
+    loadStoredSession,
+    loadSession,
+    clearSession,
+  }
 }
 
 function hasValidCloze(cloze: Mean['cloze']): cloze is ClozeData {

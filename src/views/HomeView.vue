@@ -11,9 +11,20 @@
           </v-btn>
         </div>
 
+        <v-alert
+          v-if="pageNotice"
+          type="warning"
+          variant="tonal"
+          class="mb-6"
+          closable
+          @click:close="pageNotice = ''"
+        >
+          {{ pageNotice }}
+        </v-alert>
+
         <!-- 中断セッション再開バナー -->
         <v-alert
-          v-if="savedSession"
+          v-if="resumableSession"
           type="info"
           variant="tonal"
           class="mb-6"
@@ -23,10 +34,32 @@
           <div class="d-flex align-center justify-space-between flex-wrap gap-2">
             <span>
               前回のセッションが保存されています
-              （{{ getBookTitle(savedSession.settings.bookId) }} / {{ savedSession.currentIndex }} / {{ savedSession.items.length }}問目）
+              （{{ getBookTitle(resumableSession.settings.bookId) }} / {{ resumableSession.currentIndex }} / {{ resumableSession.items.length }}問目）
             </span>
-            <v-btn size="small" color="info" variant="elevated" @click="resumeSession">
+            <v-btn
+              size="small"
+              color="info"
+              variant="elevated"
+              :disabled="startingRoute !== null"
+              @click="resumeSession"
+            >
               再開する
+            </v-btn>
+          </div>
+        </v-alert>
+
+        <v-alert
+          v-if="storedSession.kind === 'invalid-classic'"
+          type="warning"
+          variant="tonal"
+          class="mb-6"
+        >
+          <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+            <span>
+              保存されている古文単語330の単語帳を再開できません（{{ storedSession.reason }}）。
+            </span>
+            <v-btn size="small" color="warning" variant="outlined" @click="discardSession">
+              破棄する
             </v-btn>
           </div>
         </v-alert>
@@ -44,7 +77,13 @@
               バトルの中断データがあります
               （{{ savedBattleSession.status }} / {{ savedBattleSession.dungeonId ?? 'ダンジョン未選択' }}）
             </span>
-            <v-btn size="small" color="warning" variant="elevated" @click="resumeBattleSession">
+            <v-btn
+              size="small"
+              color="warning"
+              variant="elevated"
+              :disabled="startingRoute !== null"
+              @click="resumeBattleSession"
+            >
               再開する
             </v-btn>
           </div>
@@ -67,9 +106,25 @@
                     :key="book.value"
                     :label="book.label"
                     :value="book.value"
-                    :disabled="selectedAction === 'dictation' && book.value !== 'word-target-1900'"
+                    :disabled="selectedAction === 'dictation' && book.value === 'idiom-target-1000'"
                   />
                 </v-radio-group>
+              </v-col>
+              <v-col v-if="isClassicSelected" cols="12" class="pt-0">
+                <v-alert type="info" variant="tonal" density="compact">
+                  古文単語330は単語帳（古文 → 現代語）のみ対応しています。
+                </v-alert>
+                <v-alert
+                  v-if="switchNotice"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mt-2"
+                  closable
+                  @click:close="switchNotice = ''"
+                >
+                  {{ switchNotice }}
+                </v-alert>
               </v-col>
               <v-col cols="12">
                 <v-radio-group
@@ -83,7 +138,7 @@
                     :key="action.value"
                     :label="action.label"
                     :value="action.value"
-                    :disabled="startingRoute !== null"
+                    :disabled="startingRoute !== null || !isActionSupported(settings.bookId, action.value)"
                   />
                 </v-radio-group>
               </v-col>
@@ -257,83 +312,58 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import type { GameDifficulty, QuizDirection, QuizSettings } from '@/types'
+import type {
+  BookId,
+  ClassicQuizSettings,
+  GameDifficulty,
+  QuizMode,
+  QuizSettings,
+  StoredQuizSessionState,
+  StudyAction,
+  StudyDirection,
+  StudySettingsForm,
+} from '@/types'
 import {
   BOOK_ORDER,
-  DEFAULT_BOOK_ID,
+  CLASSIC_BOOK_ID,
   STORAGE_KEY_GAME_SETTINGS,
-  STORAGE_KEY_SETTINGS,
   getBookConfig,
+  isActionSupported,
+  isClassicBookId,
+  isEnglishBookId,
 } from '@/config'
 import { useGitHubData } from '@/composables/useGitHubData'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { useHistory } from '@/composables/useHistory'
 import { useBattleSession } from '@/composables/useBattleSession'
+import { useAppNotice } from '@/composables/useAppNotice'
+import { ClassicDataError } from '@/utils/classicWordData'
+import { SessionSaveError } from '@/utils/sessionErrors'
+import { createDefaultStudySettings, loadStudySettings, saveStudySettings } from '@/utils/studySettings'
 import type { BattleSession } from '@/types'
 
 const router = useRouter()
-const { fetchRangeData } = useGitHubData()
-const { buildItems, buildDictationItems, buildClozeItems, saveSession, loadSession, clearSession } = useQuizSession()
+const { fetchRangeData, fetchClassicRangeData } = useGitHubData()
+const {
+  buildItems,
+  buildDictationItems,
+  buildClozeItems,
+  buildClassicItems,
+  createClassicSession,
+  saveSession,
+  loadStoredSession,
+  clearSession,
+} = useQuizSession()
 const { clearAll } = useHistory()
 const {
   loadSession: loadBattleSession,
   clearSession: clearBattleSession,
 } = useBattleSession()
+const { notice: appNotice, consumeNotice } = useAppNotice()
 
-const DEFAULT_RANDOM_QUESTION_COUNT = 100
-
-function createDefaultSettings(): QuizSettings {
-  return {
-    bookId: DEFAULT_BOOK_ID,
-    startNumber: 1,
-    endNumber: 100,
-    mode: 'idiom',
-    direction: 'en-to-ja',
-    target: 'all',
-    order: 'sequential',
-    randomQuestionCount: DEFAULT_RANDOM_QUESTION_COUNT,
-  }
-}
-
-function normalizeSettings(raw: Partial<QuizSettings> | null | undefined): QuizSettings {
-  const defaults = createDefaultSettings()
-  const bookId = raw?.bookId && BOOK_ORDER.includes(raw.bookId) ? raw.bookId : defaults.bookId
-  const maxNumber = getBookConfig(bookId).maxNumber
-  const startNumber = Math.min(Math.max(raw?.startNumber ?? defaults.startNumber, 1), maxNumber)
-  const endNumber = Math.min(Math.max(raw?.endNumber ?? defaults.endNumber, 1), maxNumber)
-  const randomQuestionCount =
-    raw === null || raw === undefined
-      ? DEFAULT_RANDOM_QUESTION_COUNT
-      : raw.randomQuestionCount === undefined
-        ? undefined
-        : Math.min(Math.max(raw.randomQuestionCount, 1), maxNumber)
-
-  return {
-    bookId,
-    startNumber: Math.min(startNumber, endNumber),
-    endNumber: Math.max(startNumber, endNumber),
-    mode: raw?.mode ?? defaults.mode,
-    direction: raw?.direction === 'ja-to-en' ? 'ja-to-en' : defaults.direction,
-    target: raw?.target ?? defaults.target,
-    order: raw?.order ?? defaults.order,
-    randomQuestionCount,
-  }
-}
-
-function loadSettings(): QuizSettings {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_SETTINGS)
-    return normalizeSettings(raw ? (JSON.parse(raw) as Partial<QuizSettings>) : null)
-  } catch {
-    return createDefaultSettings()
-  }
-}
-
-function saveSettings(settings: QuizSettings): void {
-  localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings))
-}
+const CLASSIC_ONLY_QUIZ_MESSAGE = '古文単語330は単語帳（古文 → 現代語）のみ対応しているため'
 
 function loadGameDifficulty(): GameDifficulty {
   try {
@@ -351,7 +381,7 @@ function saveGameDifficulty(difficulty: GameDifficulty): void {
   localStorage.setItem(STORAGE_KEY_GAME_SETTINGS, JSON.stringify({ difficulty }))
 }
 
-const settings = ref<QuizSettings>(createDefaultSettings())
+const settings = ref<StudySettingsForm>(createDefaultStudySettings())
 const gameDifficulty = ref<GameDifficulty>(loadGameDifficulty())
 
 const bookItems = BOOK_ORDER.map((bookId) => {
@@ -359,14 +389,32 @@ const bookItems = BOOK_ORDER.map((bookId) => {
   return { label: book.title, value: book.id }
 })
 
-const modeItems: Array<{ label: string; value: QuizSettings['mode'] }> = [
-  { label: '単語／熟語', value: 'idiom' },
-  { label: '例文', value: 'sentence' },
-]
-const directionItems: Array<{ label: string; value: QuizDirection }> = [
-  { label: '英語 → 日本語', value: 'en-to-ja' },
-  { label: '日本語 → 英語', value: 'ja-to-en' },
-]
+/** UI のみで表示する未対応の古文方向 */
+type DirectionOption = StudyDirection | 'modern-to-classic'
+
+const isClassicSelected = computed(() => isClassicBookId(settings.value.bookId))
+const modeItems = computed<Array<{ label: string; value: QuizMode }>>(() =>
+  isClassicSelected.value
+    ? [
+        { label: '見出し語', value: 'idiom' },
+        { label: '例文', value: 'sentence' },
+      ]
+    : [
+        { label: '単語／熟語', value: 'idiom' },
+        { label: '例文', value: 'sentence' },
+      ],
+)
+const directionItems = computed<Array<{ label: string; value: DirectionOption }>>(() =>
+  isClassicSelected.value
+    ? [
+        { label: '古文 → 現代語', value: 'classic-to-modern' },
+        { label: '現代語 → 古文', value: 'modern-to-classic' },
+      ]
+    : [
+        { label: '英語 → 日本語', value: 'en-to-ja' },
+        { label: '日本語 → 英語', value: 'ja-to-en' },
+      ],
+)
 const targetItems = [
   { label: 'すべて', value: 'all' },
   { label: '間違えたものだけ', value: 'incorrect' },
@@ -381,7 +429,7 @@ const difficultyItems = [
   { label: 'ハード', value: 'hard' },
 ]
 
-type Action = 'quiz' | 'dictation' | 'cloze' | 'typing-race' | 'game' | 'battle'
+type Action = StudyAction
 
 const actionItems: Array<{ label: string; value: Action }> = [
   { label: '単語帳', value: 'quiz' },
@@ -393,35 +441,64 @@ const actionItems: Array<{ label: string; value: Action }> = [
 ]
 
 const selectedAction = ref<Action>('quiz')
-const startingRoute = ref<'quiz' | 'dictation' | 'cloze' | 'typing-race' | 'game' | 'battle' | null>(null)
+const startingRoute = ref<Action | null>(null)
+// 取得中に画面を離れた場合、取得完了後に別画面のセッションを上書きしない
+let isUnmounted = false
 
-function isModeDisabled(value: QuizSettings['mode']): boolean {
+function isModeDisabled(value: QuizMode): boolean {
+  if (isClassicSelected.value) return false
   if (selectedAction.value === 'dictation') return value !== 'idiom'
   if (selectedAction.value === 'cloze' || selectedAction.value === 'typing-race') return value !== 'sentence'
   return false
 }
 
-function isDirectionDisabled(value: QuizSettings['direction']): boolean {
+function isDirectionDisabled(value: DirectionOption): boolean {
+  if (isClassicSelected.value) return value !== 'classic-to-modern'
   if (selectedAction.value === 'dictation') return value !== 'ja-to-en'
   if (selectedAction.value === 'cloze' || selectedAction.value === 'typing-race') return value !== 'en-to-ja'
   return false
 }
 const errorMessage = ref('')
+const pageNotice = ref('')
+const switchNotice = ref('')
 const showClearDialog = ref(false)
-const savedSession = ref(loadSession())
+const storedSession = ref<StoredQuizSessionState>(loadStoredSession())
+const resumableSession = computed(() =>
+  storedSession.value.kind === 'english' || storedSession.value.kind === 'classic'
+    ? storedSession.value.session
+    : null,
+)
 const savedBattleSession = ref<BattleSession | null>(loadBattleSession())
 const selectedBook = computed(() => getBookConfig(settings.value.bookId))
 
-const isValid = computed(
-  () =>
+function isIntegerInRange(value: unknown, min: number, max: number): boolean {
+  return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max
+}
+
+const isValid = computed(() => {
+  const maxNumber = selectedBook.value.maxNumber
+  if (isClassicSelected.value) {
+    // 古文は1〜330の整数のみ受け付ける
+    return (
+      isIntegerInRange(settings.value.startNumber, 1, maxNumber) &&
+      isIntegerInRange(settings.value.endNumber, 1, maxNumber) &&
+      settings.value.startNumber <= settings.value.endNumber &&
+      (settings.value.order !== 'random' ||
+        settings.value.randomQuestionCount === undefined ||
+        isIntegerInRange(settings.value.randomQuestionCount, 1, maxNumber))
+    )
+  }
+
+  return (
     settings.value.startNumber >= 1 &&
-    settings.value.endNumber <= selectedBook.value.maxNumber &&
+    settings.value.endNumber <= maxNumber &&
     settings.value.startNumber <= settings.value.endNumber &&
     (settings.value.order !== 'random' ||
       settings.value.randomQuestionCount === undefined ||
       (settings.value.randomQuestionCount >= 1 &&
-        settings.value.randomQuestionCount <= selectedBook.value.maxNumber)),
-)
+        settings.value.randomQuestionCount <= maxNumber))
+  )
+})
 
 watch(
   selectedAction,
@@ -439,38 +516,134 @@ watch(
 
 watch(
   () => settings.value.bookId,
-  () => {
+  (bookId) => {
     const maxNumber = selectedBook.value.maxNumber
     if (settings.value.startNumber > maxNumber) settings.value.startNumber = maxNumber
     if (settings.value.endNumber > maxNumber) settings.value.endNumber = maxNumber
+
+    if (!isClassicBookId(bookId)) {
+      switchNotice.value = ''
+      if (settings.value.direction === 'classic-to-modern') settings.value.direction = 'en-to-ja'
+      return
+    }
+
+    if (settings.value.randomQuestionCount !== undefined && settings.value.randomQuestionCount > maxNumber) {
+      settings.value.randomQuestionCount = maxNumber
+    }
+
+    const changes: string[] = []
+    if (!isActionSupported(bookId, selectedAction.value)) {
+      selectedAction.value = 'quiz'
+      changes.push('アクションを単語帳')
+    }
+    if (settings.value.direction === 'ja-to-en') changes.push('出題方向を古文 → 現代語')
+    settings.value.direction = 'classic-to-modern'
+    switchNotice.value = changes.length > 0 ? `${CLASSIC_ONLY_QUIZ_MESSAGE}、${changes.join('、')}に変更しました。` : ''
   },
 )
 
 watch(
   settings,
   (value) => {
-    saveSettings(normalizeSettings(value))
+    saveStudySettings(value)
   },
   { deep: true },
+)
+
+watch(
+  appNotice,
+  () => {
+    const message = consumeNotice()
+    if (message) pageNotice.value = message
+  },
+  { immediate: true },
 )
 
 watch(gameDifficulty, (value) => {
   saveGameDifficulty(value)
 })
 
-async function startSession(routeName: 'quiz' | 'dictation' | 'cloze' | 'typing-race' | 'game') {
+type SessionRouteName = 'quiz' | 'dictation' | 'cloze' | 'typing-race' | 'game'
+
+function toEnglishQuizSettings(form: StudySettingsForm): QuizSettings | null {
+  if (!isEnglishBookId(form.bookId) || form.direction === 'classic-to-modern') return null
+  return { ...form, bookId: form.bookId, direction: form.direction }
+}
+
+function toClassicQuizSettings(form: StudySettingsForm): ClassicQuizSettings {
+  return {
+    bookId: CLASSIC_BOOK_ID,
+    startNumber: form.startNumber,
+    endNumber: form.endNumber,
+    mode: form.mode,
+    direction: 'classic-to-modern',
+    target: form.target,
+    order: form.order,
+    // 番号順では非表示の入力値を検証しないため、セッションへ持ち込まない
+    randomQuestionCount: form.order === 'random' ? form.randomQuestionCount : undefined,
+  }
+}
+
+function getStartErrorMessage(error: unknown): string {
+  if (error instanceof ClassicDataError || error instanceof SessionSaveError) return error.message
+  return 'データの取得に失敗しました。ネットワーク接続を確認してください。'
+}
+
+async function startClassicSession(form: StudySettingsForm) {
+  const classicSettings = toClassicQuizSettings(form)
+  const { dataMap } = await fetchClassicRangeData(classicSettings.startNumber, classicSettings.endNumber)
+  if (isUnmounted) return
+  const items = buildClassicItems(classicSettings, dataMap)
+
+  if (items.length === 0) {
+    const allItems = buildClassicItems(
+      { ...classicSettings, target: 'all', order: 'sequential', randomQuestionCount: undefined },
+      dataMap,
+    )
+    errorMessage.value =
+      allItems.length === 0 && classicSettings.mode === 'sentence'
+        ? '指定範囲に出題できる例文がありません。出題形式を「見出し語」にするか、範囲を変更してください。'
+        : classicSettings.target === 'incorrect'
+          ? '指定範囲に不正解履歴のある問題がありません。出題対象を「すべて」にして開始してください。'
+          : '出題できる問題がありません。設定を確認してください。'
+    return
+  }
+
+  saveSession(createClassicSession(classicSettings, items, dataMap))
+  router.push({ name: 'quiz' })
+}
+
+async function startSession(routeName: SessionRouteName) {
   startingRoute.value = routeName
   errorMessage.value = ''
+  // 取得中に設定が変わっても、開始時点の設定で問題を作る
+  const formSettings: StudySettingsForm = { ...settings.value }
   try {
+    if (isClassicBookId(formSettings.bookId)) {
+      if (routeName !== 'quiz') {
+        errorMessage.value = `${CLASSIC_ONLY_QUIZ_MESSAGE}、このアクションは開始できません。`
+        return
+      }
+      await startClassicSession(formSettings)
+      return
+    }
+
+    const englishSettings = toEnglishQuizSettings(formSettings)
+    if (!englishSettings) {
+      errorMessage.value = '出題設定が不正です。設定を確認してください。'
+      return
+    }
+
     const { dataMap } = await fetchRangeData(
-      settings.value.bookId,
-      settings.value.startNumber,
-      settings.value.endNumber,
+      englishSettings.bookId,
+      englishSettings.startNumber,
+      englishSettings.endNumber,
     )
+    if (isUnmounted) return
     const itemSettings =
       routeName === 'game'
-        ? { ...settings.value, randomQuestionCount: undefined }
-        : settings.value
+        ? { ...englishSettings, randomQuestionCount: undefined }
+        : englishSettings
 
     const items =
       routeName === 'dictation'
@@ -497,7 +670,7 @@ async function startSession(routeName: 'quiz' | 'dictation' | 'cloze' | 'typing-
     const isTypingRace = routeName === 'typing-race'
     const timeLimitSeconds = 90
     const session = {
-      settings: settings.value,
+      settings: englishSettings,
       items,
       currentIndex: 0,
       results: {},
@@ -515,7 +688,7 @@ async function startSession(routeName: 'quiz' | 'dictation' | 'cloze' | 'typing-
     saveSession(session)
     router.push({ name: routeName })
   } catch (e) {
-    errorMessage.value = 'データの取得に失敗しました。ネットワーク接続を確認してください。'
+    errorMessage.value = getStartErrorMessage(e)
     console.error(e)
   } finally {
     startingRoute.value = null
@@ -523,6 +696,11 @@ async function startSession(routeName: 'quiz' | 'dictation' | 'cloze' | 'typing-
 }
 
 function startSelectedAction() {
+  if (!isActionSupported(settings.value.bookId, selectedAction.value)) {
+    errorMessage.value = `${CLASSIC_ONLY_QUIZ_MESSAGE}、このアクションは開始できません。`
+    return
+  }
+
   if (selectedAction.value === 'battle') {
     openBattleMode()
     return
@@ -531,12 +709,18 @@ function startSelectedAction() {
   void startSession(selectedAction.value)
 }
 
-function getBookTitle(bookId: QuizSettings['bookId']) {
+function getBookTitle(bookId: BookId) {
   return getBookConfig(bookId).title
 }
 
 function resumeSession() {
-  const type = savedSession.value?.sessionType
+  if (startingRoute.value !== null) return
+  const stored = storedSession.value
+  if (stored.kind === 'classic') {
+    router.push({ name: 'quiz' })
+    return
+  }
+  const type = stored.kind === 'english' ? stored.session.sessionType : undefined
   router.push({
     name:
       type === 'dictation'
@@ -550,6 +734,7 @@ function resumeSession() {
 }
 
 function resumeBattleSession() {
+  if (startingRoute.value !== null) return
   const status = savedBattleSession.value?.status
   router.push({
     name:
@@ -565,7 +750,7 @@ function resumeBattleSession() {
 
 function discardSession() {
   clearSession()
-  savedSession.value = null
+  storedSession.value = { kind: 'none' }
 }
 
 function discardBattleSession() {
@@ -588,9 +773,13 @@ function openThemeSettings() {
 }
 
 onMounted(() => {
-  settings.value = loadSettings()
-  savedSession.value = loadSession()
+  settings.value = loadStudySettings()
+  storedSession.value = loadStoredSession()
   savedBattleSession.value = loadBattleSession()
+})
+
+onBeforeUnmount(() => {
+  isUnmounted = true
 })
 </script>
 

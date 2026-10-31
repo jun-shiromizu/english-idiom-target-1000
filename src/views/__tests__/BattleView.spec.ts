@@ -637,4 +637,70 @@ describe('BattleView', () => {
 
     wrapper.unmount()
   })
+
+  describe('古文単語330を選択中の攻撃問題設定', () => {
+    function prepareBattle() {
+      mockLoadSession.mockReturnValue(createSession())
+      mockFetchRangeData.mockResolvedValue({ dataMap: new Map([['0001', idiomData]]) })
+      mockFetchCharacters.mockResolvedValue(characters)
+      mockFetchDungeons.mockResolvedValue([dungeon])
+      mockBuildItems.mockReturnValue(items)
+      mockBuildGameChoices.mockReturnValue([
+        { label: '答え1', correct: true },
+        { label: '答え2', correct: false },
+        { label: '答え3', correct: false },
+        { label: '答え4', correct: false },
+      ])
+      mockCanUseActiveSkill.mockReturnValue(true)
+    }
+
+    it('古文へ切り替える直前の英語設定で攻撃問題を取得する', async () => {
+      prepareBattle()
+      localStorage.setItem(
+        'idiom-app-settings',
+        JSON.stringify({
+          bookId: 'classic-japanese-330',
+          startNumber: 1,
+          endNumber: 330,
+          mode: 'idiom',
+          direction: 'classic-to-modern',
+          target: 'all',
+          order: 'sequential',
+          lastEnglishSettings: {
+            bookId: 'word-target-1900',
+            startNumber: 101,
+            endNumber: 200,
+            mode: 'idiom',
+            direction: 'ja-to-en',
+            target: 'all',
+            order: 'sequential',
+          },
+        }),
+      )
+
+      mount(BattleView, { global: { plugins: [vuetify] } })
+      await flushPromises()
+
+      expect(mockFetchRangeData).toHaveBeenCalledWith('word-target-1900', 101, 200)
+      expect(mockBuildItems).toHaveBeenCalledWith(
+        expect.objectContaining({ bookId: 'word-target-1900', direction: 'ja-to-en' }),
+        expect.any(Map),
+      )
+    })
+
+    it('英語設定を解決できない場合は古文を出題せず、理由を表示する', async () => {
+      prepareBattle()
+      localStorage.setItem(
+        'idiom-app-settings',
+        JSON.stringify({ bookId: 'classic-japanese-330', startNumber: 1, endNumber: 10 }),
+      )
+
+      const wrapper = mount(BattleView, { global: { plugins: [vuetify] } })
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('古文単語330はバトルに対応していません。')
+      expect(mockFetchRangeData).not.toHaveBeenCalled()
+      expect(mockSaveSession).not.toHaveBeenCalled()
+    })
+  })
 })
