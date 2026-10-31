@@ -32,6 +32,20 @@ npm run dev
 
 ---
 
+## Google Analytics 4
+
+本番環境では、測定IDが設定されている場合に限りGoogle Analytics 4で利用状況を計測します。ローカル開発環境では計測しません。
+
+1. GA4で本アプリ用のウェブデータストリームを作成し、`G-`で始まる測定IDを取得します。
+2. GitHubリポジトリの **Settings → Secrets and variables → Actions → Variables** に、`GA4_MEASUREMENT_ID` という名前で測定IDを登録します。測定IDはブラウザーへ配信される公開識別子であり、秘密情報として扱うものではありません。
+3. GitHub Pagesのデプロイワークフローを再実行します。
+
+計測イベントは `page_view`（画面表示）、`study_started` / `study_completed`（学習の開始・完了と教材・モード・問題数・正誤集計）、`battle_started` / `battle_completed`（バトル開始・結果）です。問題文、入力内容、個別の回答、氏名やメールアドレスはイベントとして送信しません。広告パーソナライズとGoogleシグナルは無効にしています。アプリ内に計測の案内を表示します。
+
+デプロイ後、本番サイトを操作してGA4の **レポート → リアルタイム** でデータ受信を確認してください。イベント名ごとの件数は **レポート → エンゲージメント → イベント** で確認できます。教材やモード別の分析にはイベントパラメータ（`book_id`、`study_mode`、`question_mode`、`direction`、`target`、`order`、`battle_status`）をカスタムディメンションとして登録し、問題数や正誤数などは必要に応じてカスタム指標として登録します。
+
+---
+
 ## 修正の仕方
 
 ### ソースコードの構成
@@ -289,4 +303,3 @@ Copilot 関連機能の実行履歴です。何をきっかけに実行された
 ### pages-build-deployment
 
 Pages の Source が「Deploy from a branch」のときに GitHub が自動で動かす公開処理です。現在は Source を `GitHub Actions` にして Deploy to GitHub Pages で公開しているため使っていません。Actions タブに表示されているのは過去の実行履歴です。
-

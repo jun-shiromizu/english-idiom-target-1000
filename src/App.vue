@@ -6,19 +6,36 @@
     :data-theme-tone="selectedTheme.isDark ? 'dark' : 'light'"
   >
     <v-main>
+      <v-alert
+        v-if="showAnalyticsNotice"
+        class="analytics-notice mx-4 mt-2"
+        type="info"
+        variant="tonal"
+        closable
+        density="compact"
+        @click:close="showAnalyticsNotice = false"
+      >
+        利用状況の把握のためGoogle Analyticsで閲覧画面、教材・学習モード、学習開始/完了、正誤の集計を計測します。
+        個人情報や入力・回答内容をイベントとして送信しません。閉じても計測は停止しません。
+        <a href="https://policies.google.com/privacy?hl=ja" target="_blank" rel="noopener noreferrer">
+          Googleのプライバシーポリシー
+        </a>
+      </v-alert>
       <RouterView />
     </v-main>
   </v-app>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterView } from 'vue-router'
 
 import { useThemeSettings } from '@/composables/useThemeSettings'
+import { isAnalyticsEnabled } from '@/utils/analytics'
 
 const { selectedTheme } = useThemeSettings()
 const appThemeClasses = computed(() => [selectedTheme.value.appClass].filter(Boolean))
+const showAnalyticsNotice = ref(isAnalyticsEnabled())
 </script>
 
 <style>

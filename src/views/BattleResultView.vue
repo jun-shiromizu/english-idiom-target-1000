@@ -106,6 +106,7 @@ import { DEFAULT_BOOK_ID, buildBattleGitHubRawBase, getBookConfig, isEnglishBook
 import { useBattleData } from '@/composables/useBattleData'
 import { useBattleSession } from '@/composables/useBattleSession'
 import { resolveBattleSettingsSource } from '@/utils/studySettings'
+import { trackBattleCompleted } from '@/utils/analytics'
 import type { BattleCharacter, BattleDungeon, BattleEnemy, BattleSession, QuizSettings } from '@/types'
 
 interface DisplaySettingsSummary {
@@ -255,6 +256,14 @@ onMounted(() => {
     }
 
     session.value = loaded
+    if (loaded.status === 'cleared' || loaded.status === 'defeated') {
+      trackBattleCompleted({
+        status: loaded.status,
+        waveCount: loaded.currentWaveIndex + 1,
+        turnCount: loaded.turn,
+        score: loaded.score,
+      })
+    }
 
     try {
       const [loadedCharacters, loadedDungeons] = await Promise.all([

@@ -170,6 +170,7 @@ import { useGameChoices, getGameAnswerLabel } from '@/composables/useGameChoices
 import { useHistory } from '@/composables/useHistory'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { STORAGE_KEY_GAME_SETTINGS, getBookConfig } from '@/config'
+import { trackStudyCompleted, trackStudyStarted } from '@/utils/analytics'
 import type { GameChoice } from '@/composables/useGameChoices'
 import type { GameDifficulty, QuizItem, QuizSession } from '@/types'
 
@@ -390,10 +391,23 @@ function nextQuestion() {
 }
 
 function finishGame(wasCompleted: boolean) {
+  if (gameOver.value || !session.value) return
+
   gameOver.value = true
   completed.value = wasCompleted
   isPaused.value = false
   cancelAnimationFrame(animationFrame)
+  trackStudyCompleted({
+    bookId: session.value.settings.bookId,
+    studyMode: 'game',
+    questionCount: correctCount.value + missCount.value,
+    correctCount: correctCount.value,
+    incorrectCount: missCount.value,
+    questionMode: session.value.settings.mode,
+    direction: session.value.settings.direction,
+    target: session.value.settings.target,
+    order: session.value.settings.order,
+  })
 }
 
 function togglePause() {
@@ -404,6 +418,8 @@ function togglePause() {
 }
 
 function restartGame() {
+  if (!session.value) return
+
   currentIndex.value = 0
   fallY.value = 24
   score.value = 0
@@ -418,6 +434,15 @@ function restartGame() {
   previousFrameTime = 0
   difficulty.value = loadGameDifficulty()
   resetQuestion({ resetPosition: true })
+  trackStudyStarted({
+    bookId: session.value.settings.bookId,
+    studyMode: 'game',
+    questionCount: session.value.items.length,
+    questionMode: session.value.settings.mode,
+    direction: session.value.settings.direction,
+    target: session.value.settings.target,
+    order: session.value.settings.order,
+  })
   animationFrame = requestAnimationFrame(tick)
 }
 </script>

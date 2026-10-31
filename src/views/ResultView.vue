@@ -106,6 +106,7 @@ import { useHistory } from '@/composables/useHistory'
 import { useAppNotice } from '@/composables/useAppNotice'
 import { isClassicQuizSession } from '@/utils/classicSession'
 import { INVALID_CLASSIC_SESSION_REDIRECT_NOTICE } from '@/utils/routeGuards'
+import { trackStudyCompleted, trackStudyStarted } from '@/utils/analytics'
 import type { ClassicQuizSession, ClassicWordData, QuizSession } from '@/types'
 
 const router = useRouter()
@@ -135,6 +136,7 @@ onMounted(() => {
   }
   if (stored.kind === 'classic') {
     session.value = stored.session
+    trackCompletedSession(stored.session)
     return
   }
   if (stored.kind !== 'english') {
@@ -147,7 +149,22 @@ onMounted(() => {
     return
   }
   session.value = loaded
+  trackCompletedSession(loaded)
 })
+
+function trackCompletedSession(activeSession: QuizSession | ClassicQuizSession): void {
+  trackStudyCompleted({
+    bookId: activeSession.settings.bookId,
+    studyMode: activeSession.sessionType ?? 'quiz',
+    questionCount: activeSession.items.length,
+    correctCount: Object.values(activeSession.results).filter(Boolean).length,
+    incorrectCount: Object.values(activeSession.results).filter((result) => !result).length,
+    questionMode: activeSession.settings.mode,
+    direction: activeSession.settings.direction,
+    target: activeSession.settings.target,
+    order: activeSession.settings.order,
+  })
+}
 
 function goHome() {
   clearSession()
@@ -162,6 +179,15 @@ function trySaveAndOpen(nextSession: QuizSession | ClassicQuizSession): boolean 
     console.error(error)
     return false
   }
+  trackStudyStarted({
+    bookId: nextSession.settings.bookId,
+    studyMode: nextSession.sessionType ?? 'quiz',
+    questionCount: nextSession.items.length,
+    questionMode: nextSession.settings.mode,
+    direction: nextSession.settings.direction,
+    target: nextSession.settings.target,
+    order: nextSession.settings.order,
+  })
   router.push({ name: getResumeRouteName() })
   return true
 }
