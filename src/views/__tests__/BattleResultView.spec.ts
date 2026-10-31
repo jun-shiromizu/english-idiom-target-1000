@@ -234,6 +234,25 @@ describe('BattleResultView', () => {
     second.unmount()
   })
 
+  it('計測状態の保存に失敗してもバトル結果を表示する', async () => {
+    mockLoadSession.mockReturnValue(createSession())
+    mockSaveSession.mockImplementationOnce(() => {
+      throw new Error('storage is full')
+    })
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const wrapper = mount(BattleResultView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('ダンジョンクリア')
+    expect(mockTrackBattleCompleted).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalledWith(
+      'バトル結果の計測状態を保存できませんでした。',
+      expect.any(Error),
+    )
+    wrapper.unmount()
+  })
+
   it('古文単語330を選択中は、退避した英語設定を表示する', async () => {
     localStorage.setItem('idiom-app-settings', JSON.stringify({
       bookId: 'classic-japanese-330',

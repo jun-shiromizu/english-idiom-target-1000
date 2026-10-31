@@ -314,13 +314,23 @@ describe('TypingRaceView', () => {
     expect(saved.currentIndex).toBe(1)
     expect(saved.typingRaceStats).toEqual({ correctChars: 40, mistypedChars: 2 })
     expect(saved.analyticsCompletionSent).toBe(false)
+    expect(saved.analyticsCorrectCountBaseline).toBe(1)
+    expect(saved.analyticsIncorrectCountBaseline).toBe(0)
     expect(trackStudyCompleted).toHaveBeenCalledTimes(1)
     expect(trackStudyStarted).toHaveBeenCalledTimes(1)
+
+    wrapper.unmount()
+    const restored = mount(TypingRaceView, { global: { plugins: [vuetify] } })
+    await flushPromises()
 
     vi.advanceTimersByTime(90_500)
     await flushPromises()
     expect(trackStudyCompleted).toHaveBeenCalledTimes(2)
-    wrapper.unmount()
+    expect(trackStudyCompleted).toHaveBeenLastCalledWith(expect.objectContaining({
+      correctCount: 0,
+      incorrectCount: 0,
+    }))
+    restored.unmount()
   })
 
   it('全問回答時に完了イベントを送る', async () => {

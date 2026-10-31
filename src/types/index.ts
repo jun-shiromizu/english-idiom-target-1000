@@ -101,6 +101,8 @@ export interface QuizSession {
   /** ローカルでセッションを識別し、計測済みフラグを保持するためのID */
   analyticsSessionId?: string
   analyticsCompletionSent?: boolean
+  analyticsCorrectCountBaseline?: number
+  analyticsIncorrectCountBaseline?: number
   /** QuizItem インデックス → 正解(true)/不正解(false) */
   results: Record<number, boolean>
   /** セッション種別（未定義時は 'quiz' 扱い） */

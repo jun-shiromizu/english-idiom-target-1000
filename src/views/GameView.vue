@@ -298,6 +298,20 @@ onMounted(() => {
   }
 
   session.value = loaded
+  if (loaded.analyticsCompletionSent) {
+    loaded.analyticsSessionId = createAnalyticsSessionId()
+    loaded.analyticsCompletionSent = false
+    saveAnalyticsSession()
+    trackStudyStarted({
+      bookId: loaded.settings.bookId,
+      studyMode: 'game',
+      questionCount: loaded.items.length,
+      questionMode: loaded.settings.mode,
+      direction: loaded.settings.direction,
+      target: loaded.settings.target,
+      order: loaded.settings.order,
+    })
+  }
   resetQuestion({ resetPosition: true })
   animationFrame = requestAnimationFrame(tick)
 })
@@ -405,9 +419,9 @@ function finishGame(wasCompleted: boolean) {
   const shouldTrackCompletion = isAnalyticsEnabled() && !session.value.analyticsCompletionSent
   if (shouldTrackCompletion) {
     session.value.analyticsCompletionSent = true
-    saveSession(session.value)
+    if (!saveAnalyticsSession()) return
   }
-  if (!shouldTrackCompletion) return
+  if (!shouldTrackCompletion || !session.value) return
 
   trackStudyCompleted({
     bookId: session.value.settings.bookId,
@@ -420,6 +434,18 @@ function finishGame(wasCompleted: boolean) {
     target: session.value.settings.target,
     order: session.value.settings.order,
   })
+}
+
+function saveAnalyticsSession(): boolean {
+  if (!session.value) return false
+
+  try {
+    saveSession(session.value)
+    return true
+  } catch (error) {
+    console.error('ゲームの計測状態を保存できませんでした。', error)
+    return false
+  }
 }
 
 function togglePause() {
@@ -457,7 +483,7 @@ function restartGame() {
     target: session.value.settings.target,
     order: session.value.settings.order,
   })
-  saveSession(session.value)
+  saveAnalyticsSession()
   animationFrame = requestAnimationFrame(tick)
 }
 </script>

@@ -262,13 +262,20 @@ onMounted(() => {
       isAnalyticsEnabled()
     ) {
       loaded.analyticsCompletionSent = true
-      saveSession(loaded)
-      trackBattleCompleted({
-        status: loaded.status,
-        waveCount: loaded.currentWaveIndex + 1,
-        turnCount: loaded.turn,
-        score: loaded.score,
-      })
+      try {
+        saveSession(loaded)
+      } catch (error) {
+        loaded.analyticsCompletionSent = false
+        console.error('バトル結果の計測状態を保存できませんでした。', error)
+      }
+      if (loaded.analyticsCompletionSent) {
+        trackBattleCompleted({
+          status: loaded.status,
+          waveCount: loaded.currentWaveIndex + 1,
+          turnCount: loaded.turn,
+          score: loaded.score,
+        })
+      }
     }
 
     try {

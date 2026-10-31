@@ -369,12 +369,18 @@ function trackRaceCompletion() {
 
   session.value.analyticsCompletionSent = true
   saveCurrentSession()
+  const results = Object.values(session.value.results)
+  const correctCount = results.filter(Boolean).length
+  const incorrectCount = results.filter((result) => !result).length
   trackStudyCompleted({
     bookId: session.value.settings.bookId,
     studyMode: 'typing-race',
     questionCount: session.value.items.length,
-    correctCount: Object.values(session.value.results).filter(Boolean).length,
-    incorrectCount: Object.values(session.value.results).filter((result) => !result).length,
+    correctCount: Math.max(0, correctCount - (session.value.analyticsCorrectCountBaseline ?? 0)),
+    incorrectCount: Math.max(
+      0,
+      incorrectCount - (session.value.analyticsIncorrectCountBaseline ?? 0),
+    ),
     questionMode: session.value.settings.mode,
     direction: session.value.settings.direction,
     target: session.value.settings.target,
@@ -437,10 +443,13 @@ function continueRace() {
   if (!session.value) return
 
   const nextEndsAt = Date.now() + timeLimitSeconds.value * 1000
+  const results = Object.values(session.value.results)
   session.value = {
     ...session.value,
     analyticsSessionId: createAnalyticsSessionId(),
     analyticsCompletionSent: false,
+    analyticsCorrectCountBaseline: results.filter(Boolean).length,
+    analyticsIncorrectCountBaseline: results.filter((result) => !result).length,
     endsAt: nextEndsAt,
   }
   userInput.value = ''
@@ -485,6 +494,8 @@ onMounted(() => {
     ...loaded,
     analyticsSessionId: loaded.analyticsSessionId ?? createAnalyticsSessionId(),
     analyticsCompletionSent: loaded.analyticsCompletionSent ?? false,
+    analyticsCorrectCountBaseline: loaded.analyticsCorrectCountBaseline ?? 0,
+    analyticsIncorrectCountBaseline: loaded.analyticsIncorrectCountBaseline ?? 0,
     timeLimitSeconds: loaded.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS,
     endsAt: loaded.endsAt ?? Date.now() + (loaded.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS) * 1000,
     typingRaceStats: {
