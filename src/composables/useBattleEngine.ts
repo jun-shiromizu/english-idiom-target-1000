@@ -5,6 +5,7 @@ import type {
   BattleEffectState,
   BattleSession,
 } from '@/types'
+import { createAnalyticsSessionId } from '@/utils/analytics'
 
 function getDeckCharacters(deck: BattleDeck, characters: BattleCharacter[]): BattleCharacter[] {
   const ids = [deck.leaderId, ...deck.memberIds]
@@ -110,6 +111,8 @@ export function createInitialBattleSession(
 
   return {
     sessionType: 'battle',
+    analyticsSessionId: createAnalyticsSessionId(),
+    analyticsCompletionSent: false,
     status: 'in-battle',
     deck,
     dungeonId: dungeon.id,

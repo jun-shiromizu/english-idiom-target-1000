@@ -61,6 +61,7 @@ import { useRouter } from 'vue-router'
 import { useBattleData } from '@/composables/useBattleData'
 import { createInitialBattleSession } from '@/composables/useBattleEngine'
 import { useBattleSession } from '@/composables/useBattleSession'
+import { trackBattleStarted } from '@/utils/analytics'
 import type { BattleDungeon } from '@/types'
 
 const router = useRouter()
@@ -89,6 +90,7 @@ async function confirmDungeon(): Promise<void> {
     const characters = await fetchCharacters()
     const session = createInitialBattleSession(deck, dungeon, characters)
     saveSession(session)
+    trackBattleStarted(dungeon.id, session.party.length)
     router.push({ name: 'battle-play' })
   } catch (error) {
     errorMessage.value = 'バトル開始データの初期化に失敗しました。'

@@ -106,6 +106,12 @@ import { useHistory } from '@/composables/useHistory'
 import { useAppNotice } from '@/composables/useAppNotice'
 import { isClassicQuizSession } from '@/utils/classicSession'
 import { INVALID_CLASSIC_SESSION_REDIRECT_NOTICE } from '@/utils/routeGuards'
+import {
+  createAnalyticsSessionId,
+  isAnalyticsEnabled,
+  trackStudyCompleted,
+  trackStudyStarted,
+} from '@/utils/analytics'
 import type { ClassicQuizSession, ClassicWordData, QuizSession } from '@/types'
 
 const router = useRouter()
@@ -135,6 +141,7 @@ onMounted(() => {
   }
   if (stored.kind === 'classic') {
     session.value = stored.session
+    trackCompletedSession(stored.session)
     return
   }
   if (stored.kind !== 'english') {
@@ -147,7 +154,43 @@ onMounted(() => {
     return
   }
   session.value = loaded
+  trackCompletedSession(loaded)
 })
+
+function trackCompletedSession(activeSession: QuizSession | ClassicQuizSession): void {
+  const isComplete =
+    activeSession.items.length > 0 &&
+    activeSession.items.every((_, index) =>
+      Object.prototype.hasOwnProperty.call(activeSession.results, index),
+    )
+  if (!isAnalyticsEnabled() || !isComplete || activeSession.analyticsCompletionSent) return
+
+  const sessionWithCompletion = {
+    ...activeSession,
+    analyticsSessionId: activeSession.analyticsSessionId ?? createAnalyticsSessionId(),
+    analyticsCompletionSent: true,
+  }
+  try {
+    saveSession(sessionWithCompletion)
+  } catch (error) {
+    errorMessage.value = '計測状態を保存できませんでした。結果は表示しますが、完了イベントは送信しません。'
+    console.error(error)
+    return
+  }
+  session.value = sessionWithCompletion
+
+  trackStudyCompleted({
+    bookId: sessionWithCompletion.settings.bookId,
+    studyMode: sessionWithCompletion.sessionType ?? 'quiz',
+    questionCount: sessionWithCompletion.items.length,
+    correctCount: Object.values(sessionWithCompletion.results).filter(Boolean).length,
+    incorrectCount: Object.values(sessionWithCompletion.results).filter((result) => !result).length,
+    questionMode: sessionWithCompletion.settings.mode,
+    direction: sessionWithCompletion.settings.direction,
+    target: sessionWithCompletion.settings.target,
+    order: sessionWithCompletion.settings.order,
+  })
+}
 
 function goHome() {
   clearSession()
@@ -155,13 +198,27 @@ function goHome() {
 }
 
 function trySaveAndOpen(nextSession: QuizSession | ClassicQuizSession): boolean {
+  const retrySession = {
+    ...nextSession,
+    analyticsSessionId: createAnalyticsSessionId(),
+    analyticsCompletionSent: false,
+  }
   try {
-    saveSession(nextSession)
+    saveSession(retrySession)
   } catch (error) {
     errorMessage.value = '再挑戦用のデータを保存できませんでした。ブラウザの保存容量を確認してください。'
     console.error(error)
     return false
   }
+  trackStudyStarted({
+    bookId: retrySession.settings.bookId,
+    studyMode: retrySession.sessionType ?? 'quiz',
+    questionCount: retrySession.items.length,
+    questionMode: retrySession.settings.mode,
+    direction: retrySession.settings.direction,
+    target: retrySession.settings.target,
+    order: retrySession.settings.order,
+  })
   router.push({ name: getResumeRouteName() })
   return true
 }

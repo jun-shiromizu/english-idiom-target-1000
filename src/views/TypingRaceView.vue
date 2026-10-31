@@ -173,6 +173,12 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useHistory } from '@/composables/useHistory'
 import { useQuizSession } from '@/composables/useQuizSession'
+import {
+  createAnalyticsSessionId,
+  isAnalyticsEnabled,
+  trackStudyCompleted,
+  trackStudyStarted,
+} from '@/utils/analytics'
 import typingRaceKeypressUrl from '@/assets/audio/typing-race-keypress.mp3'
 import type { QuizSession } from '@/types'
 
@@ -355,6 +361,31 @@ function finishRace(reason: 'timeup' | 'completed') {
   raceFinishedReason.value = reason
   stopTimer()
   saveCurrentSession()
+  trackRaceCompletion()
+}
+
+function trackRaceCompletion() {
+  if (!session.value || !isAnalyticsEnabled() || session.value.analyticsCompletionSent) return
+
+  session.value.analyticsCompletionSent = true
+  saveCurrentSession()
+  const results = Object.values(session.value.results)
+  const correctCount = results.filter(Boolean).length
+  const incorrectCount = results.filter((result) => !result).length
+  trackStudyCompleted({
+    bookId: session.value.settings.bookId,
+    studyMode: 'typing-race',
+    questionCount: session.value.items.length,
+    correctCount: Math.max(0, correctCount - (session.value.analyticsCorrectCountBaseline ?? 0)),
+    incorrectCount: Math.max(
+      0,
+      incorrectCount - (session.value.analyticsIncorrectCountBaseline ?? 0),
+    ),
+    questionMode: session.value.settings.mode,
+    direction: session.value.settings.direction,
+    target: session.value.settings.target,
+    order: session.value.settings.order,
+  })
 }
 
 function saveCurrentSession() {
@@ -412,8 +443,13 @@ function continueRace() {
   if (!session.value) return
 
   const nextEndsAt = Date.now() + timeLimitSeconds.value * 1000
+  const results = Object.values(session.value.results)
   session.value = {
     ...session.value,
+    analyticsSessionId: createAnalyticsSessionId(),
+    analyticsCompletionSent: false,
+    analyticsCorrectCountBaseline: results.filter(Boolean).length,
+    analyticsIncorrectCountBaseline: results.filter((result) => !result).length,
     endsAt: nextEndsAt,
   }
   userInput.value = ''
@@ -424,6 +460,15 @@ function continueRace() {
   raceFinishedReason.value = null
   stopSuccessEffect()
   saveCurrentSession()
+  trackStudyStarted({
+    bookId: session.value.settings.bookId,
+    studyMode: 'typing-race',
+    questionCount: session.value.items.length,
+    questionMode: session.value.settings.mode,
+    direction: session.value.settings.direction,
+    target: session.value.settings.target,
+    order: session.value.settings.order,
+  })
   startTimer()
   focusInput()
 }
@@ -447,6 +492,10 @@ onMounted(() => {
 
   const normalizedSession: QuizSession = {
     ...loaded,
+    analyticsSessionId: loaded.analyticsSessionId ?? createAnalyticsSessionId(),
+    analyticsCompletionSent: loaded.analyticsCompletionSent ?? false,
+    analyticsCorrectCountBaseline: loaded.analyticsCorrectCountBaseline ?? 0,
+    analyticsIncorrectCountBaseline: loaded.analyticsIncorrectCountBaseline ?? 0,
     timeLimitSeconds: loaded.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS,
     endsAt: loaded.endsAt ?? Date.now() + (loaded.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS) * 1000,
     typingRaceStats: {
@@ -456,6 +505,7 @@ onMounted(() => {
   }
 
   session.value = normalizedSession
+  if (!loaded.analyticsSessionId) saveCurrentSession()
 
   if (normalizedSession.currentIndex >= normalizedSession.items.length) {
     remainingSeconds.value = Math.max(
@@ -465,6 +515,7 @@ onMounted(() => {
     raceFinished.value = true
     raceFinishedReason.value = 'completed'
     saveCurrentSession()
+    trackRaceCompletion()
     return
   }
 

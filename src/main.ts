@@ -26,6 +26,7 @@ import { useQuizSession } from './composables/useQuizSession'
 import { isClassicBookId } from './config'
 import { getClassicBattleBlockMessage, getClassicRouteBlockMessage } from './utils/routeGuards'
 import { loadStudySettings } from './utils/studySettings'
+import { initializeAnalytics, trackPageView } from './utils/analytics'
 
 const vuetify = createVuetify({
   components,
@@ -52,6 +53,11 @@ const router = createRouter({
     { path: '/battle/play', name: 'battle-play', component: BattleView },
     { path: '/battle/result', name: 'battle-result', component: BattleResultView },
   ],
+})
+
+initializeAnalytics()
+router.afterEach((to, _from, failure) => {
+  if (!failure) trackPageView(to.path)
 })
 
 router.beforeEach((to) => {

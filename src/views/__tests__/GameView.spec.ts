@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import GameView from '../GameView.vue'
@@ -7,6 +7,22 @@ import { STORAGE_KEY_GAME_SETTINGS, STORAGE_KEY_SESSION } from '@/config'
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
+const { mockIsAnalyticsEnabled, mockTrackStudyCompleted, mockTrackStudyStarted } = vi.hoisted(() => ({
+  mockIsAnalyticsEnabled: vi.fn(),
+  mockTrackStudyCompleted: vi.fn(),
+  mockTrackStudyStarted: vi.fn(),
+}))
+
+vi.mock('@/utils/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/utils/analytics')>()
+  return {
+    ...actual,
+    isAnalyticsEnabled: mockIsAnalyticsEnabled,
+    trackStudyCompleted: mockTrackStudyCompleted,
+    trackStudyStarted: mockTrackStudyStarted,
+  }
+})
+
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }))
@@ -96,12 +112,41 @@ describe('GameView', () => {
     localStorage.clear()
     mockPush.mockReset()
     mockReplace.mockReset()
+    mockIsAnalyticsEnabled.mockReturnValue(true)
+    mockTrackStudyCompleted.mockReset()
+    mockTrackStudyStarted.mockReset()
     rafCallback = null
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback: FrameRequestCallback) => {
       rafCallback = callback
       return 1
     })
     vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('完了済みゲームの再読み込みでは新しい計測セッションを開始する', async () => {
+    localStorage.setItem(
+      STORAGE_KEY_SESSION,
+      JSON.stringify({
+        ...makePauseSession(),
+        analyticsSessionId: 'completed-game-session',
+        analyticsCompletionSent: true,
+      }),
+    )
+
+    const wrapper = mount(GameView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_SESSION) ?? '{}') as QuizSession
+    expect(saved.analyticsSessionId).not.toBe('completed-game-session')
+    expect(saved.analyticsCompletionSent).toBe(false)
+    expect(mockTrackStudyStarted).toHaveBeenCalledWith(expect.objectContaining({
+      studyMode: 'game',
+    }))
+    wrapper.unmount()
   })
 
   it('一時停止中は問題文と選択肢を非表示にできる', async () => {
@@ -357,10 +402,21 @@ describe('GameView', () => {
 
       const retryBtn = wrapper.findAll('button').find((btn) => btn.text().includes('もう一度'))
       expect(retryBtn, 'もう一度ボタンが見つかりません').toBeTruthy()
+      rafCallback = null
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('storage is full')
+      })
       await retryBtn!.trigger('click')
       await flushPromises()
 
       expect(wrapper.text()).not.toContain('間違えた問題')
+      expect(rafCallback).toBeTruthy()
+      expect(mockTrackStudyStarted).toHaveBeenCalled()
+      expect(consoleError).toHaveBeenCalledWith(
+        'ゲームの計測状態を保存できませんでした。',
+        expect.any(Error),
+      )
     })
   })
 })

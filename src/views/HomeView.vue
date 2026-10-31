@@ -342,6 +342,7 @@ import { useAppNotice } from '@/composables/useAppNotice'
 import { ClassicDataError } from '@/utils/classicWordData'
 import { SessionSaveError } from '@/utils/sessionErrors'
 import { createDefaultStudySettings, loadStudySettings, saveStudySettings } from '@/utils/studySettings'
+import { createAnalyticsSessionId, trackStudyStarted } from '@/utils/analytics'
 import type { BattleSession } from '@/types'
 
 const router = useRouter()
@@ -610,6 +611,15 @@ async function startClassicSession(form: StudySettingsForm) {
   }
 
   saveSession(createClassicSession(classicSettings, items, dataMap))
+  trackStudyStarted({
+    bookId: classicSettings.bookId,
+    studyMode: 'quiz',
+    questionCount: items.length,
+    questionMode: classicSettings.mode,
+    direction: classicSettings.direction,
+    target: classicSettings.target,
+    order: classicSettings.order,
+  })
   router.push({ name: 'quiz' })
 }
 
@@ -670,6 +680,8 @@ async function startSession(routeName: SessionRouteName) {
     const isTypingRace = routeName === 'typing-race'
     const timeLimitSeconds = 90
     const session = {
+      analyticsSessionId: createAnalyticsSessionId(),
+      analyticsCompletionSent: false,
       settings: englishSettings,
       items,
       currentIndex: 0,
@@ -686,6 +698,15 @@ async function startSession(routeName: SessionRouteName) {
       endsAt: isTypingRace ? Date.now() + timeLimitSeconds * 1000 : undefined,
     }
     saveSession(session)
+    trackStudyStarted({
+      bookId: englishSettings.bookId,
+      studyMode: routeName,
+      questionCount: items.length,
+      questionMode: englishSettings.mode,
+      direction: englishSettings.direction,
+      target: englishSettings.target,
+      order: englishSettings.order,
+    })
     router.push({ name: routeName })
   } catch (e) {
     errorMessage.value = getStartErrorMessage(e)

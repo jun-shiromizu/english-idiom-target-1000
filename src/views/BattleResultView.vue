@@ -106,6 +106,7 @@ import { DEFAULT_BOOK_ID, buildBattleGitHubRawBase, getBookConfig, isEnglishBook
 import { useBattleData } from '@/composables/useBattleData'
 import { useBattleSession } from '@/composables/useBattleSession'
 import { resolveBattleSettingsSource } from '@/utils/studySettings'
+import { isAnalyticsEnabled, trackBattleCompleted } from '@/utils/analytics'
 import type { BattleCharacter, BattleDungeon, BattleEnemy, BattleSession, QuizSettings } from '@/types'
 
 interface DisplaySettingsSummary {
@@ -119,7 +120,7 @@ interface DisplaySettingsSummary {
 }
 
 const router = useRouter()
-const { loadSession } = useBattleSession()
+const { loadSession, saveSession } = useBattleSession()
 const { fetchCharacters, fetchDungeons } = useBattleData()
 const session = ref<BattleSession | null>(null)
 const characters = ref<BattleCharacter[]>([])
@@ -255,6 +256,27 @@ onMounted(() => {
     }
 
     session.value = loaded
+    if (
+      (loaded.status === 'cleared' || loaded.status === 'defeated') &&
+      !loaded.analyticsCompletionSent &&
+      isAnalyticsEnabled()
+    ) {
+      loaded.analyticsCompletionSent = true
+      try {
+        saveSession(loaded)
+      } catch (error) {
+        loaded.analyticsCompletionSent = false
+        console.error('バトル結果の計測状態を保存できませんでした。', error)
+      }
+      if (loaded.analyticsCompletionSent) {
+        trackBattleCompleted({
+          status: loaded.status,
+          waveCount: loaded.currentWaveIndex + 1,
+          turnCount: loaded.turn,
+          score: loaded.score,
+        })
+      }
+    }
 
     try {
       const [loadedCharacters, loadedDungeons] = await Promise.all([

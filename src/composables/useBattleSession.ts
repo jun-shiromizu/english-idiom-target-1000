@@ -8,6 +8,7 @@ import type {
   BattleSession,
   BattleSessionStatus,
 } from '@/types'
+import { createAnalyticsSessionId } from '@/utils/analytics'
 
 type LegacyBattleSession = Partial<BattleSession> & {
   lastFallingGameScore?: number
@@ -102,7 +103,11 @@ export function useBattleSession() {
   }
 
   function saveSession(session: BattleSession): void {
-    localStorage.setItem(STORAGE_KEY_BATTLE_SESSION, JSON.stringify(session))
+    localStorage.setItem(STORAGE_KEY_BATTLE_SESSION, JSON.stringify({
+      ...session,
+      analyticsSessionId: session.analyticsSessionId ?? createAnalyticsSessionId(),
+      analyticsCompletionSent: session.analyticsCompletionSent ?? false,
+    }))
   }
 
   function loadSession(): BattleSession | null {
@@ -115,6 +120,10 @@ export function useBattleSession() {
 
       return {
         sessionType: 'battle',
+        analyticsSessionId: isNonEmptyString(session.analyticsSessionId)
+          ? session.analyticsSessionId
+          : createAnalyticsSessionId(),
+        analyticsCompletionSent: session.analyticsCompletionSent === true,
         status: normalizeStatus(session.status),
         deck,
         dungeonId: isNonEmptyString(session.dungeonId) ? session.dungeonId : undefined,
