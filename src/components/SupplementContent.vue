@@ -11,11 +11,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { BookId } from '@/types'
+import type { EnglishBookId } from '@/types'
 import { useGitHubData } from '@/composables/useGitHubData'
 
 const props = defineProps<{
-  bookId?: BookId
+  bookId?: EnglishBookId
   number: string
 }>()
 

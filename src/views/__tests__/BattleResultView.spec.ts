@@ -191,4 +191,44 @@ describe('BattleResultView', () => {
     expect(wrapper.text()).toContain('問題: idiom 0003')
     expect(wrapper.text()).toContain('正しい答え: かなり多くの〜')
   })
+
+  it('古文単語330を選択中は、退避した英語設定を表示する', async () => {
+    localStorage.setItem('idiom-app-settings', JSON.stringify({
+      bookId: 'classic-japanese-330',
+      startNumber: 1,
+      endNumber: 330,
+      mode: 'idiom',
+      direction: 'classic-to-modern',
+      target: 'all',
+      order: 'sequential',
+      lastEnglishSettings: {
+        bookId: 'idiom-target-1000',
+        startNumber: 31,
+        endNumber: 40,
+        mode: 'idiom',
+        direction: 'en-to-ja',
+        target: 'all',
+        order: 'random',
+      },
+    }))
+    mockLoadSession.mockReturnValue(createSession())
+
+    const wrapper = mount(BattleResultView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('英熟語ターゲット1000')
+    expect(wrapper.text()).toContain('31')
+    expect(wrapper.text()).not.toContain('古文単語330')
+  })
+
+  it('英語設定を解決できない古文設定では未選択と表示する', async () => {
+    localStorage.setItem('idiom-app-settings', JSON.stringify({ bookId: 'classic-japanese-330' }))
+    mockLoadSession.mockReturnValue(createSession())
+
+    const wrapper = mount(BattleResultView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('英語教材が未選択です')
+    expect(wrapper.text()).not.toContain('古文単語330')
+  })
 })

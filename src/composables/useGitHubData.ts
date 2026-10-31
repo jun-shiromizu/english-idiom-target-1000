@@ -1,6 +1,7 @@
-import { buildGitHubApiBase, buildGitHubRawBase, getBookConfig } from '@/config'
+import { CLASSIC_BOOK_ID, buildGitHubApiBase, buildGitHubRawBase, getBookConfig } from '@/config'
 import { marked } from 'marked'
-import type { BookId, IdiomData } from '@/types'
+import type { BookId, ClassicWordData, EnglishBookId, IdiomData } from '@/types'
+import { ClassicDataError, formatNumberList, parseClassicWordData } from '@/utils/classicWordData'
 
 /** 並列 fetch の同時実行上限 */
 const FETCH_CONCURRENCY_LIMIT = 8
@@ -262,7 +263,7 @@ export function useGitHubData() {
   }
 
   /** 指定番号の IdiomData を取得 */
-  async function fetchIdiomData(bookId: BookId, number: string): Promise<IdiomData> {
+  async function fetchIdiomData(bookId: EnglishBookId, number: string): Promise<IdiomData> {
     const cacheKey = makeCacheKey(bookId, number)
     const cachedData = idiomDataCache.get(cacheKey)
     if (cachedData) {
@@ -286,7 +287,7 @@ export function useGitHubData() {
   }
 
   /** 指定番号の補足Markdownを取得しHTML化する。単語教材は範囲フォルダを優先し、直下にもフォールバックする。 */
-  async function fetchSupplementHtml(bookId: BookId, number: string): Promise<string | null> {
+  async function fetchSupplementHtml(bookId: EnglishBookId, number: string): Promise<string | null> {
     const cacheKey = makeCacheKey(bookId, number)
 
     if (supplementHtmlCache.has(cacheKey)) {
@@ -340,7 +341,7 @@ export function useGitHubData() {
    * 指定範囲の全IdiomDataを取得する。
    */
   async function fetchRangeData(
-    bookId: BookId,
+    bookId: EnglishBookId,
     start: number,
     end: number,
   ): Promise<{ dataMap: Map<string, IdiomData> }> {
@@ -366,5 +367,112 @@ export function useGitHubData() {
     }
   }
 
-  return { listFiles, fetchRaw, fetchIdiomData, fetchSupplementHtml, fetchRangeData, formatNumber }
+  async function fetchClassicWordData(number: string): Promise<ClassicWordData> {
+    const path = joinBookPath(CLASSIC_BOOK_ID, `target/${number}.json`)
+    let response: Response
+    try {
+      response = await fetchWithRetry(`${buildGitHubRawBase(CLASSIC_BOOK_ID)}/${path}`)
+    } catch (error) {
+      throw new ClassicDataError(
+        'fetch-failed',
+        `古文単語330の No.${number} のデータを取得できませんでした。ネットワーク接続を確認してください。`,
+        [number],
+        { cause: error },
+      )
+    }
+
+    if (response.status === 404) {
+      throw new ClassicDataError('missing', `古文単語330の No.${number} のデータ（${number}.json）が見つかりません。`, [number])
+    }
+    if (!response.ok) {
+      throw new ClassicDataError(
+        'fetch-failed',
+        `古文単語330の No.${number} のデータを取得できませんでした（HTTP ${response.status}）。`,
+        [number],
+      )
+    }
+
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(await response.text())
+    } catch {
+      throw new ClassicDataError(
+        'invalid',
+        `古文単語330の No.${number} のデータ形式が不正です（JSONとして解析できません）。`,
+        [number],
+      )
+    }
+    return parseClassicWordData(parsed, number)
+  }
+
+  /**
+   * 古文単語の指定範囲を取得・検証する。古文では毎回一覧と本体を取得し、メモリキャッシュを使わない。
+   * 1件でも欠落・形式不正・取得失敗があれば ClassicDataError を投げる。
+   */
+  async function fetchClassicRangeData(
+    start: number,
+    end: number,
+  ): Promise<{ dataMap: Map<string, ClassicWordData> }> {
+    const numbers = Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => formatNumber(start + index))
+    const apiUrl = `${buildGitHubApiBase(CLASSIC_BOOK_ID)}/${joinBookPath(CLASSIC_BOOK_ID, 'target')}`
+    let listResponse: Response
+    try {
+      listResponse = await fetchWithRetry(apiUrl)
+    } catch (error) {
+      throw new ClassicDataError(
+        'list-failed',
+        '古文単語330のファイル一覧を取得できませんでした。ネットワーク接続を確認してください。',
+        [],
+        { cause: error },
+      )
+    }
+    if (!listResponse.ok) {
+      throw new ClassicDataError(
+        'list-failed',
+        `古文単語330のファイル一覧を取得できませんでした（HTTP ${listResponse.status}）。データの配置を確認してください。`,
+      )
+    }
+
+    let listPayload: unknown
+    try {
+      listPayload = await listResponse.json()
+    } catch {
+      listPayload = null
+    }
+    if (!Array.isArray(listPayload)) {
+      throw new ClassicDataError('list-failed', '古文単語330のファイル一覧の形式が不正です。')
+    }
+
+    const fileNames = new Set(
+      listPayload
+        .filter((entry): entry is { name: string; type: string } =>
+          typeof entry === 'object' && entry !== null && typeof entry.name === 'string' && entry.type === 'file',
+        )
+        .map((entry) => entry.name),
+    )
+    const missingNumbers = numbers.filter((number) => !fileNames.has(`${number}.json`))
+    if (missingNumbers.length > 0) {
+      throw new ClassicDataError(
+        'missing',
+        `古文単語330の ${formatNumberList(missingNumbers)} のデータが見つかりません。`,
+        missingNumbers,
+      )
+    }
+
+    const entries = await fetchWithConcurrencyLimit(
+      numbers.map((number) => async () => [number, await fetchClassicWordData(number)] as const),
+      FETCH_CONCURRENCY_LIMIT,
+    )
+    return { dataMap: new Map(entries) }
+  }
+
+  return {
+    listFiles,
+    fetchRaw,
+    fetchIdiomData,
+    fetchSupplementHtml,
+    fetchRangeData,
+    fetchClassicRangeData,
+    formatNumber,
+  }
 }

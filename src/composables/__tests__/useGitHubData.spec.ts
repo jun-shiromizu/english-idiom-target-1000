@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useGitHubData, formatNumber, resetGitHubDataCaches } from '../useGitHubData'
+import { ClassicDataError } from '@/utils/classicWordData'
+import { makeClassicWord } from '@/__tests__/fixtures/classicWords'
 
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
@@ -384,6 +386,116 @@ describe('useGitHubData', () => {
         'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/word-target-1900/supplement/0001-add.md',
       ])
       expect(html).toContain('flat supplement')
+    })
+  })
+
+  describe('fetchClassicRangeData', () => {
+    const LIST_URL =
+      'https://api.github.com/repos/jun-shiromizu/english-idiom-target-1000-data/contents/classic-japanese-330/target'
+    const RAW_BASE =
+      'https://raw.githubusercontent.com/jun-shiromizu/english-idiom-target-1000-data/main/classic-japanese-330/target'
+
+    function listResponse(numbers: string[]) {
+      return {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(numbers.map((number) => ({ name: `${number}.json`, type: 'file' }))),
+      }
+    }
+
+    function rawResponse(value: unknown) {
+      return { ok: true, status: 200, text: () => Promise.resolve(JSON.stringify(value)) }
+    }
+
+    function mockClassicFetch(files: Record<string, unknown>, listed = Object.keys(files)) {
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url === LIST_URL) return listResponse(listed)
+        const number = Object.keys(files).find((key) => url === `${RAW_BASE}/${key}.json`)
+        if (number) return rawResponse(files[number])
+        return { ok: false, status: 404 }
+      })
+    }
+
+    it('CJ-05: 一覧と本体を古文パスから取得し、画像・補足Markdownは取得しない', async () => {
+      mockClassicFetch({ '0001': makeClassicWord('0001'), '0002': makeClassicWord('0002') })
+
+      const { fetchClassicRangeData } = useGitHubData()
+      const { dataMap } = await fetchClassicRangeData(1, 2)
+
+      expect([...dataMap.keys()]).toEqual(['0001', '0002'])
+      expect(dataMap.get('0002')).toEqual(makeClassicWord('0002'))
+      expect(mockFetch.mock.calls.map(([url]) => url).sort()).toEqual(
+        [LIST_URL, `${RAW_BASE}/0001.json`, `${RAW_BASE}/0002.json`].sort(),
+      )
+      expect(mockFetch).toHaveBeenCalledWith(LIST_URL, { cache: 'no-store' })
+    })
+
+    it('CJ-05: 同じ範囲を再度開始しても一覧と本体を再取得する', async () => {
+      mockClassicFetch({ '0001': makeClassicWord('0001') })
+      const { fetchClassicRangeData } = useGitHubData()
+
+      await fetchClassicRangeData(1, 1)
+      await fetchClassicRangeData(1, 1)
+
+      expect(mockFetch).toHaveBeenCalledTimes(4)
+    })
+
+    it('CJ-06: 一覧にない番号をまとめて欠落として通知し、本体を取得しない', async () => {
+      mockClassicFetch({ '0001': makeClassicWord('0001') })
+      const { fetchClassicRangeData } = useGitHubData()
+
+      const error = await fetchClassicRangeData(1, 3).catch((caught: unknown) => caught)
+
+      expect(error).toBeInstanceOf(ClassicDataError)
+      expect(error).toMatchObject({ kind: 'missing', numbers: ['0002', '0003'] })
+      expect((error as Error).message).toContain('No.0002、No.0003')
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('CJ-06: 一覧にあっても本体が404なら欠落として通知する', async () => {
+      mockClassicFetch({}, ['0001'])
+      const { fetchClassicRangeData } = useGitHubData()
+
+      await expect(fetchClassicRangeData(1, 1)).rejects.toMatchObject({ kind: 'missing', numbers: ['0001'] })
+    })
+
+    it('CJ-06: 形式不正・JSON解析失敗を番号付きで通知する', async () => {
+      mockClassicFetch({ '0001': { ...makeClassicWord('0001'), words: [] } })
+      const { fetchClassicRangeData } = useGitHubData()
+
+      await expect(fetchClassicRangeData(1, 1)).rejects.toMatchObject({ kind: 'invalid', numbers: ['0001'] })
+
+      mockFetch.mockImplementation(async (url: string) =>
+        url === LIST_URL ? listResponse(['0001']) : { ok: true, status: 200, text: () => Promise.resolve('{') },
+      )
+      await expect(fetchClassicRangeData(1, 1)).rejects.toMatchObject({
+        kind: 'invalid',
+        message: expect.stringContaining('JSONとして解析できません'),
+      })
+    })
+
+    it('CJ-06: 一覧の取得失敗を通知する', async () => {
+      mockFetch.mockResolvedValue({ ok: false, status: 404 })
+      const { fetchClassicRangeData } = useGitHubData()
+
+      await expect(fetchClassicRangeData(1, 1)).rejects.toMatchObject({ kind: 'list-failed' })
+    })
+
+    it('CJ-06: 本体の通信失敗をリトライ後に通知する', async () => {
+      vi.useFakeTimers()
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url === LIST_URL) return listResponse(['0001'])
+        throw new TypeError('Failed to fetch')
+      })
+      const { fetchClassicRangeData } = useGitHubData()
+
+      const promise = fetchClassicRangeData(1, 1).catch((caught: unknown) => caught)
+      await vi.runAllTimersAsync()
+      const error = await promise
+      vi.useRealTimers()
+
+      expect(error).toMatchObject({ kind: 'fetch-failed', numbers: ['0001'] })
+      expect(mockFetch.mock.calls.filter(([url]) => url === `${RAW_BASE}/0001.json`).length).toBeGreaterThan(1)
     })
   })
 })

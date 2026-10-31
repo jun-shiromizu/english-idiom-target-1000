@@ -16,6 +16,8 @@
       <QuizQuestion
         v-if="!revealed"
         :question-text="currentItem.questionText"
+        :hint="questionHint"
+        :preserve-line-breaks="isClassic"
         @reveal="revealed = true"
       />
 
@@ -42,13 +44,25 @@
           :class="{ 'is-dragging': isSwipeActive }"
           :style="swipeCardStyle"
         >
+          <ClassicQuizAnswer
+            v-if="classicItem && classicWordData"
+            :item="classicItem"
+            :word-data="classicWordData"
+            @correct="onJudge(true)"
+            @incorrect="onJudge(false)"
+          />
           <QuizAnswer
-            :item="currentItem"
+            v-else-if="englishItem"
+            :item="englishItem"
             @correct="onJudge(true)"
             @incorrect="onJudge(false)"
           />
         </div>
       </div>
+
+      <v-alert v-if="saveErrorMessage" type="error" variant="tonal" class="mt-4">
+        {{ saveErrorMessage }}
+      </v-alert>
     </template>
   </v-container>
 
@@ -72,17 +86,23 @@ import { useRouter } from 'vue-router'
 import ProgressBar from '@/components/ProgressBar.vue'
 import QuizQuestion from '@/components/QuizQuestion.vue'
 import QuizAnswer from '@/components/QuizAnswer.vue'
+import ClassicQuizAnswer from '@/components/ClassicQuizAnswer.vue'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { useHistory } from '@/composables/useHistory'
-import type { QuizSession } from '@/types'
+import { useAppNotice } from '@/composables/useAppNotice'
+import { isClassicQuizSession } from '@/utils/classicSession'
+import { INVALID_CLASSIC_SESSION_REDIRECT_NOTICE } from '@/utils/routeGuards'
+import type { ClassicQuizSession, QuizSession } from '@/types'
 
 const router = useRouter()
-const { loadSession, saveSession, clearSession } = useQuizSession()
-const { setResult } = useHistory()
+const { loadStoredSession, saveSession } = useQuizSession()
+const { setResult, setClassicResult } = useHistory()
+const { setNotice } = useAppNotice()
 
-const session = ref<QuizSession | null>(null)
+const session = ref<QuizSession | ClassicQuizSession | null>(null)
 const revealed = ref(false)
 const showQuitDialog = ref(false)
+const saveErrorMessage = ref('')
 let touchStartX: number | null = null
 let touchStartY: number | null = null
 const swipeOffsetX = ref(0)
@@ -97,6 +117,23 @@ const SWIPE_MAX_OFFSET = 160
 
 const currentIndex = computed(() => session.value?.currentIndex ?? 0)
 const currentItem = computed(() => session.value!.items[currentIndex.value])
+const isClassic = computed(() => session.value !== null && isClassicQuizSession(session.value))
+const classicItem = computed(() =>
+  session.value && isClassicQuizSession(session.value) ? session.value.items[currentIndex.value] : null,
+)
+const classicWordData = computed(() =>
+  session.value && isClassicQuizSession(session.value) && classicItem.value
+    ? session.value.words[classicItem.value.number] ?? null
+    : null,
+)
+const englishItem = computed(() =>
+  session.value && !isClassicQuizSession(session.value) ? session.value.items[currentIndex.value] : null,
+)
+const questionHint = computed(() => {
+  if (classicItem.value?.mode !== 'idiom' || !classicWordData.value) return undefined
+  const meanCount = classicWordData.value.means.length
+  return meanCount > 1 ? `意味を${meanCount}つ答えてください` : undefined
+})
 const swipeProgress = computed(() => Math.min(Math.abs(swipeOffsetX.value) / SWIPE_MIN_X, 1))
 const correctFeedbackOpacity = computed(() => (swipeOffsetX.value > 0 ? swipeProgress.value : 0))
 const incorrectFeedbackOpacity = computed(() => (swipeOffsetX.value < 0 ? swipeProgress.value : 0))
@@ -105,11 +142,21 @@ const swipeCardStyle = computed(() => ({
 }))
 
 onMounted(() => {
-  const loaded = loadSession()
-  if (!loaded) {
+  const stored = loadStoredSession()
+  if (stored.kind === 'invalid-classic') {
+    setNotice(INVALID_CLASSIC_SESSION_REDIRECT_NOTICE)
     router.replace({ name: 'home' })
     return
   }
+  if (stored.kind === 'classic') {
+    session.value = stored.session
+    return
+  }
+  if (stored.kind !== 'english') {
+    router.replace({ name: 'home' })
+    return
+  }
+  const loaded = stored.session
   if (loaded.sessionType === 'dictation') {
     router.replace({ name: 'dictation' })
     return
@@ -125,33 +172,57 @@ onMounted(() => {
   session.value = loaded
 })
 
-function onJudge(correct: boolean) {
-  if (!session.value) return
-  const item = currentItem.value
+function recordHistory(activeSession: QuizSession | ClassicQuizSession, correct: boolean) {
+  if (isClassicQuizSession(activeSession)) {
+    setClassicResult(activeSession.items[activeSession.currentIndex].historyKey, correct)
+    return
+  }
+
+  const item = activeSession.items[activeSession.currentIndex]
   const totalIdioms = item.meanIndex !== undefined
     ? item.idiomData.means.length
     : item.idiomData.idioms.length
   const index = item.meanIndex !== undefined ? item.meanIndex : item.idiomIndex
 
   setResult(
-    session.value.settings.bookId,
+    activeSession.settings.bookId,
     item.number,
     index,
     totalIdioms,
     correct,
-    session.value.settings.mode,
-    session.value.settings.direction,
+    activeSession.settings.mode,
+    activeSession.settings.direction,
   )
-  session.value.results[currentIndex.value] = correct
+}
 
-  const nextIndex = currentIndex.value + 1
-  if (nextIndex >= session.value.items.length) {
-    // 全問終了 → 結果画面へ
-    saveSession(session.value)
+function onJudge(correct: boolean) {
+  if (!session.value) return
+  const activeSession = session.value
+  const index = currentIndex.value
+  const hadResult = Object.prototype.hasOwnProperty.call(activeSession.results, index)
+  const previousResult = activeSession.results[index]
+  const nextIndex = index + 1
+  const isFinished = nextIndex >= activeSession.items.length
+
+  try {
+    recordHistory(activeSession, correct)
+    activeSession.results[index] = correct
+    if (!isFinished) activeSession.currentIndex = nextIndex
+    saveSession(activeSession)
+  } catch (error) {
+    // 保存に失敗した場合は、成功したように次へ進めない
+    if (hadResult) activeSession.results[index] = previousResult
+    else delete activeSession.results[index]
+    activeSession.currentIndex = index
+    saveErrorMessage.value = '回答結果を保存できませんでした。ブラウザの保存容量を確認してから、もう一度判定してください。'
+    console.error(error)
+    return
+  }
+
+  saveErrorMessage.value = ''
+  if (isFinished) {
     router.push({ name: 'result' })
   } else {
-    session.value.currentIndex = nextIndex
-    saveSession(session.value)
     revealed.value = false
   }
 }
@@ -215,7 +286,16 @@ function resetTouch() {
 }
 
 function quitSession() {
-  if (session.value) saveSession(session.value)
+  if (session.value) {
+    try {
+      saveSession(session.value)
+    } catch (error) {
+      showQuitDialog.value = false
+      saveErrorMessage.value = '進捗を保存できませんでした。ブラウザの保存容量を確認してください。'
+      console.error(error)
+      return
+    }
+  }
   router.push({ name: 'home' })
 }
 </script>

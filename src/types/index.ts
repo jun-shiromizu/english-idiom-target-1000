@@ -45,17 +45,26 @@ export type ChoiceType =
   | 'idiomatic-expression'
   | 'other'
 
-export type BookId = 'idiom-target-1000' | 'word-target-1900'
+export type EnglishBookId = 'idiom-target-1000' | 'word-target-1900'
+export type ClassicBookId = 'classic-japanese-330'
+export type BookId = EnglishBookId | ClassicBookId
+export type BookKind = 'english' | 'classic'
+export type StudyAction = 'quiz' | 'dictation' | 'cloze' | 'typing-race' | 'game' | 'battle'
 export type QuizMode = 'idiom' | 'sentence'
+/** 英語教材の出題方向 */
 export type QuizDirection = 'en-to-ja' | 'ja-to-en'
+/** 古文教材の出題方向（内部ID） */
+export type ClassicQuizDirection = 'classic-to-modern'
+export type StudyDirection = QuizDirection | ClassicQuizDirection
 export type QuizTarget = 'all' | 'incorrect'
 export type QuizOrder = 'sequential' | 'random'
 export type GameDifficulty = 'easy' | 'normal' | 'hard'
 export type ThemeId = string
 export type BattleSessionStatus = 'deck-building' | 'dungeon-select' | 'in-battle' | 'cleared' | 'defeated'
 
+/** 英語教材の出題設定 */
 export interface QuizSettings {
-  bookId: BookId
+  bookId: EnglishBookId
   startNumber: number
   endNumber: number
   mode: QuizMode
@@ -69,7 +78,7 @@ export interface QuizItem {
   /** 4桁ゼロ埋め熟語番号 e.g. "0001" */
   number: string
   /** 教材ID（補足データ取得用） */
-  bookId?: BookId
+  bookId?: EnglishBookId
   idiomData: IdiomData
   /** 出題形式 */
   mode: QuizMode
@@ -103,6 +112,92 @@ export interface QuizSession {
     mistypedChars: number
   }
 }
+
+/** トップ画面の入力値。教材に応じて QuizSettings / ClassicQuizSettings へ変換する */
+export interface StudySettingsForm {
+  bookId: BookId
+  startNumber: number
+  endNumber: number
+  mode: QuizMode
+  direction: StudyDirection
+  target: QuizTarget
+  order: QuizOrder
+  randomQuestionCount?: number
+}
+
+export interface ClassicExample {
+  text: string
+  translation: string
+}
+
+export interface ClassicMean {
+  senseNumber: number
+  meaning: string
+  examples: ClassicExample[]
+}
+
+export interface ClassicSourcePage {
+  bookPage: number
+  image: string
+}
+
+/** 古文単語330の1番号分のJSON */
+export interface ClassicWordData {
+  number: string
+  words: string[]
+  means: ClassicMean[]
+  points: string[]
+  sourcePages: ClassicSourcePage[]
+}
+
+export interface ClassicQuizSettings {
+  bookId: ClassicBookId
+  startNumber: number
+  endNumber: number
+  mode: QuizMode
+  direction: ClassicQuizDirection
+  target: QuizTarget
+  order: QuizOrder
+  randomQuestionCount?: number
+}
+
+interface ClassicQuizItemBase {
+  number: string
+  direction: ClassicQuizDirection
+  questionText: string
+  /** 学習履歴のキー。出題時のデータから生成し、セッションに保存する */
+  historyKey: string
+}
+
+export interface ClassicWordQuizItem extends ClassicQuizItemBase {
+  mode: 'idiom'
+  wordIndex: number
+}
+
+export interface ClassicExampleQuizItem extends ClassicQuizItemBase {
+  mode: 'sentence'
+  meanIndex: number
+  exampleIndex: number
+}
+
+export type ClassicQuizItem = ClassicWordQuizItem | ClassicExampleQuizItem
+
+export interface ClassicQuizSession {
+  contentType: 'classic-japanese'
+  sessionType: 'quiz'
+  settings: ClassicQuizSettings
+  /** 番号 → 単語データ。問題ごとに重複保存しない */
+  words: Record<string, ClassicWordData>
+  items: ClassicQuizItem[]
+  currentIndex: number
+  results: Record<number, boolean>
+}
+
+export type StoredQuizSessionState =
+  | { kind: 'none' }
+  | { kind: 'english'; session: QuizSession }
+  | { kind: 'classic'; session: ClassicQuizSession }
+  | { kind: 'invalid-classic'; reason: string }
 
 export type BattleEffectType =
   | 'atk-multiplier'

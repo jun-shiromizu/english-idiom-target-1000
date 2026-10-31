@@ -75,6 +75,10 @@
           </v-btn>
         </v-col>
       </v-row>
+
+      <v-alert v-if="errorMessage" type="error" variant="tonal" class="mt-4">
+        {{ errorMessage }}
+      </v-alert>
     </template>
   </v-container>
 
@@ -99,14 +103,19 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { useHistory } from '@/composables/useHistory'
-import type { QuizSession } from '@/types'
+import { useAppNotice } from '@/composables/useAppNotice'
+import { isClassicQuizSession } from '@/utils/classicSession'
+import { INVALID_CLASSIC_SESSION_REDIRECT_NOTICE } from '@/utils/routeGuards'
+import type { ClassicQuizSession, ClassicWordData, QuizSession } from '@/types'
 
 const router = useRouter()
-const { loadSession, saveSession, clearSession } = useQuizSession()
+const { loadStoredSession, saveSession, clearSession } = useQuizSession()
 const { clearRange } = useHistory()
+const { setNotice } = useAppNotice()
 
-const session = ref<QuizSession | null>(null)
+const session = ref<QuizSession | ClassicQuizSession | null>(null)
 const showClearAndRetryDialog = ref(false)
+const errorMessage = ref('')
 
 const correctCount = computed(() => {
   if (!session.value) return 0
@@ -118,11 +127,21 @@ const incorrectCount = computed(() => {
 })
 
 onMounted(() => {
-  const loaded = loadSession()
-  if (!loaded) {
+  const stored = loadStoredSession()
+  if (stored.kind === 'invalid-classic') {
+    setNotice(INVALID_CLASSIC_SESSION_REDIRECT_NOTICE)
     router.replace({ name: 'home' })
     return
   }
+  if (stored.kind === 'classic') {
+    session.value = stored.session
+    return
+  }
+  if (stored.kind !== 'english') {
+    router.replace({ name: 'home' })
+    return
+  }
+  const loaded = stored.session
   if (loaded.sessionType === 'typing-race') {
     router.replace({ name: 'typing-race' })
     return
@@ -135,22 +154,57 @@ function goHome() {
   router.push({ name: 'home' })
 }
 
+function trySaveAndOpen(nextSession: QuizSession | ClassicQuizSession): boolean {
+  try {
+    saveSession(nextSession)
+  } catch (error) {
+    errorMessage.value = '再挑戦用のデータを保存できませんでした。ブラウザの保存容量を確認してください。'
+    console.error(error)
+    return false
+  }
+  router.push({ name: getResumeRouteName() })
+  return true
+}
+
+function createClassicRetrySession(activeSession: ClassicQuizSession): ClassicQuizSession {
+  const items = activeSession.items.filter((_, i) => activeSession.results[i] === false)
+  const words: Record<string, ClassicWordData> = {}
+  items.forEach((item) => {
+    words[item.number] = activeSession.words[item.number]
+  })
+  return {
+    ...activeSession,
+    settings: { ...activeSession.settings, target: 'incorrect' },
+    words,
+    items,
+    currentIndex: 0,
+    results: {},
+  }
+}
+
 function retryIncorrect() {
   if (!session.value) return
-  const incorrectItems = session.value.items.filter((_, i) => session.value!.results[i] === false)
+  errorMessage.value = ''
+  const activeSession = session.value
+  if (isClassicQuizSession(activeSession)) {
+    trySaveAndOpen(createClassicRetrySession(activeSession))
+    return
+  }
+
+  const incorrectItems = activeSession.items.filter((_, i) => activeSession.results[i] === false)
   const retrySession = {
-    ...session.value,
-    settings: { ...session.value.settings, target: 'incorrect' as const },
+    ...activeSession,
+    settings: { ...activeSession.settings, target: 'incorrect' as const },
     items: incorrectItems,
     currentIndex: 0,
     results: {},
   }
-  saveSession(retrySession)
-  router.push({ name: getResumeRouteName() })
+  trySaveAndOpen(retrySession)
 }
 
 function clearAndRetry() {
   if (!session.value) return
+  errorMessage.value = ''
   const { bookId, startNumber, endNumber } = session.value.settings
   clearRange(bookId, startNumber, endNumber)
   const retrySession = {
@@ -158,14 +212,15 @@ function clearAndRetry() {
     currentIndex: 0,
     results: {},
   }
-  saveSession(retrySession)
   showClearAndRetryDialog.value = false
-  router.push({ name: getResumeRouteName() })
+  trySaveAndOpen(retrySession)
 }
 
 function getResumeRouteName() {
-  if (session.value?.sessionType === 'dictation') return 'dictation'
-  if (session.value?.sessionType === 'cloze') return 'cloze'
+  const activeSession = session.value
+  if (!activeSession || isClassicQuizSession(activeSession)) return 'quiz'
+  if (activeSession.sessionType === 'dictation') return 'dictation'
+  if (activeSession.sessionType === 'cloze') return 'cloze'
   return 'quiz'
 }
 </script>

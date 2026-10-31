@@ -20,6 +20,9 @@ import BattleDungeonView from './views/BattleDungeonView.vue'
 import BattleView from './views/BattleView.vue'
 import BattleResultView from './views/BattleResultView.vue'
 import { DEFAULT_THEME_ID, VUETIFY_THEMES, loadStoredThemeId } from './theme'
+import { useAppNotice } from './composables/useAppNotice'
+import { useQuizSession } from './composables/useQuizSession'
+import { getClassicRouteBlockMessage } from './utils/routeGuards'
 
 const vuetify = createVuetify({
   components,
@@ -46,6 +49,13 @@ const router = createRouter({
     { path: '/battle/play', name: 'battle-play', component: BattleView },
     { path: '/battle/result', name: 'battle-result', component: BattleResultView },
   ],
+})
+
+router.beforeEach((to) => {
+  const message = getClassicRouteBlockMessage(to.name, useQuizSession().loadStoredSession())
+  if (!message) return true
+  useAppNotice().setNotice(message)
+  return { name: 'home' }
 })
 
 createApp(App).use(vuetify).use(router).mount('#app')

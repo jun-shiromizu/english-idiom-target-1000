@@ -89,8 +89,9 @@ interface QuizSession {
 
 | キー | 値 | 用途 |
 |---|---|---|
-| `idiom-history` | `Record<string, boolean>` | 各熟語の最新回答。キーは `"{number}"` または `"{number}-{idiomIndex}"` |
-| `idiom-session` | `QuizSession \| null` | 中断中のセッション（再開用） |
+| `idiom-app-history` | `Record<string, boolean>` | 各問題の最新回答。英語教材のキーは `"{bookId}:{mode}:{direction}:{number}"`（熟語が複数なら末尾が `"{number}-{idiomIndex}"`。旧形式 `"{number}"` も読み取る）、古文単語330のキーは専用のJSON配列形式 |
+| `idiom-app-session` | `QuizSession \| ClassicQuizSession \| null` | 中断中の単語帳等のセッション（再開用） |
+| `idiom-app-settings` | 出題設定 | トップの出題設定。古文単語330の選択中は、直前の英語教材の設定を `lastEnglishSettings` として保持する |
 
 ## データ取得フロー
 
@@ -131,6 +132,16 @@ interface QuizSession {
 ### Phase 5: デプロイ
 16. GitHub Actions ワークフロー作成（build → Pages artifact を deploy）
 17. 動作確認
+
+## 古文単語330の追加
+
+古文単語330の追加対応は [classic-japanese-plan.md](./classic-japanese-plan.md) で管理する。上記の英語教材向け構成との主な差分は次のとおり。
+
+- 古文JSONは英語教材の `IdiomData` と別の型（`ClassicWordData`）として検証し、単語帳（古文 → 現代語）だけで使う。
+- 回答表示は `ClassicQuizAnswer.vue` が担当し、補足Markdown・画像は取得しない。
+- データ取得では毎回一覧と対象JSONを再取得し、メモリキャッシュを使わない。
+- セッションは `contentType: 'classic-japanese'` で英語セッションと区別し、単語データを番号ごとに1回だけ保存する。
+- 履歴キーは古文専用の形式とし、英語教材の履歴と衝突させない。
 
 ## 依存ライブラリ（想定）
 

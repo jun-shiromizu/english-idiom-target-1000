@@ -247,7 +247,8 @@ import { getGameAnswerLabel, useGameChoices, type GameChoice } from '@/composabl
 import { useGitHubData } from '@/composables/useGitHubData'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { useBattleSession } from '@/composables/useBattleSession'
-import { BOOK_ORDER, DEFAULT_BOOK_ID, STORAGE_KEY_SETTINGS, buildBattleGitHubRawBase, getBookConfig } from '@/config'
+import { DEFAULT_BOOK_ID, buildBattleGitHubRawBase, getBookConfig, isEnglishBookId } from '@/config'
+import { CLASSIC_BATTLE_UNSUPPORTED_MESSAGE, resolveBattleSettingsSource } from '@/utils/studySettings'
 import type { BattleCharacter, BattleDungeon, BattleSession, BattleSkillEffect, QuizItem, QuizSettings } from '@/types'
 
 type BattleScreen = 'command' | 'game'
@@ -299,7 +300,7 @@ function createDefaultSettings(): QuizSettings {
 
 function normalizeSettings(raw: Partial<QuizSettings> | null | undefined): QuizSettings {
   const defaults = createDefaultSettings()
-  const bookId = raw?.bookId && BOOK_ORDER.includes(raw.bookId) ? raw.bookId : defaults.bookId
+  const bookId = isEnglishBookId(raw?.bookId) ? raw.bookId : defaults.bookId
   const maxNumber = getBookConfig(bookId).maxNumber
   const startNumber = Math.min(Math.max(raw?.startNumber ?? defaults.startNumber, 1), maxNumber)
   const endNumber = Math.min(Math.max(raw?.endNumber ?? defaults.endNumber, 1), maxNumber)
@@ -315,13 +316,11 @@ function normalizeSettings(raw: Partial<QuizSettings> | null | undefined): QuizS
   }
 }
 
-function loadAttackSettings(): QuizSettings {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_SETTINGS)
-    return normalizeSettings(raw ? (JSON.parse(raw) as Partial<QuizSettings>) : null)
-  } catch {
-    return createDefaultSettings()
-  }
+/** 攻撃問題に使う英語設定。古文選択中で英語設定を解決できない場合は null */
+function loadAttackSettings(): QuizSettings | null {
+  const source = resolveBattleSettingsSource()
+  if (source.kind === 'classic-without-english') return null
+  return normalizeSettings(source.raw)
 }
 
 function getActiveFallSpeed(activeDungeon: BattleDungeon | null, activeSession: BattleSession | null): number {
@@ -785,6 +784,10 @@ onMounted(() => {
 
     try {
       const attackSettings = loadAttackSettings()
+      if (!attackSettings) {
+        errorMessage.value = CLASSIC_BATTLE_UNSUPPORTED_MESSAGE
+        return
+      }
       const [{ dataMap }, loadedCharacters, loadedDungeons] = await Promise.all([
         fetchRangeData(attackSettings.bookId, attackSettings.startNumber, attackSettings.endNumber),
         fetchCharacters(),

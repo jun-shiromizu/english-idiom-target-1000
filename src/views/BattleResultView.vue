@@ -102,15 +102,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { BOOK_ORDER, DEFAULT_BOOK_ID, STORAGE_KEY_SETTINGS, buildBattleGitHubRawBase, getBookConfig } from '@/config'
+import { DEFAULT_BOOK_ID, buildBattleGitHubRawBase, getBookConfig, isEnglishBookId } from '@/config'
 import { useBattleData } from '@/composables/useBattleData'
 import { useBattleSession } from '@/composables/useBattleSession'
+import { resolveBattleSettingsSource } from '@/utils/studySettings'
 import type { BattleCharacter, BattleDungeon, BattleEnemy, BattleSession, QuizSettings } from '@/types'
 
 interface DisplaySettingsSummary {
   bookTitle: string
-  startNumber: number
-  endNumber: number
+  startNumber: number | string
+  endNumber: number | string
   modeLabel: string
   directionLabel: string
   targetLabel: string
@@ -140,7 +141,7 @@ function createDefaultSettings(): QuizSettings {
 
 function normalizeSettings(raw: Partial<QuizSettings> | null | undefined): QuizSettings {
   const defaults = createDefaultSettings()
-  const bookId = raw?.bookId && BOOK_ORDER.includes(raw.bookId) ? raw.bookId : defaults.bookId
+  const bookId = isEnglishBookId(raw?.bookId) ? raw.bookId : defaults.bookId
   const maxNumber = getBookConfig(bookId).maxNumber
   const startNumber = Math.min(Math.max(raw?.startNumber ?? defaults.startNumber, 1), maxNumber)
   const endNumber = Math.min(Math.max(raw?.endNumber ?? defaults.endNumber, 1), maxNumber)
@@ -156,13 +157,11 @@ function normalizeSettings(raw: Partial<QuizSettings> | null | undefined): QuizS
   }
 }
 
-function loadAttackSettings(): QuizSettings {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_SETTINGS)
-    return normalizeSettings(raw ? (JSON.parse(raw) as Partial<QuizSettings>) : null)
-  } catch {
-    return createDefaultSettings()
-  }
+/** バトル画面と同じ英語設定を表示する。古文選択中で英語設定を解決できない場合は null */
+function loadAttackSettings(): QuizSettings | null {
+  const source = resolveBattleSettingsSource()
+  if (source.kind === 'classic-without-english') return null
+  return normalizeSettings(source.raw)
 }
 
 function resolveBattleAsset(iconPath: string): string {
@@ -225,6 +224,17 @@ const defeatedEnemies = computed(() => {
 })
 const settingsSummary = computed<DisplaySettingsSummary>(() => {
   const settings = loadAttackSettings()
+  if (!settings) {
+    return {
+      bookTitle: '英語教材が未選択です',
+      startNumber: '-',
+      endNumber: '-',
+      modeLabel: '-',
+      directionLabel: '-',
+      targetLabel: '-',
+      orderLabel: '-',
+    }
+  }
   return {
     bookTitle: getBookConfig(settings.bookId).title,
     startNumber: settings.startNumber,
