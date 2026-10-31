@@ -342,7 +342,7 @@ import { useAppNotice } from '@/composables/useAppNotice'
 import { ClassicDataError } from '@/utils/classicWordData'
 import { SessionSaveError } from '@/utils/sessionErrors'
 import { createDefaultStudySettings, loadStudySettings, saveStudySettings } from '@/utils/studySettings'
-import { trackStudyStarted } from '@/utils/analytics'
+import { createAnalyticsSessionId, trackStudyStarted } from '@/utils/analytics'
 import type { BattleSession } from '@/types'
 
 const router = useRouter()
@@ -680,6 +680,8 @@ async function startSession(routeName: SessionRouteName) {
     const isTypingRace = routeName === 'typing-race'
     const timeLimitSeconds = 90
     const session = {
+      analyticsSessionId: createAnalyticsSessionId(),
+      analyticsCompletionSent: false,
       settings: englishSettings,
       items,
       currentIndex: 0,

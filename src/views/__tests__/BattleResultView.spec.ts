@@ -8,14 +8,20 @@ const {
   mockPush,
   mockReplace,
   mockLoadSession,
+  mockSaveSession,
   mockFetchCharacters,
   mockFetchDungeons,
+  mockIsAnalyticsEnabled,
+  mockTrackBattleCompleted,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockReplace: vi.fn(),
   mockLoadSession: vi.fn(),
+  mockSaveSession: vi.fn(),
   mockFetchCharacters: vi.fn(),
   mockFetchDungeons: vi.fn(),
+  mockIsAnalyticsEnabled: vi.fn(),
+  mockTrackBattleCompleted: vi.fn(),
 }))
 
 vi.mock('vue-router', () => ({
@@ -25,8 +31,18 @@ vi.mock('vue-router', () => ({
 vi.mock('@/composables/useBattleSession', () => ({
   useBattleSession: () => ({
     loadSession: mockLoadSession,
+    saveSession: mockSaveSession,
   }),
 }))
+
+vi.mock('@/utils/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/utils/analytics')>()
+  return {
+    ...actual,
+    isAnalyticsEnabled: mockIsAnalyticsEnabled,
+    trackBattleCompleted: mockTrackBattleCompleted,
+  }
+})
 
 vi.mock('@/composables/useBattleData', () => ({
   useBattleData: () => ({
@@ -94,6 +110,8 @@ const dungeons: BattleDungeon[] = [
 function createSession(): BattleSession {
   return {
     sessionType: 'battle',
+    analyticsSessionId: 'battle-session-1',
+    analyticsCompletionSent: false,
     status: 'cleared',
     deck: {
       leaderId: 'hero-001',
@@ -116,8 +134,11 @@ describe('BattleResultView', () => {
     mockPush.mockReset()
     mockReplace.mockReset()
     mockLoadSession.mockReset()
+    mockSaveSession.mockReset()
     mockFetchCharacters.mockReset()
     mockFetchDungeons.mockReset()
+    mockIsAnalyticsEnabled.mockReturnValue(true)
+    mockTrackBattleCompleted.mockReset()
     mockFetchCharacters.mockResolvedValue(characters)
     mockFetchDungeons.mockResolvedValue(dungeons)
   })
@@ -190,6 +211,27 @@ describe('BattleResultView', () => {
     expect(wrapper.text()).toContain('直前に間違えた問題')
     expect(wrapper.text()).toContain('問題: idiom 0003')
     expect(wrapper.text()).toContain('正しい答え: かなり多くの〜')
+  })
+
+  it('完了イベントを保存して、同じバトル結果の再表示時に重複送信しない', async () => {
+    const session = createSession()
+    mockLoadSession.mockReturnValue(session)
+
+    const first = mount(BattleResultView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    expect(mockTrackBattleCompleted).toHaveBeenCalledTimes(1)
+    expect(mockSaveSession).toHaveBeenCalledWith(expect.objectContaining({
+      analyticsSessionId: 'battle-session-1',
+      analyticsCompletionSent: true,
+    }))
+    first.unmount()
+
+    const second = mount(BattleResultView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    expect(mockTrackBattleCompleted).toHaveBeenCalledTimes(1)
+    second.unmount()
   })
 
   it('古文単語330を選択中は、退避した英語設定を表示する', async () => {

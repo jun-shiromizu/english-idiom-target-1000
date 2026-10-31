@@ -5,6 +5,17 @@ import TypingRaceView from '../TypingRaceView.vue'
 import type { IdiomData, QuizItem, QuizSession } from '@/types'
 import { STORAGE_KEY_SESSION } from '@/config'
 
+const { isAnalyticsEnabled, trackStudyCompleted, trackStudyStarted } = vi.hoisted(() => ({
+  isAnalyticsEnabled: vi.fn(),
+  trackStudyCompleted: vi.fn(),
+  trackStudyStarted: vi.fn(),
+}))
+
+vi.mock('@/utils/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/utils/analytics')>()
+  return { ...actual, isAnalyticsEnabled, trackStudyCompleted, trackStudyStarted }
+})
+
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
 const mockAudioPlay = vi.fn().mockResolvedValue(undefined)
@@ -94,6 +105,9 @@ describe('TypingRaceView', () => {
     mockReplace.mockReset()
     mockAudioPlay.mockClear()
     mockAudioPause.mockClear()
+    isAnalyticsEnabled.mockReturnValue(true)
+    trackStudyCompleted.mockReset()
+    trackStudyStarted.mockReset()
     vi.stubGlobal('Audio', MockAudio)
   })
 
@@ -248,6 +262,22 @@ describe('TypingRaceView', () => {
     expect(wrapper.text()).toContain('正解した文字数')
     expect(wrapper.text()).toContain('ミスタイプ 0 文字')
     expect(wrapper.text()).toContain('続ける')
+    expect(trackStudyCompleted).toHaveBeenCalledTimes(1)
+    expect(trackStudyCompleted).toHaveBeenCalledWith(expect.objectContaining({
+      studyMode: 'typing-race',
+      questionCount: 2,
+      correctCount: 0,
+      incorrectCount: 0,
+    }))
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY_SESSION) ?? '{}')).toMatchObject({
+      analyticsCompletionSent: true,
+    })
+
+    wrapper.unmount()
+    const restored = mount(TypingRaceView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(trackStudyCompleted).toHaveBeenCalledTimes(1)
+    restored.unmount()
   })
 
   it('タイムアップ後に「続ける」で次の90秒を開始する', async () => {
@@ -283,5 +313,41 @@ describe('TypingRaceView', () => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_SESSION) ?? '{}') as QuizSession
     expect(saved.currentIndex).toBe(1)
     expect(saved.typingRaceStats).toEqual({ correctChars: 40, mistypedChars: 2 })
+    expect(saved.analyticsCompletionSent).toBe(false)
+    expect(trackStudyCompleted).toHaveBeenCalledTimes(1)
+    expect(trackStudyStarted).toHaveBeenCalledTimes(1)
+
+    vi.advanceTimersByTime(90_500)
+    await flushPromises()
+    expect(trackStudyCompleted).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('全問回答時に完了イベントを送る', async () => {
+    localStorage.setItem(
+      STORAGE_KEY_SESSION,
+      JSON.stringify(makeSession({
+        items: [makeItem('0001', 'I am looking forward to hearing from you.')],
+      })),
+    )
+    const wrapper = mount(TypingRaceView, {
+      global: { plugins: [vuetify] },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    const input = wrapper.find('input')
+    await input.setValue('I am looking forward to hearing from you.')
+    await input.trigger('keydown.enter')
+    await flushPromises()
+
+    expect(trackStudyCompleted).toHaveBeenCalledTimes(1)
+    expect(trackStudyCompleted).toHaveBeenCalledWith(expect.objectContaining({
+      studyMode: 'typing-race',
+      questionCount: 1,
+      correctCount: 1,
+      incorrectCount: 0,
+    }))
+    wrapper.unmount()
   })
 })

@@ -15,6 +15,7 @@ import type {
 } from '@/types'
 import { isClassicQuizSession, isClassicSessionLike, parseClassicQuizSession } from '@/utils/classicSession'
 import { SessionSaveError } from '@/utils/sessionErrors'
+import { createAnalyticsSessionId } from '@/utils/analytics'
 import { getClassicExampleHistoryKey, getClassicWordHistoryKey, useHistory } from './useHistory'
 import { formatNumber } from './useGitHubData'
 
@@ -237,6 +238,8 @@ export function useQuizSession() {
     return {
       contentType: 'classic-japanese',
       sessionType: 'quiz',
+      analyticsSessionId: createAnalyticsSessionId(),
+      analyticsCompletionSent: false,
       settings: { ...settings },
       words,
       items,
@@ -322,16 +325,24 @@ export function useQuizSession() {
   }
 
   function saveSession(session: QuizSession | ClassicQuizSession): void {
-    if (isClassicQuizSession(session)) {
-      writeSession(session)
+    const sessionWithAnalytics = {
+      ...session,
+      analyticsSessionId: session.analyticsSessionId ?? createAnalyticsSessionId(),
+      analyticsCompletionSent: session.analyticsCompletionSent ?? false,
+    }
+
+    if (isClassicQuizSession(sessionWithAnalytics)) {
+      writeSession(sessionWithAnalytics)
       return
     }
-    writeSession({ ...session, settings: normalizeSettings(session.settings) })
+    writeSession({ ...sessionWithAnalytics, settings: normalizeSettings(sessionWithAnalytics.settings) })
   }
 
   function normalizeStoredEnglishSession(session: QuizSession): QuizSession {
     return {
       ...session,
+      analyticsSessionId: session.analyticsSessionId ?? createAnalyticsSessionId(),
+      analyticsCompletionSent: session.analyticsCompletionSent ?? false,
       settings: {
         ...normalizeSettings(session.settings),
         bookId: session.settings.bookId ?? LEGACY_BOOK_ID,
@@ -353,9 +364,15 @@ export function useQuizSession() {
 
     if (isClassicSessionLike(parsed)) {
       const result = parseClassicQuizSession(parsed)
-      return result.ok
-        ? { kind: 'classic', session: result.session }
-        : { kind: 'invalid-classic', reason: result.reason }
+      if (!result.ok) return { kind: 'invalid-classic', reason: result.reason }
+      return {
+        kind: 'classic',
+        session: {
+          ...result.session,
+          analyticsSessionId: result.session.analyticsSessionId ?? createAnalyticsSessionId(),
+          analyticsCompletionSent: result.session.analyticsCompletionSent ?? false,
+        },
+      }
     }
 
     try {

@@ -117,7 +117,9 @@ describe('古文セッションの保存と復元', () => {
 
     saveSession(session)
 
-    expect(loadStoredSession()).toEqual({ kind: 'classic', session })
+    expect(loadStoredSession()).toMatchObject({ kind: 'classic', session })
+    const restored = loadStoredSession()
+    expect(restored.kind === 'classic' && restored.session.analyticsSessionId).toBeTruthy()
     expect(loadSession()).toBeNull()
   })
 

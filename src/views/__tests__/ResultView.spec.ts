@@ -9,6 +9,17 @@ import { makeClassicSession, makeClassicSettings, makeClassicWord } from '@/__te
 import { useAppNotice } from '@/composables/useAppNotice'
 import { INVALID_CLASSIC_SESSION_REDIRECT_NOTICE } from '@/utils/routeGuards'
 
+const { isAnalyticsEnabled, trackStudyCompleted, trackStudyStarted } = vi.hoisted(() => ({
+  isAnalyticsEnabled: vi.fn(),
+  trackStudyCompleted: vi.fn(),
+  trackStudyStarted: vi.fn(),
+}))
+
+vi.mock('@/utils/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/utils/analytics')>()
+  return { ...actual, isAnalyticsEnabled, trackStudyCompleted, trackStudyStarted }
+})
+
 // vue-router をモック
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -56,6 +67,9 @@ describe('ResultView', () => {
   beforeEach(() => {
     localStorage.clear()
     mockPush.mockReset()
+    isAnalyticsEnabled.mockReturnValue(true)
+    trackStudyCompleted.mockReset()
+    trackStudyStarted.mockReset()
   })
 
   /**
@@ -94,6 +108,44 @@ describe('ResultView', () => {
     const buttons = wrapper.findAll('button')
     const retryBtn = buttons.find((b) => b.text().includes('間違えたところをやり直す'))
     expect(retryBtn?.attributes('disabled')).toBeDefined()
+  })
+
+  it('完了イベントを結果セッションに保存し、再表示時に重複送信しない', async () => {
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeSession({ 0: true, 1: false, 2: true })))
+
+    const first = mount(ResultView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    expect(trackStudyCompleted).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY_SESSION) ?? '{}')).toMatchObject({
+      analyticsCompletionSent: true,
+    })
+    first.unmount()
+
+    const second = mount(ResultView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    expect(trackStudyCompleted).toHaveBeenCalledTimes(1)
+    second.unmount()
+  })
+
+  it('不正解からの再挑戦後に戻っても、未回答セッションを完了として送信しない', async () => {
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(makeSession({ 0: true, 1: false, 2: false })))
+
+    const first = mount(ResultView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(trackStudyCompleted).toHaveBeenCalledTimes(1)
+
+    const retryButton = first.findAll('button').find((button) => button.text().includes('間違えたところをやり直す'))
+    await retryButton!.trigger('click')
+    first.unmount()
+
+    const backToResult = mount(ResultView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY_SESSION) ?? '{}')).toMatchObject({ results: {} })
+    expect(trackStudyCompleted).toHaveBeenCalledTimes(1)
+    backToResult.unmount()
   })
 })
 

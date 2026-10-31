@@ -98,6 +98,9 @@ export interface QuizSession {
   settings: QuizSettings
   items: QuizItem[]
   currentIndex: number
+  /** ローカルでセッションを識別し、計測済みフラグを保持するためのID */
+  analyticsSessionId?: string
+  analyticsCompletionSent?: boolean
   /** QuizItem インデックス → 正解(true)/不正解(false) */
   results: Record<number, boolean>
   /** セッション種別（未定義時は 'quiz' 扱い） */
@@ -185,6 +188,8 @@ export type ClassicQuizItem = ClassicWordQuizItem | ClassicExampleQuizItem
 export interface ClassicQuizSession {
   contentType: 'classic-japanese'
   sessionType: 'quiz'
+  analyticsSessionId?: string
+  analyticsCompletionSent?: boolean
   settings: ClassicQuizSettings
   /** 番号 → 単語データ。問題ごとに重複保存しない */
   words: Record<string, ClassicWordData>
@@ -278,6 +283,8 @@ export interface BattleEffectState {
 
 export interface BattleSession {
   sessionType: 'battle'
+  analyticsSessionId?: string
+  analyticsCompletionSent?: boolean
   status: BattleSessionStatus
   deck: BattleDeck
   dungeonId?: string

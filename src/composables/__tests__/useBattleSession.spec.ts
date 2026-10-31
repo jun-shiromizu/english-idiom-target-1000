@@ -38,7 +38,16 @@ describe('useBattleSession', () => {
 
     saveSession(session)
 
-    expect(loadSession()).toEqual(session)
+    const restored = loadSession()
+    expect(restored).toMatchObject({
+      ...session,
+      analyticsCompletionSent: false,
+    })
+    expect(restored?.analyticsSessionId).toBeTruthy()
+    restored!.analyticsCompletionSent = true
+    saveSession(restored!)
+    expect(loadSession()?.analyticsSessionId).toBe(restored?.analyticsSessionId)
+    expect(loadSession()?.analyticsCompletionSent).toBe(true)
   })
 
   it('clearSession で battle セッションを削除できる', () => {

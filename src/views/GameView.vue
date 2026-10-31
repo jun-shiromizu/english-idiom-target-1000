@@ -170,7 +170,12 @@ import { useGameChoices, getGameAnswerLabel } from '@/composables/useGameChoices
 import { useHistory } from '@/composables/useHistory'
 import { useQuizSession } from '@/composables/useQuizSession'
 import { STORAGE_KEY_GAME_SETTINGS, getBookConfig } from '@/config'
-import { trackStudyCompleted, trackStudyStarted } from '@/utils/analytics'
+import {
+  createAnalyticsSessionId,
+  isAnalyticsEnabled,
+  trackStudyCompleted,
+  trackStudyStarted,
+} from '@/utils/analytics'
 import type { GameChoice } from '@/composables/useGameChoices'
 import type { GameDifficulty, QuizItem, QuizSession } from '@/types'
 
@@ -224,7 +229,7 @@ const GAME_DIFFICULTY_LABELS: Record<GameDifficulty, string> = {
 }
 
 const router = useRouter()
-const { loadSession } = useQuizSession()
+const { loadSession, saveSession } = useQuizSession()
 const { setResult } = useHistory()
 const { buildGameChoices } = useGameChoices()
 
@@ -397,6 +402,13 @@ function finishGame(wasCompleted: boolean) {
   completed.value = wasCompleted
   isPaused.value = false
   cancelAnimationFrame(animationFrame)
+  const shouldTrackCompletion = isAnalyticsEnabled() && !session.value.analyticsCompletionSent
+  if (shouldTrackCompletion) {
+    session.value.analyticsCompletionSent = true
+    saveSession(session.value)
+  }
+  if (!shouldTrackCompletion) return
+
   trackStudyCompleted({
     bookId: session.value.settings.bookId,
     studyMode: 'game',
@@ -431,6 +443,8 @@ function restartGame() {
   completed.value = false
   isResolving.value = false
   isPaused.value = false
+  session.value.analyticsSessionId = createAnalyticsSessionId()
+  session.value.analyticsCompletionSent = false
   previousFrameTime = 0
   difficulty.value = loadGameDifficulty()
   resetQuestion({ resetPosition: true })
@@ -443,6 +457,7 @@ function restartGame() {
     target: session.value.settings.target,
     order: session.value.settings.order,
   })
+  saveSession(session.value)
   animationFrame = requestAnimationFrame(tick)
 }
 </script>

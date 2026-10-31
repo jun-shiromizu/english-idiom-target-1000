@@ -148,6 +148,10 @@ function parseSession(value: unknown): ClassicQuizSession {
   return {
     contentType: 'classic-japanese',
     sessionType: 'quiz',
+    ...(typeof value.analyticsSessionId === 'string' && value.analyticsSessionId.length > 0
+      ? { analyticsSessionId: value.analyticsSessionId }
+      : {}),
+    ...(value.analyticsCompletionSent === true ? { analyticsCompletionSent: true } : {}),
     settings,
     words,
     items,

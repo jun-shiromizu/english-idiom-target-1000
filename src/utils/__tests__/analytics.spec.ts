@@ -9,9 +9,12 @@ afterEach(() => {
   document.head.querySelectorAll('script[data-google-analytics]').forEach((script) => script.remove())
   delete window.gtag
   window.dataLayer = []
-  sessionStorage.clear()
   vi.restoreAllMocks()
 })
+
+function getQueuedCalls(): unknown[][] {
+  return window.dataLayer.map((entry) => Array.from(entry as IArguments))
+}
 
 describe('Google Analytics', () => {
   it('本番以外では初期化しない', async () => {
@@ -57,36 +60,22 @@ describe('Google Analytics', () => {
       incorrectCount: 5,
     })
 
-    expect(window.dataLayer).toContainEqual(['config', 'G-TEST123', expect.objectContaining({
+    expect(getQueuedCalls()).toContainEqual(['config', 'G-TEST123', expect.objectContaining({
       send_page_view: false,
       allow_google_signals: false,
       allow_ad_personalization_signals: false,
     })])
-    expect(window.dataLayer).toContainEqual(['event', 'page_view', expect.objectContaining({ page_path: '/quiz' })])
-    expect(window.dataLayer).toContainEqual(['event', 'study_started', expect.objectContaining({
+    expect(getQueuedCalls()).toContainEqual(['event', 'page_view', expect.objectContaining({ page_path: '/quiz' })])
+    expect(getQueuedCalls()).toContainEqual(['event', 'study_started', expect.objectContaining({
       book_id: 'word-target-1900',
       study_mode: 'quiz',
       question_count: 20,
     })])
-    expect(window.dataLayer).toContainEqual(['event', 'study_completed', expect.objectContaining({
+    expect(getQueuedCalls()).toContainEqual(['event', 'study_completed', expect.objectContaining({
       correct_count: 15,
       incorrect_count: 5,
     })])
-    expect(window.dataLayer.filter((entry) => Array.isArray(entry) && entry[1] === 'study_completed')).toHaveLength(1)
-
-    analytics.trackStudyStarted({
-      bookId: 'word-target-1900',
-      studyMode: 'quiz',
-      questionCount: 20,
-    })
-    analytics.trackStudyCompleted({
-      bookId: 'word-target-1900',
-      studyMode: 'quiz',
-      questionCount: 20,
-      correctCount: 15,
-      incorrectCount: 5,
-    })
-    expect(window.dataLayer.filter((entry) => Array.isArray(entry) && entry[1] === 'study_completed')).toHaveLength(2)
-    expect(JSON.stringify(window.dataLayer)).not.toContain('questionText')
+    expect(getQueuedCalls().filter((entry) => entry[1] === 'study_completed')).toHaveLength(2)
+    expect(JSON.stringify(getQueuedCalls())).not.toContain('questionText')
   })
 })

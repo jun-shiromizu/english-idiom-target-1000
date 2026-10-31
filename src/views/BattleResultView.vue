@@ -106,7 +106,7 @@ import { DEFAULT_BOOK_ID, buildBattleGitHubRawBase, getBookConfig, isEnglishBook
 import { useBattleData } from '@/composables/useBattleData'
 import { useBattleSession } from '@/composables/useBattleSession'
 import { resolveBattleSettingsSource } from '@/utils/studySettings'
-import { trackBattleCompleted } from '@/utils/analytics'
+import { isAnalyticsEnabled, trackBattleCompleted } from '@/utils/analytics'
 import type { BattleCharacter, BattleDungeon, BattleEnemy, BattleSession, QuizSettings } from '@/types'
 
 interface DisplaySettingsSummary {
@@ -120,7 +120,7 @@ interface DisplaySettingsSummary {
 }
 
 const router = useRouter()
-const { loadSession } = useBattleSession()
+const { loadSession, saveSession } = useBattleSession()
 const { fetchCharacters, fetchDungeons } = useBattleData()
 const session = ref<BattleSession | null>(null)
 const characters = ref<BattleCharacter[]>([])
@@ -256,7 +256,13 @@ onMounted(() => {
     }
 
     session.value = loaded
-    if (loaded.status === 'cleared' || loaded.status === 'defeated') {
+    if (
+      (loaded.status === 'cleared' || loaded.status === 'defeated') &&
+      !loaded.analyticsCompletionSent &&
+      isAnalyticsEnabled()
+    ) {
+      loaded.analyticsCompletionSent = true
+      saveSession(loaded)
       trackBattleCompleted({
         status: loaded.status,
         waveCount: loaded.currentWaveIndex + 1,

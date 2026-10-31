@@ -12,8 +12,13 @@ declare global {
 let initialized = false
 
 const MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/i
-const STUDY_COMPLETION_KEY = 'idiom-app-analytics-study-completed'
-const BATTLE_COMPLETION_KEY = 'idiom-app-analytics-battle-completed'
+
+export function createAnalyticsSessionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
 
 export function initializeAnalytics(
   measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID,
@@ -23,7 +28,9 @@ export function initializeAnalytics(
   if (initialized) return true
 
   window.dataLayer = window.dataLayer ?? []
-  window.gtag = (...args) => window.dataLayer.push(args)
+  window.gtag = function (..._args: unknown[]) {
+    window.dataLayer.push(arguments)
+  }
   window.gtag('js', new Date())
   window.gtag('config', measurementId, {
     send_page_view: false,
@@ -58,30 +65,6 @@ function sendEvent(eventName: string, parameters: Record<string, string | number
   window.gtag('event', eventName, filteredParameters)
 }
 
-function resetCompletionMarker(key: string): void {
-  try {
-    sessionStorage.removeItem(key)
-  } catch (error) {
-    console.error('Google Analytics の重複送信防止情報を更新できませんでした。', error)
-  }
-}
-
-function sendCompletionOnce(
-  key: string,
-  eventName: string,
-  parameters: Record<string, string | number | boolean | undefined>,
-): void {
-  if (!initialized) return
-
-  try {
-    if (sessionStorage.getItem(key) === 'sent') return
-    sessionStorage.setItem(key, 'sent')
-  } catch (error) {
-    console.error('Google Analytics の重複送信防止情報を確認できませんでした。', error)
-  }
-  sendEvent(eventName, parameters)
-}
-
 export function trackPageView(path: string): void {
   if (!initialized) return
 
@@ -105,7 +88,6 @@ export interface StudyAnalyticsParameters {
 
 export function trackStudyStarted(parameters: StudyAnalyticsParameters): void {
   if (!initialized) return
-  resetCompletionMarker(STUDY_COMPLETION_KEY)
   sendEvent('study_started', {
     book_id: parameters.bookId,
     study_mode: parameters.studyMode,
@@ -120,7 +102,7 @@ export function trackStudyStarted(parameters: StudyAnalyticsParameters): void {
 export function trackStudyCompleted(
   parameters: StudyAnalyticsParameters & { correctCount: number; incorrectCount: number },
 ): void {
-  sendCompletionOnce(STUDY_COMPLETION_KEY, 'study_completed', {
+  sendEvent('study_completed', {
     book_id: parameters.bookId,
     study_mode: parameters.studyMode,
     question_count: parameters.questionCount,
@@ -135,7 +117,6 @@ export function trackStudyCompleted(
 
 export function trackBattleStarted(dungeonId: string, partySize: number): void {
   if (!initialized) return
-  resetCompletionMarker(BATTLE_COMPLETION_KEY)
   sendEvent('battle_started', {
     dungeon_id: dungeonId,
     party_size: partySize,
@@ -148,7 +129,7 @@ export function trackBattleCompleted(parameters: {
   turnCount: number
   score: number
 }): void {
-  sendCompletionOnce(BATTLE_COMPLETION_KEY, 'battle_completed', {
+  sendEvent('battle_completed', {
     battle_status: parameters.status,
     wave_count: parameters.waveCount,
     turn_count: parameters.turnCount,
