@@ -36,7 +36,13 @@
               前回のセッションが保存されています
               （{{ getBookTitle(resumableSession.settings.bookId) }} / {{ resumableSession.currentIndex }} / {{ resumableSession.items.length }}問目）
             </span>
-            <v-btn size="small" color="info" variant="elevated" @click="resumeSession">
+            <v-btn
+              size="small"
+              color="info"
+              variant="elevated"
+              :disabled="startingRoute !== null"
+              @click="resumeSession"
+            >
               再開する
             </v-btn>
           </div>
@@ -71,7 +77,13 @@
               バトルの中断データがあります
               （{{ savedBattleSession.status }} / {{ savedBattleSession.dungeonId ?? 'ダンジョン未選択' }}）
             </span>
-            <v-btn size="small" color="warning" variant="elevated" @click="resumeBattleSession">
+            <v-btn
+              size="small"
+              color="warning"
+              variant="elevated"
+              :disabled="startingRoute !== null"
+              @click="resumeBattleSession"
+            >
               再開する
             </v-btn>
           </div>
@@ -300,7 +312,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type {
   BookId,
@@ -430,6 +442,8 @@ const actionItems: Array<{ label: string; value: Action }> = [
 
 const selectedAction = ref<Action>('quiz')
 const startingRoute = ref<Action | null>(null)
+// 取得中に画面を離れた場合、取得完了後に別画面のセッションを上書きしない
+let isUnmounted = false
 
 function isModeDisabled(value: QuizMode): boolean {
   if (isClassicSelected.value) return false
@@ -565,7 +579,8 @@ function toClassicQuizSettings(form: StudySettingsForm): ClassicQuizSettings {
     direction: 'classic-to-modern',
     target: form.target,
     order: form.order,
-    randomQuestionCount: form.randomQuestionCount,
+    // 番号順では非表示の入力値を検証しないため、セッションへ持ち込まない
+    randomQuestionCount: form.order === 'random' ? form.randomQuestionCount : undefined,
   }
 }
 
@@ -577,6 +592,7 @@ function getStartErrorMessage(error: unknown): string {
 async function startClassicSession(form: StudySettingsForm) {
   const classicSettings = toClassicQuizSettings(form)
   const { dataMap } = await fetchClassicRangeData(classicSettings.startNumber, classicSettings.endNumber)
+  if (isUnmounted) return
   const items = buildClassicItems(classicSettings, dataMap)
 
   if (items.length === 0) {
@@ -623,6 +639,7 @@ async function startSession(routeName: SessionRouteName) {
       englishSettings.startNumber,
       englishSettings.endNumber,
     )
+    if (isUnmounted) return
     const itemSettings =
       routeName === 'game'
         ? { ...englishSettings, randomQuestionCount: undefined }
@@ -697,6 +714,7 @@ function getBookTitle(bookId: BookId) {
 }
 
 function resumeSession() {
+  if (startingRoute.value !== null) return
   const stored = storedSession.value
   if (stored.kind === 'classic') {
     router.push({ name: 'quiz' })
@@ -716,6 +734,7 @@ function resumeSession() {
 }
 
 function resumeBattleSession() {
+  if (startingRoute.value !== null) return
   const status = savedBattleSession.value?.status
   router.push({
     name:
@@ -757,6 +776,10 @@ onMounted(() => {
   settings.value = loadStudySettings()
   storedSession.value = loadStoredSession()
   savedBattleSession.value = loadBattleSession()
+})
+
+onBeforeUnmount(() => {
+  isUnmounted = true
 })
 </script>
 

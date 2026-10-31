@@ -111,6 +111,17 @@ export function useHistory() {
     localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history))
   }
 
+  /** 後続の保存に失敗した際に巻き戻せるよう、保存済みの履歴をそのまま返す */
+  function snapshotHistory(): string | null {
+    return localStorage.getItem(STORAGE_KEY_HISTORY)
+  }
+
+  /** snapshotHistory で退避した状態へ履歴を戻す */
+  function restoreHistory(snapshot: string | null): void {
+    if (snapshot === null) localStorage.removeItem(STORAGE_KEY_HISTORY)
+    else localStorage.setItem(STORAGE_KEY_HISTORY, snapshot)
+  }
+
   /** 最新の回答を記録（正解/不正解） */
   function setResult(
     bookId: EnglishBookId,
@@ -201,5 +212,15 @@ export function useHistory() {
     saveHistory(history)
   }
 
-  return { getHistory, setResult, isIncorrect, setClassicResult, isClassicIncorrect, clearAll, clearRange }
+  return {
+    getHistory,
+    setResult,
+    isIncorrect,
+    setClassicResult,
+    isClassicIncorrect,
+    clearAll,
+    clearRange,
+    snapshotHistory,
+    restoreHistory,
+  }
 }

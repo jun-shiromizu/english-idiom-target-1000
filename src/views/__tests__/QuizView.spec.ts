@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import QuizView from '../QuizView.vue'
 import type { IdiomData, QuizItem, QuizSession } from '@/types'
-import { STORAGE_KEY_SESSION } from '@/config'
+import { STORAGE_KEY_HISTORY, STORAGE_KEY_SESSION } from '@/config'
 import { getClassicWordHistoryKey, useHistory } from '@/composables/useHistory'
 import { useAppNotice } from '@/composables/useAppNotice'
 import { INVALID_CLASSIC_SESSION_REDIRECT_NOTICE } from '@/utils/routeGuards'
@@ -235,6 +235,30 @@ describe('QuizView の古文単語330', () => {
     expect(wrapper.text()).toContain('回答結果を保存できませんでした。')
     expect(wrapper.find('section[aria-label="見出し語"]').exists()).toBe(true)
     expect(savedResults()).toEqual({})
+    expect(localStorage.getItem(STORAGE_KEY_HISTORY)).toBeNull()
+  })
+
+  it('履歴保存後にセッション保存へ失敗したら、履歴も判定前の不正解へ戻す', async () => {
+    const historyKey = getClassicWordHistoryKey(word, 0)
+    useHistory().setClassicResult(historyKey, false)
+    const historyBefore = localStorage.getItem(STORAGE_KEY_HISTORY)
+    const wrapper = await mountClassic()
+    await reveal(wrapper)
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const originalSetItem = Storage.prototype.setItem
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+      if (key === STORAGE_KEY_SESSION) throw new DOMException('quota', 'QuotaExceededError')
+      originalSetItem.call(this, key, value)
+    })
+
+    await judgeButton(wrapper, '正解').trigger('click')
+    await flushPromises()
+
+    const historyWrites = setItem.mock.calls.filter(([key]) => key === STORAGE_KEY_HISTORY)
+    expect(historyWrites[0][1]).toContain(':true')
+    expect(localStorage.getItem(STORAGE_KEY_HISTORY)).toBe(historyBefore)
+    expect(useHistory().isClassicIncorrect(historyKey)).toBe(true)
+    expect(wrapper.text()).toContain('回答結果を保存できませんでした。')
   })
 
   it('復元できない古文セッションは保存データを残したままトップへ戻り、理由を重複させずに通知する', async () => {
@@ -248,5 +272,37 @@ describe('QuizView の古文単語330', () => {
     expect(notice).toBe(INVALID_CLASSIC_SESSION_REDIRECT_NOTICE)
     expect(notice).not.toContain('進捗が不正です')
     expect(localStorage.getItem(STORAGE_KEY_SESSION)).toBe(storedBefore)
+  })
+})
+
+describe('QuizView の英語教材の保存失敗', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    mockPush.mockClear()
+    mockReplace.mockClear()
+    vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('履歴保存後にセッション保存へ失敗したら、次へ進めず履歴も判定前へ戻す', async () => {
+    useHistory().setResult('idiom-target-1000', '0001', 0, 1, false)
+    const historyBefore = localStorage.getItem(STORAGE_KEY_HISTORY)
+    const wrapper = await mountRevealed()
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const originalSetItem = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+      if (key === STORAGE_KEY_SESSION) throw new DOMException('quota', 'QuotaExceededError')
+      originalSetItem.call(this, key, value)
+    })
+
+    await swipe(wrapper, { x: 60, y: 450 }, { x: 300, y: 390 })
+
+    expect(localStorage.getItem(STORAGE_KEY_HISTORY)).toBe(historyBefore)
+    expect(useHistory().isIncorrect('idiom-target-1000', '0001', 0, 1)).toBe(true)
+    expect(savedResults()).toEqual({})
+    expect(wrapper.find('.swipe-zone').exists()).toBe(true)
   })
 })

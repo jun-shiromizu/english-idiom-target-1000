@@ -96,7 +96,7 @@ import type { ClassicQuizSession, QuizSession } from '@/types'
 
 const router = useRouter()
 const { loadStoredSession, saveSession } = useQuizSession()
-const { setResult, setClassicResult } = useHistory()
+const { setResult, setClassicResult, snapshotHistory, restoreHistory } = useHistory()
 const { setNotice } = useAppNotice()
 
 const session = ref<QuizSession | ClassicQuizSession | null>(null)
@@ -203,6 +203,7 @@ function onJudge(correct: boolean) {
   const previousResult = activeSession.results[index]
   const nextIndex = index + 1
   const isFinished = nextIndex >= activeSession.items.length
+  const historySnapshot = snapshotHistory()
 
   try {
     recordHistory(activeSession, correct)
@@ -210,7 +211,12 @@ function onJudge(correct: boolean) {
     if (!isFinished) activeSession.currentIndex = nextIndex
     saveSession(activeSession)
   } catch (error) {
-    // 保存に失敗した場合は、成功したように次へ進めない
+    // 保存に失敗した場合は、成功したように次へ進めず、履歴も判定前へ戻す
+    try {
+      restoreHistory(historySnapshot)
+    } catch (restoreError) {
+      console.error(restoreError)
+    }
     if (hadResult) activeSession.results[index] = previousResult
     else delete activeSession.results[index]
     activeSession.currentIndex = index

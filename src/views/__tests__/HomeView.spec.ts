@@ -418,4 +418,109 @@ describe('HomeView の古文単語330', () => {
       endNumber: 40,
     })
   })
+
+  it.each(['0', '1.5'])(
+    '番号順へ戻すと、非表示の不正なランダム出題数（%s）をセッションへ保存しない',
+    async (randomCount) => {
+      const wrapper = mountHome()
+      await selectClassic(wrapper)
+      await radio(wrapper, 'ランダム').setValue(true)
+      await nextTick()
+      await input(wrapper, 'ランダム出題数').setValue(randomCount)
+      await nextTick()
+      expect(startButton(wrapper).attributes('disabled')).toBeDefined()
+
+      await radio(wrapper, '番号順').setValue(true)
+      await nextTick()
+      await startButton(wrapper).trigger('click')
+      await flushPromises()
+
+      const [savedSettings] = mockCreateClassicSession.mock.calls[0]
+      expect(savedSettings).toMatchObject({ order: 'sequential' })
+      expect(savedSettings.randomQuestionCount).toBeUndefined()
+      expect(mockBuildClassicItems.mock.calls[0][0].randomQuestionCount).toBeUndefined()
+      expect(mockPush).toHaveBeenCalledWith({ name: 'quiz' })
+    },
+  )
+
+  it('ランダム順では有効なランダム出題数をセッションへ保存する', async () => {
+    const wrapper = mountHome()
+    await selectClassic(wrapper)
+    await radio(wrapper, 'ランダム').setValue(true)
+    await nextTick()
+    await input(wrapper, 'ランダム出題数').setValue('20')
+    await nextTick()
+
+    await startButton(wrapper).trigger('click')
+    await flushPromises()
+
+    expect(mockCreateClassicSession.mock.calls[0][0]).toMatchObject({ order: 'random', randomQuestionCount: 20 })
+  })
+})
+
+describe('HomeView の開始処理中の中断データ', () => {
+  const englishSession = {
+    sessionType: 'quiz',
+    settings: { bookId: 'word-target-1900' },
+    items: [{ number: '0001' }],
+    currentIndex: 0,
+    results: {},
+  }
+  const battleSession = {
+    sessionType: 'battle',
+    status: 'in-battle',
+    dungeonId: 'dungeon-1',
+    deck: { leaderId: 'a', memberIds: ['b', 'c', 'd', 'e'] },
+  }
+
+  function resumeButtons(wrapper: ReturnType<typeof mountHome>) {
+    return wrapper.findAll('button').filter((button) => button.text().includes('再開する'))
+  }
+
+  it.each(['古文単語330', '英単語ターゲット1900'])(
+    '%sの取得中は中断データを再開できず、取得中に画面を離れたら取得完了後に保存・遷移しない',
+    async (bookLabel) => {
+      let resolveFetch!: (value: { dataMap: Map<string, unknown> }) => void
+      const pendingFetch = new Promise<{ dataMap: Map<string, unknown> }>((resolve) => {
+        resolveFetch = resolve
+      })
+      mockFetchClassicRangeData.mockReturnValue(pendingFetch)
+      mockFetchRangeData.mockReturnValue(pendingFetch)
+      mockLoadStoredSession.mockReturnValue({ kind: 'english', session: englishSession })
+      mockLoadBattleSession.mockReturnValue(battleSession)
+      const wrapper = mountHome()
+      await radio(wrapper, bookLabel).setValue(true)
+      await nextTick()
+
+      await startButton(wrapper).trigger('click')
+      await nextTick()
+
+      const buttons = resumeButtons(wrapper)
+      expect(buttons).toHaveLength(2)
+      for (const button of buttons) {
+        expect(button.attributes('disabled')).toBeDefined()
+        await button.trigger('click')
+      }
+      expect(mockPush).not.toHaveBeenCalled()
+
+      wrapper.unmount()
+      resolveFetch({ dataMap: new Map() })
+      await flushPromises()
+
+      expect(mockSaveSession).not.toHaveBeenCalled()
+      expect(mockPush).not.toHaveBeenCalled()
+    },
+  )
+
+  it('取得が完了すると中断データの再開ボタンは再び有効になる', async () => {
+    mockBuildClassicItems.mockReturnValue([])
+    mockLoadStoredSession.mockReturnValue({ kind: 'english', session: englishSession })
+    const wrapper = mountHome()
+    await selectClassic(wrapper)
+
+    await startButton(wrapper).trigger('click')
+    await flushPromises()
+
+    expect(resumeButtons(wrapper)[0].attributes('disabled')).toBeUndefined()
+  })
 })

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { getClassicRouteBlockMessage } from '../routeGuards'
+import {
+  CLASSIC_NEW_BATTLE_BLOCK_NOTICE,
+  getClassicBattleBlockMessage,
+  getClassicRouteBlockMessage,
+} from '../routeGuards'
 import { makeClassicSession } from '@/__tests__/fixtures/classicWords'
 import type { StoredQuizSessionState } from '@/types'
 
@@ -26,5 +30,25 @@ describe('getClassicRouteBlockMessage', () => {
     expect(getClassicRouteBlockMessage('result', classicState)).toBeNull()
     expect(getClassicRouteBlockMessage(undefined, classicState)).toBeNull()
     expect(getClassicRouteBlockMessage('game', { kind: 'none' })).toBeNull()
+  })
+})
+
+describe('getClassicBattleBlockMessage', () => {
+  it.each(['battle-deck', 'battle-dungeons', 'battle-play', 'battle-result'])(
+    '古文選択中に保存済みバトルなしで %s を開くと新規開始を止める',
+    (routeName) => {
+      expect(getClassicBattleBlockMessage(routeName, true, false)).toBe(CLASSIC_NEW_BATTLE_BLOCK_NOTICE)
+    },
+  )
+
+  it('古文選択中でも保存済みバトルの再開は止めない', () => {
+    expect(getClassicBattleBlockMessage('battle-deck', true, true)).toBeNull()
+    expect(getClassicBattleBlockMessage('battle-play', true, true)).toBeNull()
+  })
+
+  it('英語教材の選択中やバトル以外の画面では止めない', () => {
+    expect(getClassicBattleBlockMessage('battle-deck', false, false)).toBeNull()
+    expect(getClassicBattleBlockMessage('quiz', true, false)).toBeNull()
+    expect(getClassicBattleBlockMessage(undefined, true, false)).toBeNull()
   })
 })

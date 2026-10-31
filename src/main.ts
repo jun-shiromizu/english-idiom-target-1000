@@ -21,8 +21,11 @@ import BattleView from './views/BattleView.vue'
 import BattleResultView from './views/BattleResultView.vue'
 import { DEFAULT_THEME_ID, VUETIFY_THEMES, loadStoredThemeId } from './theme'
 import { useAppNotice } from './composables/useAppNotice'
+import { useBattleSession } from './composables/useBattleSession'
 import { useQuizSession } from './composables/useQuizSession'
-import { getClassicRouteBlockMessage } from './utils/routeGuards'
+import { isClassicBookId } from './config'
+import { getClassicBattleBlockMessage, getClassicRouteBlockMessage } from './utils/routeGuards'
+import { loadStudySettings } from './utils/studySettings'
 
 const vuetify = createVuetify({
   components,
@@ -52,7 +55,13 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const message = getClassicRouteBlockMessage(to.name, useQuizSession().loadStoredSession())
+  const message =
+    getClassicRouteBlockMessage(to.name, useQuizSession().loadStoredSession()) ??
+    getClassicBattleBlockMessage(
+      to.name,
+      isClassicBookId(loadStudySettings().bookId),
+      useBattleSession().loadSession() !== null,
+    )
   if (!message) return true
   useAppNotice().setNotice(message)
   return { name: 'home' }

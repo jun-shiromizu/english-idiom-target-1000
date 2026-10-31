@@ -150,6 +150,19 @@ test.describe('トップページ - 古文単語330の出題設定', () => {
     expect(await readSession(page)).toEqual(session)
   })
 
+  test('HOME-204: 古文単語330を選択中に保存済みバトルなしでバトル画面を直接開くと、新規バトルを開始させずにトップへ戻る', async ({ page }) => {
+    await page.getByRole('radio', { name: '古文単語330' }).click()
+    await expect(page.getByRole('radio', { name: '古文単語330' })).toBeChecked()
+
+    await page.goto('./#/battle/deck')
+
+    await expect(
+      page.getByText('古文単語330はバトルに対応していないため、トップへ戻りました。バトルを始める場合は英語教材を選択してください。'),
+    ).toBeVisible()
+    await expect(page).toHaveURL(/#\/$/)
+    expect(await page.evaluate(() => localStorage.getItem('idiom-app-battle-session'))).toBeNull()
+  })
+
   test('HOME-303: 古文単語330では 1〜330 番の範囲だけで開始できる', async ({ page }) => {
     const startButton = page.getByRole('button', { name: '開始' })
     await page.getByRole('radio', { name: '古文単語330' }).click()

@@ -87,6 +87,29 @@ describe('useHistory', () => {
     const { isIncorrect } = useHistory()
     expect(isIncorrect('idiom-target-1000', '0001', 0, 1, 'idiom', 'ja-to-en')).toBe(false)
   })
+
+  it('退避した履歴へ巻き戻せる', () => {
+    const { setResult, snapshotHistory, restoreHistory } = useHistory()
+    setResult('idiom-target-1000', '0001', 0, 1, false)
+    const snapshot = snapshotHistory()
+
+    setResult('idiom-target-1000', '0001', 0, 1, true)
+    setResult('idiom-target-1000', '0002', 0, 1, false)
+    restoreHistory(snapshot)
+
+    expect(localStorage.getItem('idiom-app-history')).toBe(snapshot)
+  })
+
+  it('履歴がない状態を退避した場合は、巻き戻しで履歴を削除する', () => {
+    const { setResult, snapshotHistory, restoreHistory } = useHistory()
+    const snapshot = snapshotHistory()
+
+    setResult('idiom-target-1000', '0001', 0, 1, true)
+    restoreHistory(snapshot)
+
+    expect(snapshot).toBeNull()
+    expect(localStorage.getItem('idiom-app-history')).toBeNull()
+  })
 })
 
 describe('古文単語330の履歴', () => {
